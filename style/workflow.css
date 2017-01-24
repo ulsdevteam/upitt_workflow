@@ -1,0 +1,28 @@
+.left_floater {
+	float: left;
+	margin: 2px;
+	max-width: 20%;
+        width: 20%;
+}
+
+.left_floater div select, .left_floater div input {
+	width: 95%;
+	margin: 0 10px;
+}
+
+#lookup_item_form {
+	float: right;
+}
+
+#upitt-workflow-new-batch-form .fieldset-wrapper {
+	margin-left: 0;
+}
+
+.numeric {
+	text-align: right;
+}
+
+.non_numeric {
+	color: #333;
+	white-space: nowrap;
+}

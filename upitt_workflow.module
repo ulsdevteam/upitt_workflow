@@ -1,0 +1,263 @@
+<?php
+
+define('DJANGO_OBJECTS_PER_PAGE', 100);
+
+// Permissions.
+define('ISLANDORA_WORKFLOW_MANAGE', 'manage upitt workflow');
+
+
+/**
+ * Implements hook_menu().
+ */
+function upitt_workflow_menu() {
+  return array(
+    'workflow' => array(
+      'title' => 'Workflow',
+      'page callback' => array('upitt_workflow_objects'),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/report.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
+    'workflow/object/%' => array(
+      'title' => 'Workflow Report | Status and Files',
+      'page callback' => array('upitt_workflow_objectreport_form'),
+      'page arguments' => array(2),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/report.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
+    // handler to redirect when using the "look up an item by id" search box 
+    'workflow/item/get' => array(
+      'title' => 'Workflow Report',
+      'page callback' => array('upitt_workflow_redirect_item_get'),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/report.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
+    'workflow/batch/%' => array(
+      'title' => 'Workflow Batch',
+      'page callback' => array('upitt_workflow_batch_detail_form'),
+      'page arguments' => array(2),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/batch_detail.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
+    'workflow/batches/all' => array(
+      'title' => 'All Batches',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_batches_form'),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/batches.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
+    'workflow/batches/active' => array(
+      'title' => 'Currently Active Batches',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_batches_form'),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/batches.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
+    'workflow/batch/edit/%' => array(
+      'title' => 'Edit Batch',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_new_batch_form', 3),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/batch.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
+    'workflow/batch/new' => array(
+      'title' => 'Create New Batch',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_new_batch_form'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'includes/batch.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
+    'workflow/admin/manage/%' => array(
+      'title' => 'Manage Lookup Tables',
+      'page callback' => 'upitt_workflow_admin_manage',
+      'page arguments' => array(3),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/admin_manage.form.inc',
+      'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE, 3),
+      'access callback' => 'upitt_workflow_admin_manage_access_callback',
+    ),
+    'workflow/admin/manage/%/edit/%' => array(
+      'title' => 'Manage Lookup Tables',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_admin_manage_edit', 3, 5),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/admin_manage.form.inc',
+      'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE, 3, 5),
+      'access callback' => 'upitt_workflow_admin_manage_access_callback',
+    ),
+  );
+}
+
+/**
+ * Implements hook_permission().
+ */
+function upitt_workflow_permission() {
+  return array(
+    ISLANDORA_WORKFLOW_MANAGE => array(
+      'title' => t('Manage Islandora Workflow objects'),
+      'description' => t('Manage Islandora Workflow objects including pick list values, workflow sequences, even batch status.'),
+    ),
+  );
+}
+
+function upitt_workflow_theme() {
+  return array(
+    'upitt_workflow_report' => array(
+      'variables' => array('table' => NULL, 'title' => '', 'links' => '', 'post_to' => '', 'collection_filter_choices' => '', 'details' => ''),
+      'template' => 'theme/upitt-workflow-report',
+    ),
+    'upitt_workflow_report_with_detail_table' => array(
+      'variables' => array('details' => NULL, 'files_table' => NULL, 'status_table', 'title' => '', 'links' => '', 'post_to' => ''),
+      'template' => 'theme/upitt-workflow-report-with-detail-table',
+    ),
+    'workflow_item_details' => array(
+      'variables' => array('details' => NULL),
+      'template' => 'theme/upitt-workflow-details',
+    ),
+    'upitt_workflow_batches' => array(
+      'variables' => array('table' => NULL, 'links' => '', 'post_to' => ''),
+      'template' => 'theme/upitt-workflow-batches',
+    ),
+/*
+    'page__workflow_batch' => array(
+      'template' => 'theme/page--workflow-batch',
+      'variables' => array(
+        'results' => NULL,
+        'elements' => array(),
+      ),
+    ),
+*/
+
+  );
+}
+
+/**
+ * Helper function to connect to the bigfoot database using the uls-workflow.ini configuration file.
+ */
+function upitt_workflow_get_databaselink($db_section = 'mysql') {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+  $db_host = get_config_value($db_section,'host');
+  $db_user = get_config_value($db_section,'username');
+  $db_pass = get_config_value($db_section,'password');
+  $db_name = get_config_value($db_section,'database');
+  $link = mysql_connect($db_host, $db_user, $db_pass);
+  if (!$link) {
+    die('Not connected : ' . mysql_error());
+  }
+
+  // make foo the current db
+  $db_selected = mysql_select_db($db_name, $link);
+  return $link;
+}
+
+/**
+ * Implements hook_presprocess_theme().
+ *
+ * This code will remove the sidebar and must check to see whether or not the path is on a user page.
+ */
+function upitt_workflow_preprocess_page(&$vars) {
+  $path = drupal_get_path('module', 'upitt_workflow');
+  $item = menu_get_item();
+  if (is_array($item)) {
+    if ($item['path'] == 'workflow/object/%' || 
+      $item['path'] == 'workflow/batch/%' ||
+      $item['path'] == 'workflow' ||
+      $item['path'] == 'workflow/batches/active' ||
+      $item['path'] == 'workflow/batches/all' ||
+      $item['path'] == 'workflow/batch/new' ||
+      $item['path'] == 'workflow/batch/edit/%' || 
+      $item['path'] == 'workflow/admin/manage/%' ||
+      $item['path'] == 'workflow/admin/manage/%/edit/%' ||
+      $item['path'] == 'workflow/admin/manage/%/delete/%' ||
+      (($item['path'] == 'node/%' || $item['path'] == 'node/%/edit') && (isset($vars['node'])))
+      ) {
+
+      $vars['page']['sidebar'] = array();
+      drupal_add_css($path . '/style/workflow.css');
+
+      if (isset($vars['node']) && $vars['node']->type == 'workflow_batch') {
+        // If the node type is "blog_madness" the template suggestion will be "page--blog-madness.tpl.php".
+        $vars['theme_hook_suggestions'][] = 'page__'. $vars['node']->type;
+        dpm('page__'. $vars['node']->type);
+        dpm($vars);
+      }
+    }
+  }
+}
+
+/**
+ * Handler for menu route "/workflow/item/get".  This simply redirects to the correct handler without the "q=" part.
+ */
+function upitt_workflow_redirect_item_get() {
+  $q = isset($_POST['q']) ? $_POST['q'] : NULL;
+  if ($q) {
+    drupal_goto('/workflow/object/' . $q);
+  }
+}
+
+/** 
+ * used by mysql queries to populate various reports / forms.
+ */
+function upitt_workflow_safe_qstring($in) {
+  return mysql_real_escape_string(urldecode(trim($in)));
+}
+
+/**
+ * used by mysql queries to populate various reports / forms.
+ */
+function upitt_workflow_filters_clause($in) {
+  if (strstr($in, ',')) {
+    $p = explode(",", str_replace(" ", "", $in));
+    return '(\'' . implode("','",$p) . '\')';
+  } else {
+    return '(\'' . $in . '\')';
+  }
+}
+
+/**
+ * Helper function to create the search form filter choices for collections in workflow_django
+ */
+function upitt_workflow_get_collection_choices() {
+  $rows = array('' => 'Select any collection');
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+
+  $query = 'SELECT `name` FROM collection ORDER BY `name`';
+
+  $result = mysql_query($query, $link);
+  if (!$result) {
+    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message .= 'Whole query: ' . $query;
+    die($message);
+  }
+  while ($row = mysql_fetch_assoc($result)) {
+    $rows[$row['name']] = $row['name'];
+  }
+  mysql_close($link);
+
+  return $rows;
+}
+
+function upitt_workflow_admin_manage_access_callback($perm, $which_lookup_table = NULL) {
+  if (($perm == ISLANDORA_WORKFLOW_MANAGE) && ($which_lookup_table)) {
+    // Only certain values are allowed for the $listname
+    $allowed_listnames = array('collection', 'content_types', 'item_type', 'workflow_sequence','workflow_sequence_actions');
+    if (!(array_search(strtolower($which_lookup_table), $allowed_listnames) === FALSE)) {
+      return TRUE;
+    }
+    else {
+      drupal_set_message('Bad table name "' . $which_lookup_table . '"');
+      error_log('returning false, Bad table name "' . $which_lookup_table . '"');
+      return FALSE;
+    }
+  }
+  else {
+    return FALSE;
+  }
+}

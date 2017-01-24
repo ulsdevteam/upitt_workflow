@@ -1,0 +1,7 @@
+name = University of Pittsburgh Islandora Workflow Management
+package = Islandora Tools
+description = To navigate the various records for objects via the Workflow Django database.
+version = 7.x
+core = 7.x
+dependencies[] = islandora
+
