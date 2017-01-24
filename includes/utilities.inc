@@ -24,7 +24,7 @@ function upitt_workflow_get_mysql_options($table_name, $option_name = '', $key_f
   $query = 'SELECT ' . $key_field . ', ' . $value_field . ' FROM ' . $table_name . ($sort_field ? ' ORDER BY ' . $sort_field : '');
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
-  $result = mysql_query($query, $link);
+  $result = mysqli_query($link, $query); // mysql_query($query, $link);
   if (!$result) {
     $message  = 'Invalid query: ' . mysql_error() . "\n";
     $message .= 'Whole query: ' . $query;
@@ -32,10 +32,10 @@ function upitt_workflow_get_mysql_options($table_name, $option_name = '', $key_f
   }
 
   $rows = ($option_name) ? array($option_value => 'Select ' . $option_name) : array();
-  while ($row = mysql_fetch_assoc($result)) {
+  while ($row = mysqli_fetch_assoc($result)) {
     $rows[$row[$key_field]] = $row[$value_field];
   }
-  mysql_close($link);
+  mysqli_close($link);
   return $rows;
 }
 

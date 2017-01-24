@@ -14,17 +14,20 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
                    (($is_all) ? '' : 'WHERE b.is_batch_active = 1 ') .
                    'LIMIT ' . (($page) ? $page * DJANGO_OBJECTS_PER_PAGE . ', ' : '') . DJANGO_OBJECTS_PER_PAGE;
 
-dpm($batch_records);
   $query = 'SELECT count(batch_external_id) as `total` ' .
            'FROM batch b ' .
            (($is_all) ? '' : 'WHERE b.is_batch_active = 1 ');
 
-  $result = mysql_query($query, $link);
+  $result = mysqli_query($link, $query, MYSQLI_USE_RESULT); // mysql_query($query, $link);
 
-  $row = mysql_fetch_assoc($result);
+  $row = mysqli_fetch_assoc($result);
   $count_rows = $row['total'];
+  mysqli_free_result($result);
+
   $current_page = pager_default_initialize($count_rows, DJANGO_OBJECTS_PER_PAGE);
-  $result = mysql_query($batch_records, $link);
+
+  $result = mysqli_query($link, $batch_records, MYSQLI_USE_RESULT); // mysql_query($batch_records, $link);
+
   if (!$result) {
     $message  = 'Invalid query: ' . mysql_error() . "\n";
     $message .= 'Whole query: ' . $batch_records;
@@ -32,7 +35,7 @@ dpm($batch_records);
   }
 
   $batch_records_headings = $rows = array();
-  while ($row = mysql_fetch_assoc($result)) {
+  while ($row = mysqli_fetch_assoc($result)) {
     if (isset($row['name']) && isset($row['batch_id'])) {
       $row['name'] = l($row['name'], '/workflow/batch/' . $row['batch_id']);
       unset($row['batch_id']);
@@ -50,11 +53,12 @@ dpm($batch_records);
                  l('All batches', '/workflow/batches/all'),
            );
 
-  mysql_close($link);
+  mysqli_close($link);
   $pager = theme('pager', array('quantity',$count_rows));
   $table_markup = theme('upitt_workflow_batches',
       array('table' => $pager . theme('table', array('rows'=>$rows,'header'=>$batch_records_headings,'attributes' =>array('class'=>array('report_table')))) . $pager,
             'links' => $links,
+            'count_rows' => number_format($count_rows),
             'post_to' => '/workflow',
            )
     );

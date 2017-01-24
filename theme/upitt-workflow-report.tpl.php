@@ -26,7 +26,7 @@
 ?>
 <?php include_once('upitt-workflow-findobject-form.tpl.php'); ?>
 <?php print $details; ?>
-<h3><?php print $title; ?></h3>
+<h3><?php print $count_rows; ?></h3>
 <form action="<?php print $post_to; ?>" method="GET" id="upitt-workflow-objectreport-form">
   <fieldset>
     <legend><span class="fieldset-legend">Filters</span></legend>

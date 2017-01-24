@@ -376,14 +376,14 @@ function upitt_workflow_save_batch($values) {
 
   $sql = "REPLACE INTO `batch` (`" . implode("`, `", $sql_fields) . "`) VALUES (" . implode(", ", $sql_values) . ")";
 
-  $result = mysql_query($sql, $link);
+  $result = mysqli_query($link, $sql); // mysql_query($sql, $link);
   if (!$result) {
     $message  = 'Invalid query: ' . mysql_error() . "\n";
     $message .= 'Whole query: ' . $sql;
     die($message);
   }
 
-  mysql_close($link);
+  mysqli_close($link);
   return upitt_workflow_get_batch_id($values['batch_external_id']);
 }
 
@@ -391,21 +391,21 @@ function upitt_workflow_get_batch_id($batch_external_id) {
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $sql = 'SELECT `batch_id` FROM `batch` WHERE `batch_external_id` = "' . mysql_real_escape_string($batch_external_id) . '"';
 
-  $result = mysql_query($sql, $link);
+  $result = mysqli_query($link, $sql); // mysql_query($sql, $link);
   if (!$result) {
     $message  = 'Invalid query: ' . mysql_error() . "\n";
     $message .= 'Whole query: ' . $sql;
     die($message);
   }
 
-  if ($row = mysql_fetch_assoc($result)) {
+  if ($row = mysqli_fetch_assoc($result)) {
     $batch_id = $row['batch_id'];
   }
   else {
     $batch_id = 0;
   }
 
-  mysql_close($link);
+  mysqli_close($link);
   return $batch_id;
 }
 
@@ -413,9 +413,9 @@ function upitt_workflow_update_batch_nid($batch_id, $node) {
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $sql = 'UPDATE `batch` SET `nid` = ' . $node->nid . ' WHERE `batch_id` = ' . $batch_id;
 
-  $result = mysql_query($sql, $link);
+  $result = mysqli_query($link, $sql); // mysql_query($sql, $link);
 
-  mysql_close($link);
+  mysqli_close($link);
 }
 
 function upitt_workflow_batch_load($batch_id) {
@@ -427,7 +427,7 @@ function upitt_workflow_batch_load($batch_id) {
 
   $batch = array();
 
-  $result = mysql_query($batch_detail, $link);
+  $result = mysqli_query($link, $batch_detail); // mysql_query($batch_detail, $link);
   if (!$result) {
     $message  = 'Invalid query: ' . mysql_error() . "\n";
     $message .= 'Whole query: ' . $batch_detail;
@@ -435,13 +435,13 @@ function upitt_workflow_batch_load($batch_id) {
   }
 
   $batch = $fields = array();
-  if ($row = mysql_fetch_assoc($result)) {
+  if ($row = mysqli_fetch_assoc($result)) {
     $fields = array_keys($row);
     foreach ($fields as $field) {
       $batch[$field] = $row[$field];
     }
   }
 
-  mysql_close($link);
+  mysqli_close($link);
   return $batch;
 }

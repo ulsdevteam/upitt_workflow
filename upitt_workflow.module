@@ -1,5 +1,7 @@
 <?php
 
+// Full file path to the current installation's settings.php file
+define('SETTINGS_PATH', '/var/www/drupal/sites/default/settings.php');
 define('DJANGO_OBJECTS_PER_PAGE', 100);
 
 // Permissions.
@@ -110,7 +112,7 @@ function upitt_workflow_permission() {
 function upitt_workflow_theme() {
   return array(
     'upitt_workflow_report' => array(
-      'variables' => array('table' => NULL, 'title' => '', 'links' => '', 'post_to' => '', 'collection_filter_choices' => '', 'details' => ''),
+      'variables' => array('table' => NULL, 'count_rows' => '', 'links' => '', 'post_to' => '', 'collection_filter_choices' => '', 'details' => ''),
       'template' => 'theme/upitt-workflow-report',
     ),
     'upitt_workflow_report_with_detail_table' => array(
@@ -122,7 +124,7 @@ function upitt_workflow_theme() {
       'template' => 'theme/upitt-workflow-details',
     ),
     'upitt_workflow_batches' => array(
-      'variables' => array('table' => NULL, 'links' => '', 'post_to' => ''),
+      'variables' => array('table' => NULL, 'links' => '', 'post_to' => '', 'count_rows' => 0),
       'template' => 'theme/upitt-workflow-batches',
     ),
 /*
@@ -139,21 +141,32 @@ function upitt_workflow_theme() {
 }
 
 /**
- * Helper function to connect to the bigfoot database using the uls-workflow.ini configuration file.
+ * Helper function to connect to the bigfoot database using the site's settings.php file.
  */
 function upitt_workflow_get_databaselink($db_section = 'mysql') {
+  global $databases;
+  // Use the settings.php file for this install.
+  require_once(SETTINGS_PATH);
+
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
-  $db_host = get_config_value($db_section,'host');
-  $db_user = get_config_value($db_section,'username');
-  $db_pass = get_config_value($db_section,'password');
-  $db_name = get_config_value($db_section,'database');
-  $link = mysql_connect($db_host, $db_user, $db_pass);
-  if (!$link) {
-    die('Not connected : ' . mysql_error());
+
+  if (count($databases) < 1 || !array_key_exists($db_section, $databases['default'])) {
+    die('Database settings not found at ' . SETTINGS_PATH);
   }
 
-  // make foo the current db
-  $db_selected = mysql_select_db($db_name, $link);
+  $db_host = $databases['default'][$db_section]['host'];
+  $db_user = $databases['default'][$db_section]['username'];
+  $db_pass = $databases['default'][$db_section]['password'];
+  $db_name = $databases['default'][$db_section]['database'];
+
+  $link = mysqli_connect($db_host, $db_user, $db_pass, $db_name);
+  //  if (!$link) {
+  if (mysqli_connect_errno()) {
+    // die('Not connected : ' . mysql_error());
+    printf("Connect failed: %s\n", mysqli_connect_error());
+    exit();
+  }
+
   return $link;
 }
 
@@ -179,6 +192,7 @@ function upitt_workflow_preprocess_page(&$vars) {
       (($item['path'] == 'node/%' || $item['path'] == 'node/%/edit') && (isset($vars['node'])))
       ) {
 
+      $vars['page']['sidebar_first'] = array();
       $vars['page']['sidebar'] = array();
       drupal_add_css($path . '/style/workflow.css');
 
@@ -230,16 +244,16 @@ function upitt_workflow_get_collection_choices() {
 
   $query = 'SELECT `name` FROM collection ORDER BY `name`';
 
-  $result = mysql_query($query, $link);
+  $result = mysqli_query($link, $query); // mysql_query($query, $link);
   if (!$result) {
     $message  = 'Invalid query: ' . mysql_error() . "\n";
     $message .= 'Whole query: ' . $query;
     die($message);
   }
-  while ($row = mysql_fetch_assoc($result)) {
+  while ($row = mysqli_fetch_assoc($result)) {
     $rows[$row['name']] = $row['name'];
   }
-  mysql_close($link);
+  mysqli_close($link);
 
   return $rows;
 }
@@ -259,5 +273,40 @@ function upitt_workflow_admin_manage_access_callback($perm, $which_lookup_table 
   }
   else {
     return FALSE;
+  }
+}
+
+/**
+ * Helper function to look up the names of the collections based on a possible comma-separated list
+ */
+function upitt_workflow_lookup_collection_names() {
+  $rows = array();
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+
+  $query = 'SELECT * FROM collection ORDER BY `name`';
+
+  $result = mysqli_query($link, $query);
+  if (!$result) {
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
+    $message .= 'Whole query: ' . $query;
+    die($message);
+  }
+  while ($row = mysqli_fetch_assoc($result)) {
+    $rows[$row['id']] = $row;
+  }
+  return $rows;
+}
+
+function upitt_workflow_collection_id_map_names($ids = '', $collections = array()) {
+dpm($ids);
+dpm($collections);
+  if ($ids) {
+    $retvals = array();
+    $ids_arr = explode(",", $ids);
+    foreach ($ids_arr as $id) {
+      $id = trim($id);
+      $retvals[] = $collections[$id]['c_id'];
+    }
+    return implode(", ", $retvals);
   }
 }

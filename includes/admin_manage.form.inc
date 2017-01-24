@@ -4,9 +4,9 @@ function upitt_workflow_get_tablefield_stats($listname, $link_new) {
   $records = 'SELECT * ' .
              'FROM `' . mysql_real_escape_string($listname) . '` LIMIT 1';
 
-  $result = mysql_query($records, $link_new);
+  $result = mysqli_query($link_new, $records); //mysql_query($records, $link_new);
 
-  $row = mysql_fetch_assoc($result);
+  $row = mysqli_fetch_assoc($result);
   $fields = array_keys($row);
   if (count($fields) < 1) {
     return array(NULL, array(), array());
@@ -14,8 +14,8 @@ function upitt_workflow_get_tablefield_stats($listname, $link_new) {
 
   foreach ($fields as $field) {
     $sql_fieldtype = "SHOW FIELDS FROM `" . mysql_real_escape_string($listname) . "` where Field = '" . $field . "'";
-    $result = mysql_query($sql_fieldtype, $link_new);
-    while ($row = mysql_fetch_assoc($result)) {
+    $result = mysqli_query($link_new, $sql_fieldtype); //mysql_query($sql_fieldtype, $link_new);
+    while ($row = mysqli_fetch_assoc($result)) {
       if (!$primary_key_field && $row['Key'] == 'PRI') {
         $primary_key_field = $field;
       }
@@ -31,8 +31,8 @@ function upitt_workflow_get_tablefield_stats($listname, $link_new) {
 
 function upitt_workflow_get_table_record($listname, $primary_key_field, $primary_id, $link_new) {
   $sql_record = "SELECT  * FROM `" . mysql_real_escape_string($listname) . "` where `" . $primary_key_field . "` = '" . $primary_id . "'";
-  $result = mysql_query($sql_record, $link_new);
-  return ($row = mysql_fetch_assoc($result)) ? $row : array();
+  $result = mysqli_query($link_new, $sql_records); //mysql_query($sql_record, $link_new);
+  return ($row = mysqli_fetch_assoc($result)) ? $row : array();
 }
 
 /**
@@ -73,19 +73,19 @@ function upitt_workflow_admin_manage($listname = '') {
   $query = 'SELECT count(*) as `total` ' .
            'FROM `' . mysql_real_escape_string($listname) . '`';
 
-  $result = mysql_query($query, $link_new);
+  $result = mysqli_query($link_new, $query); //mysql_query($query, $link_new);
 
-  $row = mysql_fetch_assoc($result);
+  $row = mysqli_fetch_assoc($result);
   $count_rows = $row['total'];
   $current_page = pager_default_initialize($count_rows, DJANGO_OBJECTS_PER_PAGE);
-  $result = mysql_query($records, $link_new);
+  $result = mysqli_query($link_new, $records); //mysql_query($records, $link_new);
   if (!$result) {
     $message  = 'Invalid query: ' . mysql_error() . "\n";
     $message .= 'Whole query: ' . $records;
     die($message);
   }
 
-  while ($row = mysql_fetch_assoc($result)) {
+  while ($row = mysqli_fetch_assoc($result)) {
 /*    if (count($fields) < 1) {
       $fields = array_keys($row);
     }
@@ -148,7 +148,7 @@ function upitt_workflow_admin_manage($listname = '') {
 
   $form = array();
 
-  mysql_close($link_new);
+  mysqli_close($link_new);
   $pager = theme('pager', array('quantity',$count_rows));
   $table_markup = theme('upitt_workflow_batches',
       array('table' => $pager . theme('table', array('rows'=>$rows,'header'=>$records_headings,'attributes' =>array('class'=>array('report_table')))) . $pager,

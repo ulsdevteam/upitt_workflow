@@ -27,16 +27,22 @@ function upitt_workflow_objects() {
 */
   $where_clause = ($where_clause) ? "WHERE " . $where_clause : ' ';
 
-  $query = 'SELECT count(do_id) AS `total` ' .
+  $query = 'SELECT count(do_id) `total` ' .
            'FROM `item` ci ' .
 //XX           'JOIN auth_user po ON (po.id = ci.property_owner_id) ' .
            'JOIN item_type cit ON (cit.id = ci.type_id) ' .
            'JOIN collection cc ON (cc.id = ci.primary_collection_id) ' .
            $where_clause;
 
-  $result = mysql_query($query, $link);
-  $row = mysql_fetch_assoc($result);
+  $result = mysqli_query($link, $query, MYSQLI_USE_RESULT); // mysql_query($query, $link);
+  if (!$result) {
+     echo(mysqli_error($link));
+  }
+
+  $row = mysqli_fetch_assoc($result);
   $count_rows = $row['total'];
+  mysqli_free_result($result);
+
   $current_page = pager_default_initialize($count_rows, DJANGO_OBJECTS_PER_PAGE);
 
   $query = 'SELECT "" as `ingested?`, ci.do_id, ci.name, cit.name `type`, ' . //XX po.username, cc.name `collection`, ' .
@@ -48,16 +54,17 @@ function upitt_workflow_objects() {
            $where_clause .
            'LIMIT ' . (($page) ? $page * DJANGO_OBJECTS_PER_PAGE . ', ' : '') . DJANGO_OBJECTS_PER_PAGE;
 
-  $result = mysql_query($query, $link);
-
+  $result = mysqli_query($link, $query, MYSQLI_USE_RESULT); // mysql_query($query, $link);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $query;
     die($message);
   }
-  $title = number_format($count_rows) . " workflow objects " . (($page <> 0) ? " (page " . $page . " of " . round($count_rows / DJANGO_OBJECTS_PER_PAGE) . ")" : "");
-  $headings = array();
-  while ($row = mysql_fetch_assoc($result)) {
+
+  $count_rows_markup = number_format($count_rows) . " workflow objects " . (($page <> 0) ? " (page " . $page . " of " . round($count_rows / DJANGO_OBJECTS_PER_PAGE) . ")" : "");
+  $headings = $rows = array();
+
+  while ($row = mysqli_fetch_assoc($result)) {
     if (count($headings) < 1) {
       $headings = array_keys($row);
     }
@@ -72,11 +79,13 @@ function upitt_workflow_objects() {
     }
     $rows[] = $row;
   }
-  mysql_close($link);
+
+  mysqli_free_result($result);
+  mysqli_close($link);
   $pager = theme('pager', array('quantity',$count_rows));
   $table_markup = theme('upitt_workflow_report',
       array('table' => $pager . theme('table', array('rows'=>$rows,'header'=>$headings,'attributes' =>array('class'=>array('report_table')))) . $pager,
-            'title' => $title,
+            'count_rows' => $count_rows_markup,
             'links' => array(),
             'post_to' => '/workflow',
             'collection_filter_choices' => upitt_workflow_get_collection_choices(),
@@ -95,7 +104,7 @@ function upitt_workflow_objectreport_form($do_id) {
                   'JOIN batch b ON (bi.batch_id = b.batch_id) ' .
                   'WHERE i.do_id = \'' . $do_id . '\'';
 
-  $result = mysql_query($detail_query, $link);
+  $result = mysqli_query($link, $detail_query); // mmysql_query($detail_query, $link);
   if (!$result) {
     $message  = 'Invalid query: ' . mysql_error() . "\n";
     $message .= 'Whole query: ' . $detail_query;
@@ -104,7 +113,7 @@ function upitt_workflow_objectreport_form($do_id) {
 
   $title = "Workflow object | " . $do_id;
   $files_headings = $status_headings = $files_rows = $status_rows = array();
-  while ($row = mysql_fetch_assoc($result)) {
+  while ($row = mysqli_fetch_assoc($result)) {
     if (isset($row['batch_id']) && isset($row['name'])) {
       $row['batch'] = l($row['name'], '/workflow/batch/' . $row['batch_id']) . '<br />';
       unset($row['batch_id']);
@@ -141,13 +150,13 @@ function upitt_workflow_objectreport_form($do_id) {
                  ' ' .
                  'ORDER BY f.name';
 
-  $result = mysql_query($files_query, $link);
+  $result = mysqli_query($link, $files_query); // mmysql_query($files_query, $link);
   if (!$result) {
     $message  = 'Invalid query: ' . mysql_error() . "\n";
     $message .= 'Whole query: ' . $files_query;
     die($message);
   }
-  while ($row = mysql_fetch_assoc($result)) {
+  while ($row = mysqli_fetch_assoc($result)) {
     if (count($files_headings) < 1) {
       $files_headings = array_keys($row);
     }
@@ -171,14 +180,14 @@ function upitt_workflow_objectreport_form($do_id) {
                   'JOIN collection co ON (co.id = i.primary_collection_id) ' .
                   'WHERE i.do_id=\'' . $do_id . '\' ' .
                   'ORDER BY i.do_id DESC, t.`timestamp` ASC';
-
-  $result = mysql_query($status_query, $link);
+dpm($status_query);
+  $result = mysqli_query($link, $status_query); // mmysql_query($status_query, $link);
   if (!$result) {
     $message  = 'Invalid query: ' . mysql_error() . "\n";
     $message .= 'Whole query: ' . $status_query;
     die($message);
   }
-  while ($row = mysql_fetch_assoc($result)) {
+  while ($row = mysqli_fetch_assoc($result)) {
     if (count($status_headings) < 1) {
       $status_headings = array_keys($row);
       $status_headings[] = 'when';
@@ -210,7 +219,7 @@ function upitt_workflow_objectreport_form($do_id) {
 
     $status_rows[] = $row;
   }
-  mysql_close($link);
+  mysqli_close($link);
 
   $table_markup = theme('upitt_workflow_report_with_detail_table',
       array('details' => $details,
