@@ -162,3 +162,7 @@ function upitt_workflow_sync_solr_collections($pids, $collection_options) {
   mysqli_close($link);
 }
 
+function upitt_workflow_get_allowed_listnames() {
+  return array('collection', 'content_types', 'item_type', 'property_owner', 'workflow_sequence', 'workflow_sequence_actions');
+}
+

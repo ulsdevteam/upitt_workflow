@@ -6,6 +6,7 @@ define('DJANGO_OBJECTS_PER_PAGE', 100);
 
 // Permissions.
 define('ISLANDORA_WORKFLOW_MANAGE', 'manage upitt workflow');
+define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup tables');
 
 
 /**
@@ -104,7 +105,11 @@ function upitt_workflow_permission() {
   return array(
     ISLANDORA_WORKFLOW_MANAGE => array(
       'title' => t('Manage Islandora Workflow objects'),
-      'description' => t('Manage Islandora Workflow objects including pick list values, workflow sequences, even batch status.'),
+      'description' => t('Manage Islandora Workflow objects - even batch status.'),
+    ),
+    ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES => array(
+      'title' => t('Manage Islandora Workflow Lookup Tables (such as the various pick list values, workflow sequences, etc)'),
+      'description' => t('Manage Islandora Workflow lookup tables.'),
     ),
   );
 }
@@ -217,9 +222,11 @@ function upitt_workflow_redirect_item_get() {
 }
 
 function upitt_workflow_admin_manage_access_callback($perm, $which_lookup_table = NULL) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   if (($perm == ISLANDORA_WORKFLOW_MANAGE) && ($which_lookup_table)) {
     // Only certain values are allowed for the $listname
-    $allowed_listnames = array('collection', 'content_types', 'item_type', 'workflow_sequence','workflow_sequence_actions');
+    $allowed_listnames = upitt_workflow_get_allowed_listnames();
     if (!(array_search(strtolower($which_lookup_table), $allowed_listnames) === FALSE)) {
       return TRUE;
     }

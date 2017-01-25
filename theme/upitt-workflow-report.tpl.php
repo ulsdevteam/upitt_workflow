@@ -64,7 +64,7 @@
         </select>
       </div>
     </div>
-    <br class="clearfloat"/>
+    <br class="clearfix"/>
     <input type="submit">
   </fieldset>
 </form>

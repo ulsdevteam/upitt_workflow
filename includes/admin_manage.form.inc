@@ -5,6 +5,8 @@ function upitt_workflow_get_tablefield_stats($listname, $link_new) {
              'FROM `' . mysqli_real_escape_string($link_new, $listname) . '` LIMIT 1';
 
   $result = mysqli_query($link_new, $records);
+  $primary_key_field = '';
+  $fields = $integer_fieldnames = $non_integer_fieldnames = array();
 
   $row = mysqli_fetch_assoc($result);
   $fields = array_keys($row);
@@ -38,7 +40,7 @@ function upitt_workflow_get_table_record($listname, $primary_key_field, $primary
 /**
  * Controller function for /workflow/admin/manage/%listname%
  *
- *  The access callback should be allowing only specific listnames through including: 'collection', 'content_types', 'item_type', 'workflow_sequence','workflow_sequence_actions'
+ *  The access callback should be allowing only specific listnames through including: 'collection', 'content_types', 'item_type', 'property_owner', 'workflow_sequence', 'workflow_sequence_actions'
  *
  *   new                               lookup table?
  *  -----------------------------------------------------
@@ -59,8 +61,8 @@ function upitt_workflow_get_table_record($listname, $primary_key_field, $primary
  *  
  */
 function upitt_workflow_admin_manage($listname = '') {
-  $records_headings = $rows = $links = $values = $fields = $integer_fieldnames = $non_integer_fieldnames = array();
-  $primary_key_field = '';
+  $records_headings = $rows = $links = $values = array();
+
   $links = upitt_workflow_get_listname_manage_links($listname);
 
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
@@ -138,8 +140,8 @@ function upitt_workflow_admin_manage($listname = '') {
   // Add a column for the operations on this row - using the primary key field.
   foreach ($rows as $key => $row) {
     $suffix = $rows[$key][$primary_key_field]['data'];
-    $new_row = array('operations' => l('E', '/workflow/admin/manage/' . $listname . '/edit/' . $suffix) . ' | ' .
-                                     l('X', '/workflow/admin/manage/' . $listname . '/delete/' . $suffix));
+    $new_row = array('operations' => l('E', '/workflow/admin/manage/' . $listname . '/edit/' . $suffix, array('attributes' => array('title' => 'Edit'))) . ' | ' .
+                                     l('X', '/workflow/admin/manage/' . $listname . '/delete/' . $suffix, array('attributes' => array('title' => 'Delete')) ));
     foreach ($row as $f => $v) {
       $new_row[$f] = $v;
     }
@@ -236,8 +238,9 @@ function upitt_workflow_admin_manage_edit_submit($form, &$form_state) {
 }
 
 function upitt_workflow_get_listname_manage_links($listname) {
-  $possible_listnames = array('collection', 'content_types', 'item_type', 'workflow_sequence','workflow_sequence_actions');
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
+  $possible_listnames = upitt_workflow_get_allowed_listnames();
   foreach ($possible_listnames as $a_listname) {
     if (strtolower($listname) == $a_listname) {
       $links[] = '[' . $a_listname . ']';

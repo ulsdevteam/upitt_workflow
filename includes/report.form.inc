@@ -1,6 +1,12 @@
 <?php
 
 function upitt_workflow_objects() {
+  global $user;
+
+  if ($user->uid == 1 || user_access(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES, $user)) {
+    $links = array(l('Manage Lookup Tables', 'workflow/admin/manage/collection'));
+  }
+
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
@@ -10,7 +16,7 @@ function upitt_workflow_objects() {
   $where_clause = '';
 
   if (isset($_GET['batch_external_id_filter']) && $_GET['batch_external_id_filter'] <> '') {
-    $where_clause .= "ci.name like '%" . upitt_workflow_safe_qstring($link, $_GET['batch_external_id_filter']) . "%' ";
+    $where_clause .= "i.name like '%" . upitt_workflow_safe_qstring($link, $_GET['batch_external_id_filter']) . "%' ";
   }
 
 //XX
@@ -20,7 +26,7 @@ function upitt_workflow_objects() {
   }
 */
   if (isset($_GET['type_filter']) && $_GET['type_filter'] <> '') {
-    $where_clause .= ($where_clause ? ' AND ' : '') . "cit.name = '" . upitt_workflow_safe_qstring($link, $_GET['type_filter']) . "' ";
+    $where_clause .= ($where_clause ? ' AND ' : '') . "it.name = '" . upitt_workflow_safe_qstring($link, $_GET['type_filter']) . "' ";
   }
 //XX
 /*  if (isset($_GET['collection_filter']) && $_GET['collection_filter'] <> '') {
@@ -30,10 +36,10 @@ function upitt_workflow_objects() {
   $where_clause = ($where_clause) ? "WHERE " . $where_clause : ' ';
 
   $query = 'SELECT count(do_id) `total` ' .
-           'FROM `item` ci ' .
-//XX           'JOIN auth_user po ON (po.id = ci.property_owner_id) ' .
-           'JOIN item_type cit ON (cit.id = ci.type_id) ' .
-           'JOIN collection cc ON (cc.id = ci.primary_collection_id) ' .
+           'FROM `item` i ' .
+//XX           'JOIN auth_user po ON (po.id = i.property_owner_id) ' .
+           'JOIN item_type it ON (it.id = i.type_id) ' .
+           'JOIN collection cc ON (cc.id = i.primary_collection_id) ' .
            $where_clause;
 
   $result = mysqli_query($link, $query, MYSQLI_USE_RESULT);
@@ -47,15 +53,16 @@ function upitt_workflow_objects() {
 
   $current_page = pager_default_initialize($count_rows, DJANGO_OBJECTS_PER_PAGE);
 
-  $query = 'SELECT "" as `ingested?`, ci.do_id, ci.name, cit.name `type`, ' . //XX po.username, cc.name `collection`, ' .
-           '  (SELECT GROUP_CONCAT(description) FROM transaction ct JOIN item_current_status cics ON (cics.last_transaction_id = ct.id) WHERE cics.item_id = ci.id ORDER BY ct.timestamp DESC) `last status` ' .
-           'FROM `item` ci ' .
-//XX           'JOIN auth_user po ON (po.id = ci.property_owner_id) ' .
-           'JOIN item_type cit ON (cit.id = ci.type_id) ' .
-           'JOIN collection cc ON (cc.id = ci.primary_collection_id) ' .
+  $query = 'SELECT "" as `ingested?`, i.do_id, i.name, it.name `type`, ' . //XX po.username, cc.name `collection`, ' .
+           '  (SELECT GROUP_CONCAT(description) FROM transaction ct JOIN item_current_status cics ON (cics.last_transaction_id = ct.id) WHERE cics.item_id = i.id ORDER BY ct.timestamp DESC) `last status`, ' .
+           '  (SELECT ct.timestamp FROM `transaction` ct JOIN item_current_status cics ON (cics.last_transaction_id = ct.id) WHERE cics.item_id = i.id ORDER BY ct.timestamp DESC LIMIT 1) `status date` ' .
+           'FROM `item` i ' .
+//XX           'JOIN auth_user po ON (po.id = i.property_owner_id) ' .
+           'JOIN item_type it ON (it.id = i.type_id) ' .
+           'JOIN collection cc ON (cc.id = i.primary_collection_id) ' .
            $where_clause .
            'LIMIT ' . (($page) ? $page * DJANGO_OBJECTS_PER_PAGE . ', ' : '') . DJANGO_OBJECTS_PER_PAGE;
-
+dpm($query);
   $result = mysqli_query($link, $query, MYSQLI_USE_RESULT);
   if (!$result) {
     $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
@@ -88,7 +95,7 @@ function upitt_workflow_objects() {
   $table_markup = theme('upitt_workflow_report',
       array('table' => $pager . theme('table', array('rows'=>$rows,'header'=>$headings,'attributes' =>array('class'=>array('report_table')))) . $pager,
             'count_rows' => $count_rows_markup,
-            'links' => array(),
+            'links' => $links,
             'post_to' => '/workflow',
             'collection_filter_choices' => upitt_workflow_get_collection_choices(),
            )
@@ -102,7 +109,7 @@ function upitt_workflow_objectreport_form($do_id) {
 
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
-  $detail_query = 'SELECT b.batch_external_id `name`, b.batch_description `title`, b.mapto_collections, b.batch_id `batch_id` ' .
+  $detail_query = 'SELECT b.batch_external_id `name`, b.batch_description `title`, b.mapto_collections `collection/s`, b.batch_id `batch_id` ' .
                   'FROM `item` i ' .
                   'JOIN batch_item bi ON (bi.item_id = i.id) ' .
                   'JOIN batch b ON (bi.batch_id = b.batch_id) ' .
@@ -114,6 +121,7 @@ function upitt_workflow_objectreport_form($do_id) {
     $message .= 'Whole query: ' . $detail_query;
     die($message);
   }
+  $collections = upitt_workflow_lookup_collection_names();
 
   $title = "Workflow object | " . $do_id;
   $files_headings = $status_headings = $files_rows = $status_rows = array();
@@ -124,6 +132,10 @@ function upitt_workflow_objectreport_form($do_id) {
     }
     else {
       $row['batch'] = 'n/a';
+    }
+    if (isset($row['collection/s'])) {
+      // this has to lookup the collection names from the array that is loaded before this loop.
+      $row['collection/s'] = upitt_workflow_collection_id_map_names($row['collection/s'], $collections);
     }
     $details = theme('workflow_item_details', array('details' => $row));
   }
