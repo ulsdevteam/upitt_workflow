@@ -63,3 +63,79 @@ function upitt_workflow_get_solr_options($solr_query, $key_field, $value_field, 
   }
   return $results;
 }
+
+/**
+ * Helper function to look up the names of the collections based on a possible comma-separated list
+ */
+function upitt_workflow_lookup_collection_names() {
+  $rows = array();
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+
+  $query = 'SELECT * FROM collection ORDER BY `name`';
+
+  $result = mysqli_query($link, $query);
+  if (!$result) {
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
+    $message .= 'Whole query: ' . $query;
+    die($message);
+  }
+  while ($row = mysqli_fetch_assoc($result)) {
+    $rows[$row['id']] = $row;
+  }
+  return $rows;
+}
+
+function upitt_workflow_collection_id_map_names($ids = '', $collections = array()) {
+  if ($ids) {
+    $retvals = array();
+    $ids_arr = explode(",", $ids);
+    foreach ($ids_arr as $id) {
+      $id = trim($id);
+      $retvals[] = $collections[$id]['c_id'];
+    }
+    return implode(", ", $retvals);
+  }
+}
+
+/**
+ * Function needed by the edit batch & create batch forms to sync the solr collection choices with those that are in the collection table.
+ *
+ * @param array $pids
+ *   The collection PID values.  These are structured like array('PID1' => 'PID1', 'PID2' => 'PID2')
+ * @param array $collection_options
+ *   The array of collectoins PID / fgs_label_s values from Solr.  These are structured like
+ *   array('PID1' => 'fgs_label1', 'PID2' => 'fgs_label_s_2');
+ */
+function upitt_workflow_sync_solr_collections($pids, $collection_options) {
+  // step 1, identify which ones need to be inserted.
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $query = "SELECT `PID`, `name` FROM collection WHERE `PID` IN ('" . implode("','", $pids) . "')";
+  $result = mysqli_query($link, $query);
+  if (!$result) {
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
+    $message .= 'Whole query: ' . $query;
+    die($message);
+  }
+  $found_pids = $bad_pids = array();
+  while ($row = mysqli_fetch_assoc($result)) {
+    $found_pids[$row['PID']] = $row['name'];
+  }
+  foreach ($pids as $pid) {
+    if (array_search($pid, $found_pids) === FALSE) {
+      // not found, will need to update a record in mysql for this.
+      $bad_pids[$pid] = $collection_options[$pid];
+    }
+  }
+  foreach ($bad_pids as $pid => $name) {
+    $sql = "INSERT INTO `collection` (`c_id`, `PID`, `name`) VALUES ('". $pid . "', '". $pid . "', '" . upitt_workflow_safe_qstring($link, $name) . "')";
+    $result = mysqli_query($link, $sql);
+    if (!$result) {
+      $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
+      $message .= 'Whole query: ' . $query;
+      die($message);
+    }
+    drupal_set_message('added collection workflow record reference for "' . $name . '"');
+  }
+  mysqli_close($link);
+}
+

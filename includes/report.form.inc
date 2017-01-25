@@ -1,6 +1,8 @@
 <?php
 
 function upitt_workflow_objects() {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
@@ -96,6 +98,8 @@ function upitt_workflow_objects() {
 }
 
 function upitt_workflow_objectreport_form($do_id) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
   $detail_query = 'SELECT b.batch_external_id `name`, b.batch_description `title`, b.mapto_collections, b.batch_id `batch_id` ' .

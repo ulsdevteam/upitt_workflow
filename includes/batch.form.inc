@@ -332,6 +332,7 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
  * This will save or update the given batch record.  Special process will potentially need to populate the collection table if the choices are fedora collections.
  */
 function upitt_workflow_save_batch($values, $collection_options) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $collections_values = $values['mapto_collections'];
 
   $batch_id = upitt_workflow_get_batch_id($values['batch_external_id']);

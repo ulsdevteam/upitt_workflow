@@ -4,4 +4,5 @@ description = To navigate the various records for objects via the Workflow Djang
 version = 7.x
 core = 7.x
 dependencies[] = islandora
-
+# SINCE this module is going to run on machines that will not be configured to acutually run the jobs, this dependency can not be required here for islandora_job
+# dependencies[] = islandora_job

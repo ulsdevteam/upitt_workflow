@@ -1,6 +1,8 @@
 <?php
 
 function upitt_workflow_batch_detail_form($batch_id) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 

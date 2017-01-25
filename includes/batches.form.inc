@@ -8,9 +8,26 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
   // Determine whether or not this is for "All" or "Active" batches
   $is_all = ($item['path'] == 'workflow/batches/all');
 
-  $batch_records = 'SELECT b.batch_id, b.batch_external_id `name`, b.batch_description `description`, b.date `date`, cws.name `workflow`, IF(b.is_batch_active = 1, \'Yes\', \'No\') `active` ' .
+  $batch_records = 'SELECT ' .
+                   ' b.batch_id, ' .
+                   ' IF(b.is_batch_active = 1, \'Yes\', \'No\') `active`, ' .
+                   ' b.batch_priority `priority`, ' .
+                   ' b.batch_external_id `name`, ' .
+                   ' b.date `date`, ' .
+                   ' c.c_id `collection`, ' .
+                   ' bit.name `content type`, ' . 
+//                   ' ct.content_name `content type`, ' .
+                   ' po.name `prop. owner`, ' .
+                   ' b.item_count `items`, ' .
+                   ' b.batch_description `notes`, ' .
+                   ' cws.name `workflow`, ' .
+                   ' "PENDING NEW status TABLE" `status` ' .
                    'FROM batch b ' .
                    'LEFT OUTER JOIN `workflow_sequence` cws ON (cws.id = b.batch_sequence_id) ' .
+                   'JOIN `batch_item_type` bit ON (bit.id = b.type_id) ' .
+//                   'LEFT OUTER JOIN `content_types` ct ON (ct.content_type_id = b.content_type_id) ' .
+                   'JOIN `collection` c ON (c.id = b.mapto_collections) ' .
+                   'JOIN `property_owner` po ON (po.property_owner_id = b.batch_property_owner_id) ' .
                    (($is_all) ? '' : 'WHERE b.is_batch_active = 1 ') .
                    'LIMIT ' . (($page) ? $page * DJANGO_OBJECTS_PER_PAGE . ', ' : '') . DJANGO_OBJECTS_PER_PAGE;
 
@@ -26,8 +43,7 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
 
   $current_page = pager_default_initialize($count_rows, DJANGO_OBJECTS_PER_PAGE);
 
-  $result = mysqli_query($link, $batch_records, MYSQLI_USE_RESULT);
-
+  $result = mysqli_query($link, $batch_records);
   if (!$result) {
     $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $batch_records;
