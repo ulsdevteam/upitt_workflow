@@ -18,9 +18,6 @@
 </div>
 <br style="clear:both">
 
-<?php if ($table) { echo "<h3>TABLE</h3>"; } ?>
-<?php print $table; ?>
-
 <form action="<?php print $post_to; ?>" method="GET" id="upitt-workflow-objectreport-form">
   <fieldset class="form-wrapper">
     <legend><span class="fieldset-legend">Filter/s</span></legend>
