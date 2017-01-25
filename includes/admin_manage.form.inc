@@ -2,9 +2,9 @@
 
 function upitt_workflow_get_tablefield_stats($listname, $link_new) {
   $records = 'SELECT * ' .
-             'FROM `' . mysql_real_escape_string($listname) . '` LIMIT 1';
+             'FROM `' . mysqli_real_escape_string($link_new, $listname) . '` LIMIT 1';
 
-  $result = mysqli_query($link_new, $records); //mysql_query($records, $link_new);
+  $result = mysqli_query($link_new, $records);
 
   $row = mysqli_fetch_assoc($result);
   $fields = array_keys($row);
@@ -13,8 +13,8 @@ function upitt_workflow_get_tablefield_stats($listname, $link_new) {
   }    
 
   foreach ($fields as $field) {
-    $sql_fieldtype = "SHOW FIELDS FROM `" . mysql_real_escape_string($listname) . "` where Field = '" . $field . "'";
-    $result = mysqli_query($link_new, $sql_fieldtype); //mysql_query($sql_fieldtype, $link_new);
+    $sql_fieldtype = "SHOW FIELDS FROM `" . mysqli_real_escape_string($link_new, $listname) . "` where Field = '" . $field . "'";
+    $result = mysqli_query($link_new, $sql_fieldtype);
     while ($row = mysqli_fetch_assoc($result)) {
       if (!$primary_key_field && $row['Key'] == 'PRI') {
         $primary_key_field = $field;
@@ -30,8 +30,8 @@ function upitt_workflow_get_tablefield_stats($listname, $link_new) {
 }
 
 function upitt_workflow_get_table_record($listname, $primary_key_field, $primary_id, $link_new) {
-  $sql_record = "SELECT  * FROM `" . mysql_real_escape_string($listname) . "` where `" . $primary_key_field . "` = '" . $primary_id . "'";
-  $result = mysqli_query($link_new, $sql_records); //mysql_query($sql_record, $link_new);
+  $sql_record = "SELECT  * FROM `" . mysqli_real_escape_string($link_new, $listname) . "` where `" . $primary_key_field . "` = '" . $primary_id . "'";
+  $result = mysqli_query($link_new, $sql_records);
   return ($row = mysqli_fetch_assoc($result)) ? $row : array();
 }
 
@@ -67,20 +67,20 @@ function upitt_workflow_admin_manage($listname = '') {
   $link_new = upitt_workflow_get_databaselink('mysql_new_workflow');
 
   $records = 'SELECT * ' .
-             'FROM `' . mysql_real_escape_string($listname) . '` ' .
+             'FROM `' . mysqli_real_escape_string($link_new, $listname) . '` ' .
              'LIMIT ' . (($page) ? $page * DJANGO_OBJECTS_PER_PAGE . ', ' : '') . DJANGO_OBJECTS_PER_PAGE;
 
   $query = 'SELECT count(*) as `total` ' .
-           'FROM `' . mysql_real_escape_string($listname) . '`';
+           'FROM `' . mysqli_real_escape_string($link_new, $listname) . '`';
 
-  $result = mysqli_query($link_new, $query); //mysql_query($query, $link_new);
+  $result = mysqli_query($link_new, $query);
 
   $row = mysqli_fetch_assoc($result);
   $count_rows = $row['total'];
   $current_page = pager_default_initialize($count_rows, DJANGO_OBJECTS_PER_PAGE);
-  $result = mysqli_query($link_new, $records); //mysql_query($records, $link_new);
+  $result = mysqli_query($link_new, $records);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $records;
     die($message);
   }

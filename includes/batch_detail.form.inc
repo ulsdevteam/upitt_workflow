@@ -26,7 +26,7 @@ dpm($batch_items);
            'JOIN item i ON (bi.item_id = i.id) ' .
            'WHERE b.batch_id = \'' . $batch_id . '\'';
 
-  $result = mysqli_query($link, $query); // mysql_query($query, $link);
+  $result = mysqli_query($link, $query);
 
   $row = mysqli_fetch_assoc($result);
   $count_rows = $row['total'];
@@ -36,9 +36,9 @@ dpm($batch_items);
 
   $collections = upitt_workflow_lookup_collection_names();
 
-  $result = mysqli_query($link, $batch_detail); // mysql_query($batch_detail, $link);
+  $result = mysqli_query($link, $batch_detail);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $batch_detail;
     die($message);
   }
@@ -66,9 +66,9 @@ dpm($batch_items);
     $details = theme('workflow_item_details', array('details' => $row));
   }
 
-  $result = mysqli_query($link, $batch_items); // mysql_query($batch_items, $link);
+  $result = mysqli_query($link, $batch_items);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $batch_items;
     die($message);
   }

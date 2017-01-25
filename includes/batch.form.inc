@@ -7,7 +7,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
   $batch_property_owners = upitt_workflow_get_mysql_options('property_owner', 'Property Owner', 'property_owner_id', 'description', 'description', '0');
   $batch_workflow_sequences = upitt_workflow_get_mysql_options('workflow_sequence', 'Workflow Sequence', 'id', 'name', 'id', '0');
 
-
+  // for legacy batches, this array may need to be joined with the legacy collection `c_id` pointers instead of Solr PID values.
   $collections = upitt_workflow_get_solr_options('RELS_EXT_hasModel_uri_ms:info\:fedora\/islandora\:collectionCModel', 'PID', 'fgs_label_s');
   asort($collections);
 
@@ -282,11 +282,11 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
 
 function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   global $user;
+  $collection_options = $form_state['complete form']['mapto_collections']['#options'];
 
-  drupal_set_message('All done with form_submit code for workflow/batch/new form.');
-
-  $batch_id = upitt_workflow_save_batch($form_state['values']);
+  $batch_id = upitt_workflow_save_batch($form_state['values'], $collection_options);
   $batch_external_id = $form_state['values']['batch_external_id'];
+  drupal_set_message('Updated "' . $batch_external_id . '".');
 
   // ONLY create a new drupal node if this record does not yet have a nid value.
   if (isset($form_state['values']['nid']) && $form_state['values']['nid'] > 0) {
@@ -328,8 +328,12 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   $form_state['redirect'] = '/workflow/batch/' . $batch_id;
 }
 
+/**
+ * This will save or update the given batch record.  Special process will potentially need to populate the collection table if the choices are fedora collections.
+ */
+function upitt_workflow_save_batch($values, $collection_options) {
+  $collections_values = $values['mapto_collections'];
 
-function upitt_workflow_save_batch($values) {
   $batch_id = upitt_workflow_get_batch_id($values['batch_external_id']);
 
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
@@ -361,6 +365,9 @@ function upitt_workflow_save_batch($values) {
         $value = $dest;
       }
     }
+    if ($fieldname == 'mapto_collections') {
+      upitt_workflow_sync_solr_collections($value, $collection_options);
+    }
 
     if (array_search($fieldname, $batch_integer_fields) === FALSE) {
       if ($fieldname == 'batch_request_due_date' || $fieldname == 'date') {
@@ -368,7 +375,7 @@ function upitt_workflow_save_batch($values) {
       } elseif (is_array($value)) {
         $value = implode(",", $value);
       }
-      $sql_values[] = "'" . mysql_real_escape_string($value) . "'";
+      $sql_values[] = "'" . mysqli_real_escape_string($link, $value) . "'";
     } else {
       $sql_values[] = $value;
     }
@@ -376,24 +383,24 @@ function upitt_workflow_save_batch($values) {
 
   $sql = "REPLACE INTO `batch` (`" . implode("`, `", $sql_fields) . "`) VALUES (" . implode(", ", $sql_values) . ")";
 
-  $result = mysqli_query($link, $sql); // mysql_query($sql, $link);
+  $result = mysqli_query($link, $sql);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $sql;
     die($message);
   }
 
   mysqli_close($link);
-  return upitt_workflow_get_batch_id($values['batch_external_id']);
+  return $batch_id; // upitt_workflow_get_batch_id($values['batch_external_id']);
 }
 
 function upitt_workflow_get_batch_id($batch_external_id) {
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
-  $sql = 'SELECT `batch_id` FROM `batch` WHERE `batch_external_id` = "' . mysql_real_escape_string($batch_external_id) . '"';
+  $sql = 'SELECT `batch_id` FROM `batch` WHERE `batch_external_id` = "' . mysqli_real_escape_string($link, $batch_external_id) . '"';
 
-  $result = mysqli_query($link, $sql); // mysql_query($sql, $link);
+  $result = mysqli_query($link, $sql);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $sql;
     die($message);
   }
@@ -413,7 +420,7 @@ function upitt_workflow_update_batch_nid($batch_id, $node) {
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $sql = 'UPDATE `batch` SET `nid` = ' . $node->nid . ' WHERE `batch_id` = ' . $batch_id;
 
-  $result = mysqli_query($link, $sql); // mysql_query($sql, $link);
+  $result = mysqli_query($link, $sql);
 
   mysqli_close($link);
 }
@@ -427,9 +434,9 @@ function upitt_workflow_batch_load($batch_id) {
 
   $batch = array();
 
-  $result = mysqli_query($link, $batch_detail); // mysql_query($batch_detail, $link);
+  $result = mysqli_query($link, $batch_detail);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $batch_detail;
     die($message);
   }

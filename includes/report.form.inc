@@ -8,21 +8,21 @@ function upitt_workflow_objects() {
   $where_clause = '';
 
   if (isset($_GET['batch_external_id_filter']) && $_GET['batch_external_id_filter'] <> '') {
-    $where_clause .= "ci.name like '%" . upitt_workflow_safe_qstring($_GET['batch_external_id_filter']) . "%' ";
+    $where_clause .= "ci.name like '%" . upitt_workflow_safe_qstring($link, $_GET['batch_external_id_filter']) . "%' ";
   }
 
 //XX
 /* username from legacy system linked to auth_user table which will NOT be part of new system
   if (isset($_GET['username_filter']) && $_GET['username_filter'] <> '') {
-    $where_clause .= ($where_clause ? ' AND ' : '') . "po.username like '%" . upitt_workflow_safe_qstring($_GET['username_filter']) . "%' ";
+    $where_clause .= ($where_clause ? ' AND ' : '') . "po.username like '%" . upitt_workflow_safe_qstring($link, $_GET['username_filter']) . "%' ";
   }
 */
   if (isset($_GET['type_filter']) && $_GET['type_filter'] <> '') {
-    $where_clause .= ($where_clause ? ' AND ' : '') . "cit.name = '" . upitt_workflow_safe_qstring($_GET['type_filter']) . "' ";
+    $where_clause .= ($where_clause ? ' AND ' : '') . "cit.name = '" . upitt_workflow_safe_qstring($link, $_GET['type_filter']) . "' ";
   }
 //XX
 /*  if (isset($_GET['collection_filter']) && $_GET['collection_filter'] <> '') {
-    $where_clause .= ($where_clause ? ' AND ' : '') . "cc.name = '" . upitt_workflow_safe_qstring($_GET['collection_filter']) . "' ";
+    $where_clause .= ($where_clause ? ' AND ' : '') . "cc.name = '" . upitt_workflow_safe_qstring($link, $_GET['collection_filter']) . "' ";
   }
 */
   $where_clause = ($where_clause) ? "WHERE " . $where_clause : ' ';
@@ -34,7 +34,7 @@ function upitt_workflow_objects() {
            'JOIN collection cc ON (cc.id = ci.primary_collection_id) ' .
            $where_clause;
 
-  $result = mysqli_query($link, $query, MYSQLI_USE_RESULT); // mysql_query($query, $link);
+  $result = mysqli_query($link, $query, MYSQLI_USE_RESULT);
   if (!$result) {
      echo(mysqli_error($link));
   }
@@ -54,7 +54,7 @@ function upitt_workflow_objects() {
            $where_clause .
            'LIMIT ' . (($page) ? $page * DJANGO_OBJECTS_PER_PAGE . ', ' : '') . DJANGO_OBJECTS_PER_PAGE;
 
-  $result = mysqli_query($link, $query, MYSQLI_USE_RESULT); // mysql_query($query, $link);
+  $result = mysqli_query($link, $query, MYSQLI_USE_RESULT);
   if (!$result) {
     $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $query;
@@ -104,9 +104,9 @@ function upitt_workflow_objectreport_form($do_id) {
                   'JOIN batch b ON (bi.batch_id = b.batch_id) ' .
                   'WHERE i.do_id = \'' . $do_id . '\'';
 
-  $result = mysqli_query($link, $detail_query); // mmysql_query($detail_query, $link);
+  $result = mysqli_query($link, $detail_query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $detail_query;
     die($message);
   }
@@ -150,9 +150,9 @@ function upitt_workflow_objectreport_form($do_id) {
                  ' ' .
                  'ORDER BY f.name';
 
-  $result = mysqli_query($link, $files_query); // mmysql_query($files_query, $link);
+  $result = mysqli_query($link, $files_query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $files_query;
     die($message);
   }
@@ -181,9 +181,9 @@ function upitt_workflow_objectreport_form($do_id) {
                   'WHERE i.do_id=\'' . $do_id . '\' ' .
                   'ORDER BY i.do_id DESC, t.`timestamp` ASC';
 dpm($status_query);
-  $result = mysqli_query($link, $status_query); // mmysql_query($status_query, $link);
+  $result = mysqli_query($link, $status_query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $status_query;
     die($message);
   }

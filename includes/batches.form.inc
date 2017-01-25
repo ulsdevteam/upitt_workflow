@@ -18,7 +18,7 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
            'FROM batch b ' .
            (($is_all) ? '' : 'WHERE b.is_batch_active = 1 ');
 
-  $result = mysqli_query($link, $query, MYSQLI_USE_RESULT); // mysql_query($query, $link);
+  $result = mysqli_query($link, $query, MYSQLI_USE_RESULT);
 
   $row = mysqli_fetch_assoc($result);
   $count_rows = $row['total'];
@@ -26,10 +26,10 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
 
   $current_page = pager_default_initialize($count_rows, DJANGO_OBJECTS_PER_PAGE);
 
-  $result = mysqli_query($link, $batch_records, MYSQLI_USE_RESULT); // mysql_query($batch_records, $link);
+  $result = mysqli_query($link, $batch_records, MYSQLI_USE_RESULT);
 
   if (!$result) {
-    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $batch_records;
     die($message);
   }

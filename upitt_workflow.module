@@ -1,7 +1,7 @@
 <?php
 
 // Full file path to the current installation's settings.php file
-define('SETTINGS_PATH', '/var/www/drupal/sites/default/settings.php');
+define('SETTINGS_PATH', '/var/www/html/drupal_gamera_sandbox/sites/gamera/settings.php');
 define('DJANGO_OBJECTS_PER_PAGE', 100);
 
 // Permissions.
@@ -162,7 +162,7 @@ function upitt_workflow_get_databaselink($db_section = 'mysql') {
   $link = mysqli_connect($db_host, $db_user, $db_pass, $db_name);
   //  if (!$link) {
   if (mysqli_connect_errno()) {
-    // die('Not connected : ' . mysql_error());
+    // die('Not connected : ' . mysqli_error($link))
     printf("Connect failed: %s\n", mysqli_connect_error());
     exit();
   }
@@ -199,7 +199,7 @@ function upitt_workflow_preprocess_page(&$vars) {
       if (isset($vars['node']) && $vars['node']->type == 'workflow_batch') {
         // If the node type is "blog_madness" the template suggestion will be "page--blog-madness.tpl.php".
         $vars['theme_hook_suggestions'][] = 'page__'. $vars['node']->type;
-        dpm('page__'. $vars['node']->type);
+        dpm('page__'. $vars['node']->type . ' variables: ');
         dpm($vars);
       }
     }
@@ -219,8 +219,8 @@ function upitt_workflow_redirect_item_get() {
 /** 
  * used by mysql queries to populate various reports / forms.
  */
-function upitt_workflow_safe_qstring($in) {
-  return mysql_real_escape_string(urldecode(trim($in)));
+function upitt_workflow_safe_qstring($link, $in) {
+  return mysqli_real_escape_string($link, urldecode(trim($in)));
 }
 
 /**
@@ -244,9 +244,9 @@ function upitt_workflow_get_collection_choices() {
 
   $query = 'SELECT `name` FROM collection ORDER BY `name`';
 
-  $result = mysqli_query($link, $query); // mysql_query($query, $link);
+  $result = mysqli_query($link, $query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysql_error() . "\n";
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
     $message .= 'Whole query: ' . $query;
     die($message);
   }
@@ -267,7 +267,6 @@ function upitt_workflow_admin_manage_access_callback($perm, $which_lookup_table 
     }
     else {
       drupal_set_message('Bad table name "' . $which_lookup_table . '"');
-      error_log('returning false, Bad table name "' . $which_lookup_table . '"');
       return FALSE;
     }
   }
@@ -298,8 +297,6 @@ function upitt_workflow_lookup_collection_names() {
 }
 
 function upitt_workflow_collection_id_map_names($ids = '', $collections = array()) {
-dpm($ids);
-dpm($collections);
   if ($ids) {
     $retvals = array();
     $ids_arr = explode(",", $ids);
@@ -309,4 +306,48 @@ dpm($collections);
     }
     return implode(", ", $retvals);
   }
+}
+
+/**
+ * Function needed by the edit batch & create batch forms to sync the solr collection choices with those that are in the collection table.
+ *
+ * @param array $pids
+ *   The collection PID values.  These are structured like array('PID1' => 'PID1', 'PID2' => 'PID2')
+ * @param array $collection_options
+ *   The array of collectoins PID / fgs_label_s values from Solr.  These are structured like 
+ *   array('PID1' => 'fgs_label1', 'PID2' => 'fgs_label_s_2');
+ */
+function upitt_workflow_sync_solr_collections($pids, $collection_options) {
+  // step 1, identify which ones need to be inserted.
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $query = "SELECT `PID`, `name` FROM collection WHERE `PID` IN ('" . implode("','", $pids) . "')";
+  $result = mysqli_query($link, $query);
+  if (!$result) {
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
+    $message .= 'Whole query: ' . $query;
+    die($message);
+  }
+  $found_pids = $bad_pids = array();
+  while ($row = mysqli_fetch_assoc($result)) {
+    $found_pids[$row['PID']] = $row['name'];
+  }
+  foreach ($pids as $pid) {
+    if (array_search($pid, $found_pids) === FALSE) {
+      // not found, will need to update a record in mysql for this.
+      $bad_pids[$pid] = $collection_options[$pid];
+    }
+  }
+  foreach ($bad_pids as $pid => $name) {
+    $sql = "INSERT INTO `collection` (`c_id`, `PID`, `name`) VALUES ('". $pid . "', '". $pid . "', '" . upitt_workflow_safe_qstring($link, $name) . "')";
+    $result = mysqli_query($link, $sql);
+    if (!$result) {
+      $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
+      $message .= 'Whole query: ' . $query;
+      die($message);
+    }
+    drupal_set_message('added collection workflow record reference for "' . $name . '"');
+  }
+  
+  mysqli_close($link);
+  
 }
