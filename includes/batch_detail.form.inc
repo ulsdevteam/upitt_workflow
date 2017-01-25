@@ -20,7 +20,7 @@ function upitt_workflow_batch_detail_form($batch_id) {
                  'JOIN item i ON (bi.item_id = i.id) ' .
                  'WHERE b.batch_id = \'' . $batch_id . '\' ' .
                  'GROUP BY i.id ORDER BY i.id ASC, cwsa.`order` ASC ' .
-                 'LIMIT ' . (($page) ? $page * DJANGO_OBJECTS_PER_PAGE . ', ' : '') . DJANGO_OBJECTS_PER_PAGE;
+                 'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
 dpm($batch_items);
   $query = 'SELECT count(i.do_id) as `total` ' .
            'FROM batch b ' .
@@ -32,9 +32,9 @@ dpm($batch_items);
 
   $row = mysqli_fetch_assoc($result);
   $count_rows = $row['total'];
-  $count_rows_markup = number_format($count_rows) . " workflow batch items " . (($page <> 0) ? " (page " . $page . " of " . round($count_rows / DJANGO_OBJECTS_PER_PAGE) . ")" : "");
+  $count_rows_markup = number_format($count_rows) . " workflow batch items " . (($page <> 0) ? " (page " . $page . " of " . round($count_rows / WF_OBJECTS_PER_PAGE) . ")" : "");
 
-  $current_page = pager_default_initialize($count_rows, DJANGO_OBJECTS_PER_PAGE);
+  $current_page = pager_default_initialize($count_rows, WF_OBJECTS_PER_PAGE);
 
   $collections = upitt_workflow_lookup_collection_names();
 

@@ -2,7 +2,7 @@
 
 // Full file path to the current installation's settings.php file
 define('SETTINGS_PATH', '/var/www/html/drupal_gamera_sandbox/sites/gamera/settings.php');
-define('DJANGO_OBJECTS_PER_PAGE', 100);
+define('WF_OBJECTS_PER_PAGE', 100);
 
 // Permissions.
 define('ISLANDORA_WORKFLOW_MANAGE', 'manage upitt workflow');
@@ -94,6 +94,9 @@ function upitt_workflow_menu() {
       'file' => 'includes/admin_manage.form.inc',
       'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE, 3, 5),
       'access callback' => 'upitt_workflow_admin_manage_access_callback',
+    ),
+    'workflow/status/change/' => array(
+
     ),
   );
 }

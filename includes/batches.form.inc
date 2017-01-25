@@ -29,7 +29,7 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
                    'JOIN `collection` c ON (c.id = b.mapto_collections) ' .
                    'JOIN `property_owner` po ON (po.property_owner_id = b.batch_property_owner_id) ' .
                    (($is_all) ? '' : 'WHERE b.is_batch_active = 1 ') .
-                   'LIMIT ' . (($page) ? $page * DJANGO_OBJECTS_PER_PAGE . ', ' : '') . DJANGO_OBJECTS_PER_PAGE;
+                   'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
 
   $query = 'SELECT count(batch_external_id) as `total` ' .
            'FROM batch b ' .
@@ -41,7 +41,7 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
   $count_rows = $row['total'];
   mysqli_free_result($result);
 
-  $current_page = pager_default_initialize($count_rows, DJANGO_OBJECTS_PER_PAGE);
+  $current_page = pager_default_initialize($count_rows, WF_OBJECTS_PER_PAGE);
 
   $result = mysqli_query($link, $batch_records);
   if (!$result) {
@@ -64,9 +64,9 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
   }
 
   $form = array();
-  $links = array(l('All Django objects', '/workflow'),
-                 l('Active batches', '/workflow/batches/active'),
-                 l('All batches', '/workflow/batches/all'),
+  $links = array(l('All Objects', '/workflow'),
+                 l('Active Batches', '/workflow/batches/active'),
+                 l('All Batches', '/workflow/batches/all'),
            );
 
   mysqli_close($link);

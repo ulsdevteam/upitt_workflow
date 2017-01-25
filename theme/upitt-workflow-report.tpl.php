@@ -20,8 +20,8 @@
 
 ?>
 <?php 
-  $links[] = l('Active batches', '/workflow/batches/active');
-  $links[] = l('All batches', '/workflow/batches/all');
+  $links[] = l('Active Batches', '/workflow/batches/active');
+  $links[] = l('All Batches', '/workflow/batches/all');
   include_once('upitt-workflow-admin-links.tpl.php');
 ?>
 <?php include_once('upitt-workflow-findobject-form.tpl.php'); ?>

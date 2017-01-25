@@ -70,7 +70,7 @@ function upitt_workflow_admin_manage($listname = '') {
 
   $records = 'SELECT * ' .
              'FROM `' . mysqli_real_escape_string($link_new, $listname) . '` ' .
-             'LIMIT ' . (($page) ? $page * DJANGO_OBJECTS_PER_PAGE . ', ' : '') . DJANGO_OBJECTS_PER_PAGE;
+             'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
 
   $query = 'SELECT count(*) as `total` ' .
            'FROM `' . mysqli_real_escape_string($link_new, $listname) . '`';
@@ -79,7 +79,7 @@ function upitt_workflow_admin_manage($listname = '') {
 
   $row = mysqli_fetch_assoc($result);
   $count_rows = $row['total'];
-  $current_page = pager_default_initialize($count_rows, DJANGO_OBJECTS_PER_PAGE);
+  $current_page = pager_default_initialize($count_rows, WF_OBJECTS_PER_PAGE);
   $result = mysqli_query($link_new, $records);
   if (!$result) {
     $message  = 'Invalid query: ' . mysqli_error($link) . "\n";

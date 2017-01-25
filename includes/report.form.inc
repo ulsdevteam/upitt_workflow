@@ -4,7 +4,8 @@ function upitt_workflow_objects() {
   global $user;
 
   if ($user->uid == 1 || user_access(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES, $user)) {
-    $links = array(l('Manage Lookup Tables', 'workflow/admin/manage/collection'));
+    $links = array(l('Create a New Batch of Items', '/workflow/batch/new'),
+                   l('Manage Lookup Tables', '/workflow/admin/manage/collection'));   
   }
 
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
@@ -51,7 +52,7 @@ function upitt_workflow_objects() {
   $count_rows = $row['total'];
   mysqli_free_result($result);
 
-  $current_page = pager_default_initialize($count_rows, DJANGO_OBJECTS_PER_PAGE);
+  $current_page = pager_default_initialize($count_rows, WF_OBJECTS_PER_PAGE);
 
   $query = 'SELECT "" as `ingested?`, i.do_id, i.name, it.name `type`, ' . //XX po.username, cc.name `collection`, ' .
            '  (SELECT GROUP_CONCAT(description) FROM transaction ct JOIN item_current_status cics ON (cics.last_transaction_id = ct.id) WHERE cics.item_id = i.id ORDER BY ct.timestamp DESC) `last status`, ' .
@@ -61,8 +62,8 @@ function upitt_workflow_objects() {
            'JOIN item_type it ON (it.id = i.type_id) ' .
            'JOIN collection cc ON (cc.id = i.primary_collection_id) ' .
            $where_clause .
-           'LIMIT ' . (($page) ? $page * DJANGO_OBJECTS_PER_PAGE . ', ' : '') . DJANGO_OBJECTS_PER_PAGE;
-dpm($query);
+           'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
+
   $result = mysqli_query($link, $query, MYSQLI_USE_RESULT);
   if (!$result) {
     $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
@@ -70,7 +71,7 @@ dpm($query);
     die($message);
   }
 
-  $count_rows_markup = number_format($count_rows) . " workflow objects " . (($page <> 0) ? " (page " . $page . " of " . round($count_rows / DJANGO_OBJECTS_PER_PAGE) . ")" : "");
+  $count_rows_markup = number_format($count_rows) . " workflow objects " . (($page <> 0) ? " (page " . $page . " of " . round($count_rows / WF_OBJECTS_PER_PAGE) . ")" : "");
   $headings = $rows = array();
 
   while ($row = mysqli_fetch_assoc($result)) {
@@ -143,7 +144,7 @@ function upitt_workflow_objectreport_form($do_id) {
     drupal_set_message('Workflow object "' . $do_id . '" not found.  <a href="javascript:history.go(-1);">Return to previous page.</a>');
     drupal_goto(variable_get('site_404', ''));
   }
-  $links = array(l('All Django objects', '/workflow'));
+  $links = array(l('All Objects', '/workflow'));
 
   // if there is any selection of the filters, then the data must be filtered with a WHERE clause, else don't add that condition
   $filters_use = $filters_mimetype = '';
