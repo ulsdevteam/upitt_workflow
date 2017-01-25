@@ -17,6 +17,29 @@ function get_config_value($section,$key) {
   }
 }
 
+/**
+ * Helper function to create the search form filter choices for collections in workflow_django
+ */
+function upitt_workflow_get_collection_choices() {
+  $rows = array('' => 'Select any collection');
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+
+  $query = 'SELECT `name` FROM collection ORDER BY `name`';
+
+  $result = mysqli_query($link, $query);
+  if (!$result) {
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
+    $message .= 'Whole query: ' . $query;
+    die($message);
+  }
+  while ($row = mysqli_fetch_assoc($result)) {
+    $rows[$row['name']] = $row['name'];
+  }
+  mysqli_close($link);
+
+  return $rows;
+}
+
 function upitt_workflow_get_mysql_options($table_name, $option_name = '', $key_field, $value_field, $sort_field = '', $option_value = 0) {
   $query = 'SELECT ' . $key_field . ', ' . $value_field . ' FROM ' . $table_name . ($sort_field ? ' ORDER BY ' . $sort_field : '');
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
