@@ -64,17 +64,19 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
   }
 
   $form = array();
-  $links = array(l('All Objects', '/workflow'),
-                 l('Active Batches', '/workflow/batches/active'),
-                 l('All Batches', '/workflow/batches/all'),
-           );
+  $links = array(l('Active Batches', '/workflow/batches/active'),
+                 l('All Batches', '/workflow/batches/all') );
 
   mysqli_close($link);
-  $pager = theme('pager', array('quantity',$count_rows));
+  $ob1_page = $page + 1;
+  $count_rows_markup = number_format($count_rows) . ($is_all ? '' : ' active') . " batches " . (($ob1_page <> 0) ? " (page " . $ob1_page . " of " . round($count_rows / WF_OBJECTS_PER_PAGE) . ")" : "");
+
+  $pager = theme('pager', array('quantity', $count_rows));
   $table_markup = theme('upitt_workflow_batches',
       array('table' => $pager . theme('table', array('rows'=>$rows,'header'=>$batch_records_headings,'attributes' =>array('class'=>array('report_table')))) . $pager,
             'links' => $links,
-            'count_rows' => number_format($count_rows),
+            'breadcrumb' => upitt_workflow_get_breadcrumb_path(),
+            'count_rows' => $count_rows_markup,
             'post_to' => '/workflow',
            )
     );

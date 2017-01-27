@@ -15,14 +15,14 @@ define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup t
 function upitt_workflow_menu() {
   return array(
     'workflow' => array(
-      'title' => 'Workflow',
+      'title' => t('Workflow'),
       'page callback' => array('upitt_workflow_objects'),
       'type' => MENU_CALLBACK,
       'file' => 'includes/report.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     'workflow/object/%' => array(
-      'title' => 'Workflow Report | Status and Files',
+      'title' => t('Workflow Report | Status and Files'),
       'page callback' => array('upitt_workflow_objectreport_form'),
       'page arguments' => array(2),
       'type' => MENU_CALLBACK,
@@ -31,14 +31,14 @@ function upitt_workflow_menu() {
     ),
     // handler to redirect when using the "look up an item by id" search box 
     'workflow/item/get' => array(
-      'title' => 'Workflow Report',
+      'title' => t('Workflow Report'),
       'page callback' => array('upitt_workflow_redirect_item_get'),
       'type' => MENU_CALLBACK,
       'file' => 'includes/report.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     'workflow/batch/%' => array(
-      'title' => 'Workflow Batch',
+      'title' => t('Workflow Batch'),
       'page callback' => array('upitt_workflow_batch_detail_form'),
       'page arguments' => array(2),
       'type' => MENU_CALLBACK,
@@ -46,7 +46,7 @@ function upitt_workflow_menu() {
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     'workflow/batches/all' => array(
-      'title' => 'All Batches',
+      'title' => t('All Batches'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('upitt_workflow_batches_form'),
       'type' => MENU_CALLBACK,
@@ -54,7 +54,7 @@ function upitt_workflow_menu() {
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     'workflow/batches/active' => array(
-      'title' => 'Currently Active Batches',
+      'title' => t('Active Batches'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('upitt_workflow_batches_form'),
       'type' => MENU_CALLBACK,
@@ -62,7 +62,7 @@ function upitt_workflow_menu() {
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     'workflow/batch/edit/%' => array(
-      'title' => 'Edit Batch',
+      'title' => t('Edit Batch'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('upitt_workflow_new_batch_form', 3),
       'type' => MENU_CALLBACK,
@@ -70,15 +70,32 @@ function upitt_workflow_menu() {
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     'workflow/batch/new' => array(
-      'title' => 'Create New Batch',
+      'title' => t('Create New Batch'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('upitt_workflow_new_batch_form'),
       'type' => MENU_NORMAL_ITEM,
       'file' => 'includes/batch.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
+    'workflow/collection' => array(
+      'title' => t('Workflow Collections (legacy)'),
+      'page callback' => array('upitt_workflow_collections_form'),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/collections.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
+    // ADMIN functions 
+    'workflow/admin' => array(
+      'title' => t('Workflow Admin'),
+      'page callback' => 'upitt_workflow_admin',
+      'page arguments' => array(3),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/admin.form.inc',
+      'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE),
+      'access callback' => 'upitt_workflow_admin_manage_access_callback',
+    ),
     'workflow/admin/manage/%' => array(
-      'title' => 'Manage Lookup Tables',
+      'title' => ('Manage Lookup Tables'),
       'page callback' => 'upitt_workflow_admin_manage',
       'page arguments' => array(3),
       'type' => MENU_CALLBACK,
@@ -87,7 +104,7 @@ function upitt_workflow_menu() {
       'access callback' => 'upitt_workflow_admin_manage_access_callback',
     ),
     'workflow/admin/manage/%/edit/%' => array(
-      'title' => 'Manage Lookup Tables',
+      'title' => ('Edit Lookup Tables'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('upitt_workflow_admin_manage_edit', 3, 5),
       'type' => MENU_CALLBACK,
@@ -95,8 +112,8 @@ function upitt_workflow_menu() {
       'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE, 3, 5),
       'access callback' => 'upitt_workflow_admin_manage_access_callback',
     ),
+    // not certain about permissions on this one
     'workflow/status/change/' => array(
-
     ),
   );
 }
@@ -134,6 +151,10 @@ function upitt_workflow_theme() {
     'upitt_workflow_batches' => array(
       'variables' => array('table' => NULL, 'links' => '', 'post_to' => '', 'count_rows' => 0),
       'template' => 'theme/upitt-workflow-batches',
+    ),
+    'upitt_workflow_admin' => array(
+      'variables' => array('links' => '', 'breadcrumb' => ''),
+      'template' => 'theme/upitt-workflow-admin',
     ),
 /*
     'page__workflow_batch' => array(
@@ -187,17 +208,9 @@ function upitt_workflow_preprocess_page(&$vars) {
   $path = drupal_get_path('module', 'upitt_workflow');
   $item = menu_get_item();
   if (is_array($item)) {
-    if ($item['path'] == 'workflow/object/%' || 
-      $item['path'] == 'workflow/batch/%' ||
-      $item['path'] == 'workflow' ||
-      $item['path'] == 'workflow/batches/active' ||
-      $item['path'] == 'workflow/batches/all' ||
-      $item['path'] == 'workflow/batch/new' ||
-      $item['path'] == 'workflow/batch/edit/%' || 
-      $item['path'] == 'workflow/admin/manage/%' ||
-      $item['path'] == 'workflow/admin/manage/%/edit/%' ||
-      $item['path'] == 'workflow/admin/manage/%/delete/%' ||
-      (($item['path'] == 'node/%' || $item['path'] == 'node/%/edit') && (isset($vars['node'])))
+    if ($item['path'] == 'workflow' ||
+      (substr($item['path'], 0, 9) == 'workflow/')
+//      (($item['path'] == 'node/%' || $item['path'] == 'node/%/edit') && (isset($vars['node'])))
       ) {
 
       $vars['page']['sidebar_first'] = array();
@@ -225,19 +238,23 @@ function upitt_workflow_redirect_item_get() {
 }
 
 function upitt_workflow_admin_manage_access_callback($perm, $which_lookup_table = NULL) {
+  global $user;
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   if (($perm == ISLANDORA_WORKFLOW_MANAGE) && ($which_lookup_table)) {
     // Only certain values are allowed for the $listname
     $allowed_listnames = upitt_workflow_get_allowed_listnames();
     if (!(array_search(strtolower($which_lookup_table), $allowed_listnames) === FALSE)) {
-      return TRUE;
+      return user_access(ISLANDORA_WORKFLOW_MANAGE, $user);
     }
     else {
       drupal_set_message('Bad table name "' . $which_lookup_table . '"');
       return FALSE;
     }
   }
+  elseif ($perm == ISLANDORA_WORKFLOW_MANAGE) {
+    return user_access(ISLANDORA_WORKFLOW_MANAGE, $user);
+  } 
   else {
     return FALSE;
   }
@@ -257,4 +274,43 @@ function upitt_workflow_islandora_job_register_jobs() {
     ),
   );
   return $jobs;
+}
+
+/** 
+ * Used by various admin-level forms to return the manage table links.
+ */
+function upitt_workflow_get_listname_manage_links($listname) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  $possible_listnames = upitt_workflow_get_allowed_listnames();
+  foreach ($possible_listnames as $a_listname) {
+    if (strtolower($listname) == $a_listname) {
+      $links[] = '[' . $a_listname . ']';
+    }
+    else {
+      $links[] = l($a_listname, '/workflow/admin/manage/' . $a_listname);
+    }
+  }
+  return $links;
+}
+
+/**
+ * Function used by various templates to display a trail of breadcrumbs.
+ */
+function upitt_workflow_get_breadcrumb_path() {
+  // depending on current path, this is built
+  $item = menu_get_item();
+  if (is_array($item)) {
+    $links = array();
+    if (substr($item['path'], 0, 9) == 'workflow/') {
+      $links[] = l(t('Workflow'), '/workflow');
+    }
+    if ($item['path'] == 'workflow/admin/manage/%' || 
+      $item['path'] == 'workflow/batch/new' || $item['path'] == 'workflow/batch/edit/%'
+      ) {
+      $links[] = l(t('Workflow Admin'), '/workflow/admin');
+    }
+    $links[] = $item['title'];
+    return implode(' &raquo; ', $links);
+  }
 }

@@ -4,7 +4,8 @@ function upitt_workflow_objects() {
   global $user;
 
   if ($user->uid == 1 || user_access(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES, $user)) {
-    $links = array(l('Create a New Batch of Items', '/workflow/batch/new'),
+    $links = array(l('Workflow Admin', '/workflow/admin'),
+                   l('Create a New Batch of Items', '/workflow/batch/new'),
                    l('Manage Lookup Tables', '/workflow/admin/manage/collection'));   
   }
 
@@ -20,12 +21,6 @@ function upitt_workflow_objects() {
     $where_clause .= "i.name like '%" . upitt_workflow_safe_qstring($link, $_GET['batch_external_id_filter']) . "%' ";
   }
 
-//XX
-/* username from legacy system linked to auth_user table which will NOT be part of new system
-  if (isset($_GET['username_filter']) && $_GET['username_filter'] <> '') {
-    $where_clause .= ($where_clause ? ' AND ' : '') . "po.username like '%" . upitt_workflow_safe_qstring($link, $_GET['username_filter']) . "%' ";
-  }
-*/
   if (isset($_GET['type_filter']) && $_GET['type_filter'] <> '') {
     $where_clause .= ($where_clause ? ' AND ' : '') . "it.name = '" . upitt_workflow_safe_qstring($link, $_GET['type_filter']) . "' ";
   }
@@ -38,7 +33,6 @@ function upitt_workflow_objects() {
 
   $query = 'SELECT count(do_id) `total` ' .
            'FROM `item` i ' .
-//XX           'JOIN auth_user po ON (po.id = i.property_owner_id) ' .
            'JOIN item_type it ON (it.id = i.type_id) ' .
            'JOIN collection cc ON (cc.id = i.primary_collection_id) ' .
            $where_clause;
@@ -58,7 +52,6 @@ function upitt_workflow_objects() {
            '  (SELECT GROUP_CONCAT(description) FROM transaction ct JOIN item_current_status cics ON (cics.last_transaction_id = ct.id) WHERE cics.item_id = i.id ORDER BY ct.timestamp DESC) `last status`, ' .
            '  (SELECT ct.timestamp FROM `transaction` ct JOIN item_current_status cics ON (cics.last_transaction_id = ct.id) WHERE cics.item_id = i.id ORDER BY ct.timestamp DESC LIMIT 1) `status date` ' .
            'FROM `item` i ' .
-//XX           'JOIN auth_user po ON (po.id = i.property_owner_id) ' .
            'JOIN item_type it ON (it.id = i.type_id) ' .
            'JOIN collection cc ON (cc.id = i.primary_collection_id) ' .
            $where_clause .
@@ -71,7 +64,8 @@ function upitt_workflow_objects() {
     die($message);
   }
 
-  $count_rows_markup = number_format($count_rows) . " workflow objects " . (($page <> 0) ? " (page " . $page . " of " . round($count_rows / WF_OBJECTS_PER_PAGE) . ")" : "");
+  $ob1_page = $page + 1;
+  $count_rows_markup = number_format($count_rows) . " workflow objects " . (($ob1_page <> 0) ? " (page " . $ob1_page . " of " . round($count_rows / WF_OBJECTS_PER_PAGE + 0.9999) . ")" : "");
   $headings = $rows = array();
 
   while ($row = mysqli_fetch_assoc($result)) {
@@ -144,7 +138,7 @@ function upitt_workflow_objectreport_form($do_id) {
     drupal_set_message('Workflow object "' . $do_id . '" not found.  <a href="javascript:history.go(-1);">Return to previous page.</a>');
     drupal_goto(variable_get('site_404', ''));
   }
-  $links = array(l('All Objects', '/workflow'));
+  $links = array();
 
   // if there is any selection of the filters, then the data must be filtered with a WHERE clause, else don't add that condition
   $filters_use = $filters_mimetype = '';
@@ -190,14 +184,12 @@ function upitt_workflow_objectreport_form($do_id) {
 
   // simple status ~ transactions table
   $status_query = 'SELECT t.description, t.`timestamp` `time` '.
-//XX  $status_query = 'SELECT po.username `user`, ct.description, ct.`timestamp` '.
                   'FROM item i ' .
                   'JOIN transaction t ON (t.item_id = i.id) ' .
-//XX                  'JOIN auth_user po ON (po.id = i.property_owner_id) ' .
                   'JOIN collection co ON (co.id = i.primary_collection_id) ' .
                   'WHERE i.do_id=\'' . $do_id . '\' ' .
                   'ORDER BY i.do_id DESC, t.`timestamp` ASC';
-dpm($status_query);
+
   $result = mysqli_query($link, $status_query);
   if (!$result) {
     $message  = 'Invalid query: ' . mysqli_error($link) . "\n";

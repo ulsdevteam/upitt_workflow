@@ -22,6 +22,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
   }
 
   $form = array(
+    'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
     'nid' => array(
       '#type' => 'hidden',
       '#default_value' => $nid,

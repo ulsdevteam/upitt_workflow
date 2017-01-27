@@ -22,11 +22,13 @@
 <?php 
   $links[] = l('Active Batches', '/workflow/batches/active');
   $links[] = l('All Batches', '/workflow/batches/all');
+  $links[] = l('Collections (legacy)', '/workflow/collection');
   include_once('upitt-workflow-admin-links.tpl.php');
 ?>
+<?php include_once('upitt-workflow-breadcrumb.tpl.php'); ?>
 <?php include_once('upitt-workflow-findobject-form.tpl.php'); ?>
 <?php print $details; ?>
-<h3><?php print $count_rows; ?></h3>
+<h5><?php print $count_rows; ?></h5>
 <form action="<?php print $post_to; ?>" method="GET" id="upitt-workflow-objectreport-form">
   <fieldset>
     <legend><span class="fieldset-legend">Filters</span></legend>

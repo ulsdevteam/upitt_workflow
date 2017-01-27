@@ -64,6 +64,7 @@ function upitt_workflow_admin_manage($listname = '') {
   $records_headings = $rows = $links = $values = array();
 
   $links = upitt_workflow_get_listname_manage_links($listname);
+  $breadcrumb = upitt_workflow_get_breadcrumb_path();
 
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
   $link_new = upitt_workflow_get_databaselink('mysql_new_workflow');
@@ -155,6 +156,7 @@ function upitt_workflow_admin_manage($listname = '') {
   $table_markup = theme('upitt_workflow_batches',
       array('table' => $pager . theme('table', array('rows'=>$rows,'header'=>$records_headings,'attributes' =>array('class'=>array('report_table')))) . $pager,
             'links' => $links,
+            'breadcrumb' => $breadcrumb,
             'post_to' => '/workflow',
            )
     );
@@ -235,20 +237,5 @@ function upitt_workflow_admin_manage_edit_submit($form, &$form_state) {
       drupal_goto('/workflow/admin/manage/' . $listname);
       break;
   }
-}
-
-function upitt_workflow_get_listname_manage_links($listname) {
-  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
-
-  $possible_listnames = upitt_workflow_get_allowed_listnames();
-  foreach ($possible_listnames as $a_listname) {
-    if (strtolower($listname) == $a_listname) {
-      $links[] = '[' . $a_listname . ']';
-    }
-    else {
-      $links[] = l($a_listname, '/workflow/admin/manage/' . $a_listname);
-    }
-  }
-  return $links;
 }
 

@@ -21,7 +21,7 @@ function upitt_workflow_batch_detail_form($batch_id) {
                  'WHERE b.batch_id = \'' . $batch_id . '\' ' .
                  'GROUP BY i.id ORDER BY i.id ASC, cwsa.`order` ASC ' .
                  'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
-dpm($batch_items);
+
   $query = 'SELECT count(i.do_id) as `total` ' .
            'FROM batch b ' .
            'JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
@@ -32,7 +32,8 @@ dpm($batch_items);
 
   $row = mysqli_fetch_assoc($result);
   $count_rows = $row['total'];
-  $count_rows_markup = number_format($count_rows) . " workflow batch items " . (($page <> 0) ? " (page " . $page . " of " . round($count_rows / WF_OBJECTS_PER_PAGE) . ")" : "");
+  $ob1_page = $page + 1;
+  $count_rows_markup = number_format($count_rows) . " workflow batch items " . (($ob1_page <> 0) ? " (page " . $ob1_page . " of " . round($count_rows / WF_OBJECTS_PER_PAGE) . ")" : "");
 
   $current_page = pager_default_initialize($count_rows, WF_OBJECTS_PER_PAGE);
 
