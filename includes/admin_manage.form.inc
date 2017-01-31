@@ -156,6 +156,7 @@ function upitt_workflow_admin_manage($listname = '') {
   $table_markup = theme('upitt_workflow_batches',
       array('table' => $pager . theme('table', array('rows'=>$rows,'header'=>$records_headings,'attributes' =>array('class'=>array('report_table')))) . $pager,
             'links' => $links,
+            'count_rows' => number_format($count_rows) . ' records' . ($listname ? ' in ' . $listname : ''),
             'breadcrumb' => $breadcrumb,
             'post_to' => '/workflow',
            )

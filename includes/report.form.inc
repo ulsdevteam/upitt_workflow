@@ -4,9 +4,11 @@ function upitt_workflow_objects() {
   global $user;
 
   if ($user->uid == 1 || user_access(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES, $user)) {
-    $links = array(l('Workflow Admin', '/workflow/admin'),
-                   l('Create a New Batch of Items', '/workflow/batch/new'),
-                   l('Manage Lookup Tables', '/workflow/admin/manage/collection'));   
+    $options = array('attributes' => array('title' => 'Requires "Workflow Manage Lookup Tables" permission'));
+    $asterisk = "<sup style='color:blue' title='Requires \"Workflow Manage Lookup Tables\" permission'>*</super>";
+    $links = array(l('Workflow Admin', '/workflow/admin', $options),
+                   l('Create a New Batch of Items', '/workflow/batch/new', $options),
+                   l('Manage Lookup Tables', '/workflow/admin/manage/collection', $options));
   }
 
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');

@@ -78,12 +78,21 @@ function upitt_workflow_menu() {
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     'workflow/collection' => array(
-      'title' => t('Workflow Collections (legacy)'),
+      'title' => t('Workflow Collections (legacy)'), 
       'page callback' => array('upitt_workflow_collections_form'),
       'type' => MENU_CALLBACK,
       'file' => 'includes/collections.inc',
-      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+      'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE),
     ),
+    'workflow/collection/%' => array(
+      'title' => t('Workflow Collections (legacy)'),
+      'page callback' => 'upitt_workflow_collections_form',
+      'page arguments' => array(2),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/collections.inc',
+      'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE),
+    ),
+
     // ADMIN functions 
     'workflow/admin' => array(
       'title' => t('Workflow Admin'),
@@ -91,7 +100,7 @@ function upitt_workflow_menu() {
       'page arguments' => array(3),
       'type' => MENU_CALLBACK,
       'file' => 'includes/admin.form.inc',
-      'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE),
+      'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES),
       'access callback' => 'upitt_workflow_admin_manage_access_callback',
     ),
     'workflow/admin/manage/%' => array(
@@ -100,7 +109,7 @@ function upitt_workflow_menu() {
       'page arguments' => array(3),
       'type' => MENU_CALLBACK,
       'file' => 'includes/admin_manage.form.inc',
-      'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE, 3),
+      'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES, 3),
       'access callback' => 'upitt_workflow_admin_manage_access_callback',
     ),
     'workflow/admin/manage/%/edit/%' => array(
@@ -109,11 +118,22 @@ function upitt_workflow_menu() {
       'page arguments' => array('upitt_workflow_admin_manage_edit', 3, 5),
       'type' => MENU_CALLBACK,
       'file' => 'includes/admin_manage.form.inc',
-      'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE, 3, 5),
+      'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES, 3, 5),
       'access callback' => 'upitt_workflow_admin_manage_access_callback',
     ),
     // not certain about permissions on this one
     'workflow/status/change/' => array(
+    ),
+
+    // ADMIN functions for - Islandora Object Manage page
+    'islandora/object/%islandora_object/manage/audit_upitt_workflow' => array(
+      'title' => t('Audit'),
+      'page callback' => 'upitt_workflow_object_manage_audit',
+      'page arguments' => array(2),
+      'type' => MENU_LOCAL_TASK,
+      'file' => 'includes/audit_object.form.inc',
+      'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE),
+      'access callback' => 'upitt_workflow_admin_manage_access_callback',
     ),
   );
 }
@@ -156,6 +176,10 @@ function upitt_workflow_theme() {
       'variables' => array('links' => '', 'breadcrumb' => ''),
       'template' => 'theme/upitt-workflow-admin',
     ),
+    'upitt_workflow_collection_page' => array(
+      'variables' => array('links' => '', 'breadcrumb' => '', 'table' => NULL, 'count_rows' => 0),
+      'template' => 'theme/upitt-workflow-collection-page',
+    )
 /*
     'page__workflow_batch' => array(
       'template' => 'theme/page--workflow-batch',
@@ -241,22 +265,21 @@ function upitt_workflow_admin_manage_access_callback($perm, $which_lookup_table 
   global $user;
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
-  if (($perm == ISLANDORA_WORKFLOW_MANAGE) && ($which_lookup_table)) {
+  if ($which_lookup_table) {
     // Only certain values are allowed for the $listname
     $allowed_listnames = upitt_workflow_get_allowed_listnames();
     if (!(array_search(strtolower($which_lookup_table), $allowed_listnames) === FALSE)) {
-      return user_access(ISLANDORA_WORKFLOW_MANAGE, $user);
+      return user_access($perm, $user);
     }
     else {
-      drupal_set_message('Bad table name "' . $which_lookup_table . '"');
+      if (user_access($perm, $user)) {
+        drupal_set_message('Bad table name "' . $which_lookup_table . '"');
+      }
       return FALSE;
     }
   }
-  elseif ($perm == ISLANDORA_WORKFLOW_MANAGE) {
-    return user_access(ISLANDORA_WORKFLOW_MANAGE, $user);
-  } 
   else {
-    return FALSE;
+    return user_access($perm, $user);
   }
 }
 
@@ -309,6 +332,9 @@ function upitt_workflow_get_breadcrumb_path() {
       $item['path'] == 'workflow/batch/new' || $item['path'] == 'workflow/batch/edit/%'
       ) {
       $links[] = l(t('Workflow Admin'), '/workflow/admin');
+    }
+    if ($item['path'] == 'workflow/collection/%') {
+      $links[] = l(t('Workflow Collections'), '/workflow/collection');
     }
     $links[] = $item['title'];
     return implode(' &raquo; ', $links);
