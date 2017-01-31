@@ -7,7 +7,7 @@ function upitt_workflow_objects() {
     $options = array('attributes' => array('title' => 'Requires "Workflow Manage Lookup Tables" permission'));
     $asterisk = "<sup style='color:blue' title='Requires \"Workflow Manage Lookup Tables\" permission'>*</super>";
     $links = array(l('Workflow Admin', '/workflow/admin', $options),
-                   l('Create a New Batch of Items', '/workflow/batch/new', $options),
+                   l('Create a New Batch', '/workflow/batch/new', $options),
                    l('Manage Lookup Tables', '/workflow/admin/manage/collection', $options));
   }
 
@@ -104,6 +104,9 @@ function upitt_workflow_objects() {
 function upitt_workflow_objectreport_form($do_id) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
+  $status = upitt_workflow_get_status($do_id);
+  dpm($status);
+
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
   $detail_query = 'SELECT b.batch_external_id `name`, b.batch_description `title`, b.mapto_collections `collection/s`, b.batch_id `batch_id` ' .
@@ -188,7 +191,7 @@ function upitt_workflow_objectreport_form($do_id) {
   $status_query = 'SELECT t.description, t.`timestamp` `time` '.
                   'FROM item i ' .
                   'JOIN transaction t ON (t.item_id = i.id) ' .
-                  'JOIN collection co ON (co.id = i.primary_collection_id) ' .
+//                  'JOIN collection co ON (co.id = i.primary_collection_id) ' .
                   'WHERE i.do_id=\'' . $do_id . '\' ' .
                   'ORDER BY i.do_id DESC, t.`timestamp` ASC';
 

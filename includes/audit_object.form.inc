@@ -1,12 +1,29 @@
 <?php
 
 function upitt_workflow_object_manage_audit($islandora_object) { 
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   if (is_object($islandora_object)) {
     $audit_record = upitt_workflow_lookup_audit_record($islandora_object->id);
-    
+    $solr_record = upitt_workflow_get_solr_record($islandora_object->id);    
+    $solr_record_analysis_table_markup = upitt_workflow_analyze_solr_record($solr_record, $islandora_object->id);
+
+    // check against the "all_ingests.txt" file
+    $all_ingests_file = file(drupal_get_path('module', 'upitt_workflow') . '/includes/all_ingests.txt');
+    @list($namespace, $id_no_namespace) = explode(":", $islandora_object->id);
+    $found = FALSE;
+    foreach ($all_ingests_file as $l) {
+      if (!$found) {
+        $found |= (trim($l) == $id_no_namespace);
+      }
+    }
+//    $found = (!(array_search($id_no_namespace, $all_ingests_file) === FALSE));
+
     $markup = '<h3>Object Audit</h3> ' .
               '<b>Islandora Object PID:</b> ' . $islandora_object->id . '<br>' . 
-              '<b>Model:</b>' . implode(', ', $islandora_object->models) . '<br>';
+              '<b>Model:</b>' . implode(', ', $islandora_object->models) . '<br>';              
+    $markup .= '<h4>Object "' . $id_no_namespace . '" ingested upstairs?</h4>' .
+              '<p>' . l($id_no_namespace, '/workflow/object/' . $id_no_namespace) . ' is ' . ($found ? '' : 'not') . ' in the "all_ingests.txt" file.</p>';
     if (isset($audit_record['markup']) && $audit_record['batch_item_count'] > 0) {
       $markup .= '<h4>Workflow Values for "' . $islandora_object->id . '"</h4>' .
                  $audit_record['markup'] . '<hr>' .
@@ -17,8 +34,42 @@ function upitt_workflow_object_manage_audit($islandora_object) {
     else {
       $markup .= '<h4>No Workflow records for "' . $islandora_object->id . '"' . '</h4>';
     }
+    $markup .= ($solr_record_analysis_table_markup) ? '<hr><h4>Datastream history</h4>' . $solr_record_analysis_table_markup : '';
     return $markup;
   }
+}
+
+/**
+ * This will look at the values in the Solr record for purposes of displaying a table of the datatream updates.
+ */
+function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
+  // get all version, mimetype, filesize values for each datastream $dsid like fedora_datastream_version_MODS_CREATED_ms
+  $rows = $headings = array();
+  $datastreams = $solrRecord['fedora_datastreams_ms'];
+  $headings = array('ID', 'LABEL', 'CREATED', 'MIMETYPE', 'SIZE', 'Operations');
+  foreach ($datastreams as $dsid) {
+    $solrfield_ID = 'fedora_datastream_version_' . $dsid . '_ID_ms';
+    $solrfield_LABEL = 'fedora_datastream_version_' . $dsid . '_LABEL_ms';
+    $solrfield_CREATED = 'fedora_datastream_version_' . $dsid . '_CREATED_ms';
+    $solrfield_MIMETYPE = 'fedora_datastream_version_' . $dsid . '_MIMETYPE_ms';
+    $solrfield_SIZE = 'fedora_datastream_version_' . $dsid . '_SIZE_ms';
+    if (isset($solrRecord[$solrfield_ID]) && isset($solrRecord[$solrfield_LABEL]) && isset($solrRecord[$solrfield_CREATED]) && isset($solrRecord[$solrfield_MIMETYPE]) && isset($solrRecord[$solrfield_SIZE])) {
+      foreach ($solrRecord[$solrfield_CREATED] as $key => $CREATED) {
+        $rows[$CREATED] = array('ID' => $solrRecord[$solrfield_ID][$key],
+          'LABEL' => $solrRecord[$solrfield_LABEL][$key],
+          'CREATED' => $solrRecord[$solrfield_CREATED][$key],
+          'MIMETYPE' => $solrRecord[$solrfield_MIMETYPE][$key],
+          'SIZE' => array('data' => number_format($solrRecord[$solrfield_SIZE][$key]), 'class' => array('numeric')),
+          'Operations' => l('view', '/islandora/object/' . urlencode($pid) . '/datastream/' . $dsid . '/version/' . $key . '/view') . ' &nbsp; &nbsp; ' . l('revert', '/islandora/object/' . urlencode($pid) . '/datastream/' . $dsid . '/version/' . $key . '/revert'),
+        );
+      }
+    }
+    else {
+      drupal_set_message('One of the Solr fields is not set for datatream ' . $dsid . '.');
+    }
+  }
+  ksort($rows);
+  return theme('table', array('rows'=>$rows,'header'=>$headings));
 }
 
 function upitt_workflow_lookup_audit_record($PID) {
@@ -50,7 +101,18 @@ function upitt_workflow_lookup_audit_record($PID) {
       $batch_pkey_id = $row['batch_id'];
       $fields = array_keys($row);
       foreach ($fields as $field) {
-        $record_str .= '<b>' . $field . '</b> ' . $row[$field] . '<br>';
+        if ($field == 'batch_id') {
+          $record_str .= '<b>' . $field . '</b> ' . l($row[$field], '/workflow/batch/' . $row[$field]) . '<br>';
+        }
+        elseif ($field == 'item.do_id') {
+          $record_str .= '<b>' . $field . '</b> ' . l($row[$field], '/workflow/object/' . $row[$field]) . '<br>';
+        }
+        elseif ($field == 'batch_external_id') {
+          $record_str .= '<b>' . $field . '</b> ' . l($row[$field], '/workflow/batch/' . $row['batch_id']) . '<br>';
+        }
+        else {
+          $record_str .= '<b>' . $field . '</b> ' . $row[$field] . '<br>';
+        }
       }
     }
     mysqli_close($link);

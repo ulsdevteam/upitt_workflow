@@ -166,3 +166,78 @@ function upitt_workflow_get_allowed_listnames() {
   return array('collection', 'content_types', 'item_type', 'property_owner', 'workflow_sequence', 'workflow_sequence_actions');
 }
 
+function upitt_workflow_update_object_status($object_id, $action) {
+  return TRUE;
+}
+
+function upitt_workflow_safe_qstring($link, $in) {
+  return mysqli_real_escape_string($link, urldecode(trim($in)));
+}
+
+/**
+ * This will query the islandora_workflow database for the status records related to a given object_id (item.do_id)
+ */
+function upitt_workflow_get_status($object_id) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $query = 'SELECT t.description, t.`timestamp` `time` ' .
+           'FROM item i ' .
+           'JOIN `transaction` t ON (t.item_id = i.id) ' .
+           'WHERE i.do_id="' . upitt_workflow_safe_qstring($link, $object_id) . '" ' .
+           'ORDER BY t.`timestamp` ASC';
+
+  $result = mysqli_query($link, $query);
+  if (!$result) {
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
+    $message .= 'Whole query: ' . $query;
+    die($message);
+  }
+
+  $rows = array();
+  while ($row = mysqli_fetch_assoc($result)) {
+    $rows[] = $row;
+  }
+  mysqli_close($link);
+  return $rows;
+}
+
+/**
+ * This function will return the Solr record for this object so that it can be compared to the expected values from the workflow record;
+ */
+function upitt_workflow_get_solr_record($pid) {
+  module_load_include('inc', 'islandora_solr_search', 'includes/utilities');
+  $query_processor = new IslandoraSolrQueryProcessor();
+
+  // run two queries --
+  // 1) to get the datastreams available on this object
+  $query_processor->solrQuery = format_string('!field:!value', array(
+    '!field' => 'PID',
+    '!value' => str_replace(array("/", ":", "-", "+"), array("\/", "\:", "\-", "\+"), $pid),
+   ));
+  $query_processor->solrStart = 0;
+  $query_processor->solrLimit = 1;
+  $query_processor->solrParams = array();
+
+  $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
+  $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
+  $solr->setCreateDocuments(FALSE);
+  try {
+    $search_results = $solr->search($query_processor->solrQuery, $query_processor->solrStart, $query_processor->solrLimit, $query_processor->solrParams, 'GET');
+    $tmp = json_decode($search_results->getRawResponse(), TRUE);
+
+    $results = array();
+    $numFound = $tmp['response']['numFound'];
+    if ($tmp['response']['numFound'] > 0) {
+      foreach ($tmp['response']['docs'] as $k=>$rec) {
+        $retval = $rec;
+      }
+    }
+  }
+  catch (Exception $e) {
+    error_log('EXCEPTION in _save_solr_search_session : called from ' . $_SERVER['SERVER_NAME'] .
+' - ' . $_SERVER['REQUEST_URI'] . '
+' . print_r($e, true));
+  }
+  return $retval;
+}
+
+
