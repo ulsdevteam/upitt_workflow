@@ -46,7 +46,16 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
   // get all version, mimetype, filesize values for each datastream $dsid like fedora_datastream_version_MODS_CREATED_ms
   $rows = $headings = array();
   $datastreams = $solrRecord['fedora_datastreams_ms'];
-  $headings = array('ID', 'LABEL', 'CREATED', 'MIMETYPE', 'SIZE', 'Operations');
+  $headings = array(
+    array('data' => 'ID', 'field' => 'ID', 'sort' => 'ASC'),
+    array('data' => 'Label', 'field' => 'LABEL', 'sort' => 'ASC'),
+    array('data' => 'Created', 'field' => 'CREATED', 'sort' => 'ASC'),
+    array('data' => 'Mimetype', 'field' => 'MIMETYPE', 'sort' => 'ASC'),
+    array('data' => 'Size', 'field' => 'SIZE', 'sort' => 'ASC'),
+    array('data' => 'Operations', 'field' => 'Operations'),
+  );
+  
+  $messages = array();
   foreach ($datastreams as $dsid) {
     $solrfield_ID = 'fedora_datastream_version_' . $dsid . '_ID_ms';
     $solrfield_LABEL = 'fedora_datastream_version_' . $dsid . '_LABEL_ms';
@@ -65,11 +74,11 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
       }
     }
     else {
-      drupal_set_message('One of the Solr fields is not set for datatream ' . $dsid . '.');
+      $messages[] = '<div class="message warning">One of the Solr fields is not set for datatream ' . $dsid . '.  ' . l(t('Manage datastreams'), '/islandora/object/' . urlencode($pid) . '/manage/datastreams'). '.</div>';
     }
   }
   ksort($rows);
-  return theme('table', array('rows'=>$rows,'header'=>$headings));
+  return implode($messages) . theme('table', array('rows'=>$rows,'header'=>$headings));
 }
 
 function upitt_workflow_lookup_audit_record($PID) {
