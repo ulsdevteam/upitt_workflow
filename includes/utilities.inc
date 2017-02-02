@@ -240,4 +240,11 @@ function upitt_workflow_get_solr_record($pid) {
   return $retval;
 }
 
+function upitt_workflow_is_paged_object($islandora_object) {
+  return (is_object($islandora_object)) ? (!(array_search('islandora:bookCModel', $islandora_object->models) === FALSE) || 
+    !(array_search('islandora:newspaperIssueCModel', $islandora_object->models) === FALSE) || 
+    !(array_search('islandora:manuscriptCModel', $islandora_object->models) === FALSE) ) : FALSE;
+}
 
+function upitt_workflow_is_somethingelse($islandora_object) {
+}

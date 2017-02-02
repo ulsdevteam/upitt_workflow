@@ -2,8 +2,11 @@
 
 function upitt_workflow_object_manage_audit($islandora_object) { 
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
 
   if (is_object($islandora_object)) {
+    $is_paged = upitt_workflow_is_paged_object($islandora_object);
+
     $audit_record = upitt_workflow_lookup_audit_record($islandora_object->id);
     $solr_record = upitt_workflow_get_solr_record($islandora_object->id);    
     $solr_record_analysis_table_markup = upitt_workflow_analyze_solr_record($solr_record, $islandora_object->id);
@@ -17,7 +20,6 @@ function upitt_workflow_object_manage_audit($islandora_object) {
         $found |= (trim($l) == $id_no_namespace);
       }
     }
-//    $found = (!(array_search($id_no_namespace, $all_ingests_file) === FALSE));
 
     $markup = '<h3>Object Audit</h3> ' .
               '<b>Islandora Object PID:</b> ' . $islandora_object->id . '<br>' . 
@@ -30,6 +32,19 @@ function upitt_workflow_object_manage_audit($islandora_object) {
                  '<p>Based on the records for this object in the Workflow system, there should be the following number of objects.</p>' .
                  '<div style="color:#934">' . l(number_format($audit_record['batch_item_count']) . ' total objects in this batch', '/workflow/batch/' . $audit_record['batch_id']) . '</div>' .
                  '<div style="color:#934">' . number_format($audit_record['object_item_count']) . ' items in this object' . '</div>';
+      // Look at the number of pages - compare to the batch_item_count for this object.
+      if ($is_paged) {
+        $child_pages = $is_paged ? islandora_paged_content_get_pages_ri($islandora_object) : array();
+        if (count($child_pages) <> $audit_record['object_item_count']) {
+          $markup .= '<div class="messages error"><b>Page count mismatch.</b>  The number of items from the workflow (' . 
+                     l(number_format($audit_record['object_item_count']) . ' workflow items', '/workflow/batch/' . $audit_record['batch_id']) . 
+                     ') do not match the number of pages that exist for this object (' . number_format(count($child_pages)) . ' pages).</div>';
+          $markup .= upitt_workflow_audit_analyze_pagecount_mismatch($audit_record, $child_pages, $islandora_object->id);
+        }
+        else {
+          $markup .= '<div class="messages status">Page count matches the expected workflow item count.</div>';
+        }
+      }
     }
     else {
       $markup .= '<h4>No Workflow records for "' . $islandora_object->id . '"' . '</h4>';
@@ -46,7 +61,7 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
   // get all version, mimetype, filesize values for each datastream $dsid like fedora_datastream_version_MODS_CREATED_ms
   $rows = $headings = array();
   $datastreams = $solrRecord['fedora_datastreams_ms'];
-  $headings = array('ID', 'LABEL', 'CREATED', 'MIMETYPE', 'SIZE', 'Operations');
+  $headings = array('ID', 'version ID', 'LABEL', 'CREATED', 'MIMETYPE', 'SIZE', 'Operations');
   foreach ($datastreams as $dsid) {
     $solrfield_ID = 'fedora_datastream_version_' . $dsid . '_ID_ms';
     $solrfield_LABEL = 'fedora_datastream_version_' . $dsid . '_LABEL_ms';
@@ -55,12 +70,15 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
     $solrfield_SIZE = 'fedora_datastream_version_' . $dsid . '_SIZE_ms';
     if (isset($solrRecord[$solrfield_ID]) && isset($solrRecord[$solrfield_LABEL]) && isset($solrRecord[$solrfield_CREATED]) && isset($solrRecord[$solrfield_MIMETYPE]) && isset($solrRecord[$solrfield_SIZE])) {
       foreach ($solrRecord[$solrfield_CREATED] as $key => $CREATED) {
-        $rows[$CREATED] = array('ID' => $solrRecord[$solrfield_ID][$key],
-          'LABEL' => $solrRecord[$solrfield_LABEL][$key],
-          'CREATED' => $solrRecord[$solrfield_CREATED][$key],
-          'MIMETYPE' => $solrRecord[$solrfield_MIMETYPE][$key],
-          'SIZE' => array('data' => number_format($solrRecord[$solrfield_SIZE][$key]), 'class' => array('numeric')),
-          'Operations' => l('view', '/islandora/object/' . urlencode($pid) . '/datastream/' . $dsid . '/version/' . $key . '/view') . ' &nbsp; &nbsp; ' . l('revert', '/islandora/object/' . urlencode($pid) . '/datastream/' . $dsid . '/version/' . $key . '/revert'),
+        $pre = ((1+$key) == count($solrRecord[$solrfield_CREATED])) ? '<b title="current version">' : '';
+        $post = ((1+$key) == count($solrRecord[$solrfield_CREATED])) ? '</b>' : '';
+        $rows[$CREATED] = array('ID' => ($pre) ? $pre . $dsid . $post : '',
+          'version ID' => $pre . $solrRecord[$solrfield_ID][$key] . $post,
+          'LABEL' => $pre . $solrRecord[$solrfield_LABEL][$key] . $post,
+          'CREATED' => $pre . $solrRecord[$solrfield_CREATED][$key] . $post,
+          'MIMETYPE' => $pre . $solrRecord[$solrfield_MIMETYPE][$key] . $post,
+          'SIZE' => array('data' => $pre . number_format($solrRecord[$solrfield_SIZE][$key]) . $post, 'class' => array('numeric')),
+          'Operations' => $pre . l('view', '/islandora/object/' . urlencode($pid) . '/datastream/' . $dsid . '/version/' . $key . '/view') . ' &nbsp; &nbsp; ' . l('revert', '/islandora/object/' . urlencode($pid) . '/datastream/' . $dsid . '/version/' . $key . '/revert') . $post,
         );
       }
     }
@@ -69,6 +87,7 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
     }
   }
   ksort($rows);
+  $rows = array_reverse($rows);
   return theme('table', array('rows'=>$rows,'header'=>$headings));
 }
 
@@ -96,6 +115,7 @@ function upitt_workflow_lookup_audit_record($PID) {
 
     $fields = array();
     if ($row = mysqli_fetch_assoc($result)) {
+      $item_id = $row['item.do_id'];
       $batch_item_count = $row['Total Objects in Batch'];
       $object_item_count = $row['Items in this object'];
       $batch_pkey_id = $row['batch_id'];
@@ -117,5 +137,53 @@ function upitt_workflow_lookup_audit_record($PID) {
     }
     mysqli_close($link);
   }
-  return array('batch_id' => $batch_pkey_id, 'batch_item_count' => $batch_item_count, 'object_item_count' => $object_item_count, 'markup' => $record_str);
+  return array('batch_id' => $batch_pkey_id, 'batch_item_count' => $batch_item_count, 'object_item_count' => $object_item_count, 'item.do_id' => $item_id, 'markup' => $record_str);
+}
+
+function upitt_workflow_lookup_object_items($batch_id, $item_do_id) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+
+  $object_items = 'SELECT itf.`name`, itf.timestamp ' .
+                  'FROM batch_item bi ' .
+                  '  JOIN item_file itf ON (itf.item_id = bi.item_id AND itf.`use` = \'MASTER\') ' .
+                  '  JOIN item i ON (i.id = bi.item_id) ' .
+                  'WHERE bi.batch_id = ' . $batch_id . ' AND i.do_id = ' . $item_do_id;
+dpm($object_items);
+  $batch = array();
+  $result = mysqli_query($link, $object_items);
+  if (!$result) {
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
+    $message .= 'Whole query: ' . $object_items;
+    die($message);
+  }
+
+  $rows = array();
+  while ($row = mysqli_fetch_assoc($result)) {
+    $rows[] = $row;
+  }
+  return $rows;
+}
+
+function upitt_workflow_audit_analyze_pagecount_mismatch($audit_record, $child_pages, $pid) {
+  $object_items = upitt_workflow_lookup_object_items($audit_record['batch_id'], $audit_record['item.do_id']);
+  if (count($object_items) > 0) {
+    $object_items_headings = array_keys($object_items[0]);
+    $object_items_headings[] = 'Matching Islandora Object';
+    dpm($child_pages);
+    dpm($object_items);
+    foreach ($object_items as $key => $row) {
+      $name_parts = explode('.', $row['name']);
+      if (strstr($row['name'], '.')) {
+        array_pop($name_parts);
+      }
+      $page_pid = $pid . '-' . implode('.', $name_parts);
+      // try to load this pid as an islandora_object
+      $page_object = islandora_object_load($page_pid);
+      $object_items[$key]['Matching Islandora Object'] = (is_object($page_object)) ? l($page_object->label, '/islandora/object/' . $page_pid . '/manage') : '<b style="color:red">not found</b>';
+    }  
+    return theme('table', array('rows' => $object_items, 'header' => $object_items_headings));
+  }
+  else {
+    return '';
+  }
 }
