@@ -29,6 +29,15 @@ function upitt_workflow_menu() {
       'file' => 'includes/report.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
+    'workflow/object/%/METS/edit' => array(
+      'title' => t('Edit METS'),
+      'page callback' => 'drupal_get_form',
+// array('upitt_workflow_editMETS_form'),
+      'page arguments' => array('upitt_workflow_editMETS_form', 2),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/report.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
     // handler to redirect when using the "look up an item by id" search box 
     'workflow/item/get' => array(
       'title' => t('Workflow Report'),
@@ -242,6 +251,32 @@ function upitt_workflow_preprocess_page(&$vars) {
       (substr($item['path'], 0, 9) == 'workflow/')
 //      (($item['path'] == 'node/%' || $item['path'] == 'node/%/edit') && (isset($vars['node'])))
       ) {
+      if ($item['path'] == 'workflow/object/%/METS/edit') {
+        drupal_add_js('misc/jquery-3.1.1.min.js');
+        drupal_add_js('sites/all/libraries/xonomy/xonomy.js');
+        drupal_add_css('sites/all/libraries/xonomy/xonomy.css');
+        module_load_include('inc', 'upitt_workflow', 'includes/report.form');        
+        $xml = upitt_workflow_generate_METS_xml($item['map'][2]);
+
+        $docSpec = upitt_workflow_docSpec();
+        drupal_add_js(upitt_workflow_xonomy_editor_javascript_call_script($xml, $docSpec, 'xonomy_editor'), 'inline');
+        drupal_add_js('(function ($) {
+  Drupal.behaviors.yourBehaviorName = {
+    attach: function (context, settings) {
+      start_xonomy_editor();
+    }
+  };
+})(jQuery);', 'inline');
+
+/*
+(function ($) {
+$(document).ready(function() {
+  start_xonomy_editor(); 
+  alert("started?");
+});
+})(jQuery);', 'inline');
+*/
+      }
 
       $vars['page']['sidebar_first'] = array();
       $vars['page']['sidebar'] = array();

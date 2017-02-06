@@ -14,6 +14,22 @@ function upitt_workflow_object_manage_audit($islandora_object) {
     // check against the "all_ingests.txt" file
     $all_ingests_file = file(drupal_get_path('module', 'upitt_workflow') . '/includes/all_ingests.txt');
     @list($namespace, $id_no_namespace) = explode(":", $islandora_object->id);
+
+    // For a paged object, just look for the pid value ($id_no_namespace) in the all_intests file, but for a 
+    // page or manuscript page the parent object should be on the all_ingests list.
+    if (!$is_paged) { 
+      @list($id_no_namespace, $page_number) = explode("-", $id_no_namespace);
+      // look for a matching record in the workflow database
+      $workflow_object_file_records = upitt_workflow_get_item_files($id_no_namespace);
+      $workflow_page_record_exists = FALSE;
+      $record_name = $page_number . '.tif';
+      foreach ($workflow_object_file_records as $workflow_object_file) {
+        if ($workflow_object_file['use'] == 'MASTER') {          
+          $workflow_page_record_exists |= ($workflow_object_file['name'] == $record_name);
+        }
+      }
+    }
+
     $found = FALSE;
     foreach ($all_ingests_file as $l) {
       if (!$found) {
@@ -25,7 +41,9 @@ function upitt_workflow_object_manage_audit($islandora_object) {
               '<b>Islandora Object PID:</b> ' . $islandora_object->id . '<br>' . 
               '<b>Model:</b>' . implode(', ', $islandora_object->models) . '<br>';              
     $markup .= '<h4>Object "' . $id_no_namespace . '" ingested upstairs?</h4>' .
-              '<p>' . l($id_no_namespace, '/workflow/object/' . $id_no_namespace) . ' is ' . ($found ? '' : 'not') . ' in the "all_ingests.txt" file.</p>';
+              '<p>' . l($id_no_namespace, '/workflow/object/' . $id_no_namespace) . ' is ' . ($found ? '' : 'not') . ' in the "all_ingests.txt" file. ' . 
+              (($is_paged) ? '' : 'This page object (' . $islandora_object->id . ') ' . (($workflow_page_record_exists) ? 'has' : 'DOES NOT HAVE') . ' a matching record in the workflow database') . 
+              '</p>';
     if (isset($audit_record['markup']) && $audit_record['batch_item_count'] > 0) {
       $markup .= '<h4>Workflow Values for "' . $islandora_object->id . '"</h4>' .
                  $audit_record['markup'] . '<hr>' .

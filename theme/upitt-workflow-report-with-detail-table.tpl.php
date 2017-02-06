@@ -14,7 +14,7 @@
     <?php print_r($details); ?>
   </div>
   <div style="float:left;width:66%;overflow-x:auto;padding-left:2%">
-    <h3>Status Transactions</h3>
+    <h3>Status Transactions<?php print ($workflow_sequence_name ? ': ' . $workflow_sequence_name : '');  ?></h3>
     <?php print $status_table; ?>
   </div>
 </div>

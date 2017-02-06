@@ -201,6 +201,32 @@ function upitt_workflow_get_status($object_id) {
 }
 
 /**
+ * Will return all of the item file records associated with a specific object identifier.
+ */
+function upitt_workflow_get_item_files($object_id) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $query = 'SELECT itf.* ' .
+           'FROM item i ' .
+           'JOIN item_file itf ON (itf.item_id = i.id) ' .
+           'WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '" ' .
+           'ORDER BY itf.id';
+
+  $result = mysqli_query($link, $query);
+  if (!$result) {
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
+    $message .= 'Whole query: ' . $query;
+    die($message);
+  }
+
+  $rows = array();
+  while ($row = mysqli_fetch_assoc($result)) {
+    $rows[] = $row;
+  }
+  mysqli_close($link);
+  return $rows;
+}
+
+/**
  * This function will return the Solr record for this object so that it can be compared to the expected values from the workflow record;
  */
 function upitt_workflow_get_solr_record($pid) {
@@ -246,5 +272,31 @@ function upitt_workflow_is_paged_object($islandora_object) {
     !(array_search('islandora:manuscriptCModel', $islandora_object->models) === FALSE) ) : FALSE;
 }
 
-function upitt_workflow_is_somethingelse($islandora_object) {
+/**
+ * This will return a human readable version of "how long ago" for a given timetamp.
+ */
+function upitt_workflow_timeago_from_timestamp($timestamp) {
+  $dbDate = new DateTime($timestamp);
+  $currDate = new DateTime(date('Ymd H:i:s'));
+  $interval = $currDate->diff($dbDate);
+  $ago_arr = array();
+  if ($interval->y > 0) {
+    $ago_arr[] = $interval->y . " yr" . ($interval->y == 1 ? '' : 's');
+  }
+  if ($interval->m > 0) {
+    $ago_arr[] = $interval->m . " mo";
+  }
+  if ($interval->d > 0) {
+    $ago_arr[] = $interval->d . " d";
+  }
+  if ($interval->h > 0) {
+    $ago_arr[] = $interval->h . " h";
+  }
+  if ($interval->i > 0) {
+    $ago_arr[] = $interval->i . " m";
+  }
+  if ($interval->s > 0) {
+    $ago_arr[] = $interval->s . " s";
+  }
+  return implode(", ", $ago_arr) . ((count($ago_arr) > 0) ? ' ago' : '');
 }
