@@ -33,7 +33,7 @@ function upitt_workflow_get_tablefield_stats($listname, $link_new) {
 
 function upitt_workflow_get_table_record($listname, $primary_key_field, $primary_id, $link_new) {
   $sql_record = "SELECT  * FROM `" . mysqli_real_escape_string($link_new, $listname) . "` where `" . $primary_key_field . "` = '" . $primary_id . "'";
-  $result = mysqli_query($link_new, $sql_records);
+  $result = mysqli_query($link_new, $sql_record);
   return ($row = mysqli_fetch_assoc($result)) ? $row : array();
 }
 
@@ -175,22 +175,26 @@ function upitt_workflow_admin_manage_edit($form, &$form_state, $listname = '', $
 
   list($primary_key_field, $integer_fieldnames, $non_integer_fieldnames, $fields) = upitt_workflow_get_tablefield_stats($listname, $link_new);
   $record = upitt_workflow_get_table_record($listname, $primary_key_field, $primary_id, $link_new);
+  $all_fieldnames = implode(',', array_merge($integer_fieldnames, $non_integer_fieldnames));
 
   $links = upitt_workflow_get_listname_manage_links($listname);
 
   $form = array(
+    'pk_fieldname' => array(
+      '#type' => 'hidden',
+      '#default_value' => $primary_key_field,
+    ),
     'pk_value' => array(
       '#type' => 'hidden',
       '#default_value' => $primary_id,
     ),
+    'table_update_fields' => array(
+      '#type' => 'hidden',
+      '#default_value' => $all_fieldnames,
+    ),
     'table' => array(
       '#type' => 'hidden',
       '#default_value' => $listname,
-    ),
-    'test' => array(
-      '#type' => 'textarea',
-      '#title' => 'dump of record',
-      '#default_value' => print_r($record, true),
     ),
   );
 
@@ -226,16 +230,36 @@ function upitt_workflow_admin_manage_edit($form, &$form_state, $listname = '', $
  */
 function upitt_workflow_admin_manage_edit_submit($form, &$form_state) {
   $table_listname = $form_state['values']['table'];
-  $table_primary_id_Value = $form_state['values']['pk_value'];
+  $table_primary_id_fieldname = $form_state['values']['pk_fieldname'];
+  $table_primary_id_value = $form_state['values']['pk_value'];
+  $table_update_fields = $form_state['values']['table_update_fields'];
+  $table_update_fields_array = explode(',', $table_update_fields);
 
   $btn_id = $form_state['triggering_element']['#id'];
   switch ($btn_id) {
     case 'edit-submit':
+      $link_new = upitt_workflow_get_databaselink('mysql_new_workflow');
+      $field_values = array();
+      foreach ($table_update_fields_array as $field) {
+        $field_values[$field] = $form_state['values'][$field];
+      }
+      $fields_to_values = array();
+      foreach ($field_values as $field => $value) {
+        $fields_to_values[] = '`' . $field . '` = \'' . mysqli_real_escape_string($link_new, $value) . '\'';
+      }
+
+      $sql = 'UPDATE ' . $table_listname . ' SET ' . implode(', ', $fields_to_values) . ' WHERE `' . $table_primary_id_fieldname . '` = \'' . $table_primary_id_value . '\'';
+      if ($result = mysqli_query($link_new, $sql)) {
+        drupal_set_message('Lookup table "' . $table_listname . '" updated for `' . $table_primary_id_fieldname . '` = "' . $table_primary_id_value . '"');
+      }
+      else {
+        drupal_set_message('There was a problem updating the lookup table "' . $table_listname . '" for `' . $table_primary_id_fieldname . '` = "' . $table_primary_id_value . '"', 'error');
+      }
       // save the record here.
       break;
 
     case 'edit-cancel':
-      drupal_goto('/workflow/admin/manage/' . $listname);
+      drupal_goto('/workflow/admin/manage/' . $table_listname);
       break;
   }
 }

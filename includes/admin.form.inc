@@ -9,7 +9,12 @@ function upitt_workflow_admin() {
 
   $page = array();
 
-  $page['#markup'] = theme('upitt_workflow_admin', array('links' => $links, 'breadcrumb' => $breadcrumb));
+  $task_links[] = l(t('Create Islandora Collection'), '/islandora/object/pitt%3Aroot/manage/overview/ingest');
+  $task_links[] = l(t('Create New Batch'), '/workflow/batch/new');
+  $task_links[] = l(t('[online] Collection Building'), '/workflow/collection_building');
+  $task_links[] = l(t('Quick Status Change'), '/workflow/status/change');
+
+  $page['#markup'] = theme('upitt_workflow_admin', array('links' => $links, 'task_links' => $task_links, 'breadcrumb' => $breadcrumb));
 
   return $page;
 }

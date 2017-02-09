@@ -196,7 +196,7 @@ function upitt_workflow_theme() {
       'template' => 'theme/upitt-workflow-batches',
     ),
     'upitt_workflow_admin' => array(
-      'variables' => array('links' => '', 'breadcrumb' => ''),
+      'variables' => array('links' => '', 'task_links' => '', 'breadcrumb' => '', 'markup' => ''),
       'template' => 'theme/upitt-workflow-admin',
     ),
     'upitt_workflow_collection_page' => array(

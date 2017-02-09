@@ -174,7 +174,7 @@ function upitt_workflow_sync_solr_collections($pids, $collection_options) {
 }
 
 function upitt_workflow_get_allowed_listnames() {
-  return array('collection', 'content_types', 'item_type', 'property_owner', 'workflow_sequence', 'workflow_sequence_actions');
+  return array('action', 'collection', 'content_types', 'item_type', 'property_owner', 'sites', 'workflow_sequence', 'workflow_sequence_actions');
 }
 
 function upitt_workflow_update_object_status($object_id, $action) {

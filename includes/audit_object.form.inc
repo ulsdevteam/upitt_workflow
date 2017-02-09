@@ -103,7 +103,7 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
       }
     }
     else {
-      $messages[] = '<div class="message warning">One of the Solr fields is not set for datatream ' . $dsid . '.  ' . l(t('Manage datastreams'), '/islandora/object/' . urlencode($pid) . '/manage/datastreams'). '.</div>';
+      $messages[] = '<div class="messages warning">One of the Solr fields is not set for datatream ' . $dsid . '.  ' . l(t('Manage datastreams'), '/islandora/object/' . urlencode($pid) . '/manage/datastreams'). '.</div>';
     }
   }
 
