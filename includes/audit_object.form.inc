@@ -65,7 +65,7 @@ function upitt_workflow_object_manage_audit($islandora_object) {
       }
     }
     else {
-      $markup .= '<h4>No Workflow records for "' . $islandora_object->id . '"' . '</h4>';
+      $markup .= '<h1>No Workflow records for "' . $islandora_object->id . '"' . '</h4>';
     }
     $markup .= ($solr_record_analysis_table_markup) ? '<hr><h4>Datastream history</h4>' . $solr_record_analysis_table_markup : '';
     return $markup;
@@ -80,6 +80,8 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
   $rows = $headings = array();
   $datastreams = $solrRecord['fedora_datastreams_ms'];
   $headings = array('ID', 'version ID', 'LABEL', 'CREATED', 'MIMETYPE', 'SIZE', 'Operations');
+  
+  $messages = array();
   foreach ($datastreams as $dsid) {
     $solrfield_ID = 'fedora_datastream_version_' . $dsid . '_ID_ms';
     $solrfield_LABEL = 'fedora_datastream_version_' . $dsid . '_LABEL_ms';
@@ -101,12 +103,12 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
       }
     }
     else {
-      drupal_set_message('One of the Solr fields is not set for datatream ' . $dsid . '.');
+      $messages[] = '<div class="message warning">One of the Solr fields is not set for datatream ' . $dsid . '.  ' . l(t('Manage datastreams'), '/islandora/object/' . urlencode($pid) . '/manage/datastreams'). '.</div>';
     }
   }
+
   ksort($rows);
-  $rows = array_reverse($rows);
-  return theme('table', array('rows'=>$rows,'header'=>$headings));
+  return implode($messages) . theme('table', array('rows'=>$rows,'header'=>$headings));
 }
 
 function upitt_workflow_lookup_audit_record($PID) {
