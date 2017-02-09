@@ -1,9 +1,5 @@
 <?php
 
-function xxxx_upitt_workflow_collections_form_title($c_id = '') {
-  return 'Workflow Collections' . ($c_id <> '') ? ': ' . $c_id : '';
-}
-
 function upitt_workflow_collections_form($c_id = '') {
   list($count_rows_markup, $table_markup) = ($c_id <> '') ? upitt_workflow_collections_get_c_id_table($c_id) : upitt_workflow_collections_get_table();
 
@@ -67,13 +63,15 @@ function upitt_workflow_collections_get_table() {
 function upitt_workflow_collections_get_c_id_table($c_id) {
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
-  $collection_records = 'SELECT itf.name `item id`, ' .
+  $collection_records = 'SELECT i.do_id `item id`, ' .
                         '  i.name, ' .
                         '  "" `ready for`, ' .
                         '  "pending subquery lookup" `last action`, ' .
                         '  "pending subquery lookup" `when`, ' .
                         '  "pending subquery lookup" `who`, ' .
-                        '  "-" `files` ' .
+                        '    (SELECT CONCAT(" [", COUNT(s_itf.name), " files], ", GROUP_CONCAT(s_itf.name)) ' .
+                        '    FROM item_file s_itf ' . 
+                        '    WHERE s_itf.item_id = i.id) `files` ' .
                         'FROM collection c ' .
                         'JOIN batch_collections bc ON (bc.collection_id = c.id) ' .
                         'JOIN batch b ON (bc.batch_id = b.batch_id) ' .
@@ -114,6 +112,7 @@ function upitt_workflow_collections_get_c_id_table($c_id) {
     if (count($collection_records_headings) < 1) {
       $collection_records_headings = array_keys($row);
     }
+    $row['item id'] = l($row['item id'], '/workflow/object/' . $row['item id']);
     $rows[] = $row;
   }
 
