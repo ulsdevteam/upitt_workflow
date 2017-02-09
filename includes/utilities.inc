@@ -17,6 +17,17 @@ function get_config_value($section,$key) {
   }
 }
 
+/** 
+ * Simple lookup function to provide mapping between the legacy workflow "type_of_resource" to the Islandora fedora model name.
+ */
+function upitt_workflow_get_workflow_to_fedora_object_mappings() {
+  return array('still image' => 'sp_large_image_cmodel',
+               'photograph' => 'sp_large_image_cmodel',
+               'manuscript' => 'manuscriptCModel',
+               'text' => array('bookCModel', 'newspaperCModel'),
+              );
+}
+
 /**
  * Helper function to create the search form filter choices for collections in workflow_django
  */
@@ -198,6 +209,30 @@ function upitt_workflow_get_status($object_id) {
   }
   mysqli_close($link);
   return $rows;
+}
+
+/**
+ * Given an object identifier, this will return the batch that the item belongs to.  This will return NULL if the batch is not found.
+ */
+function upitt_workflow_batch_of_item($object_id) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $query = 'SELECT b.* ' .
+           'FROM batch b ' .
+           'JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
+           'JOIN item i ON (i.id = bi.item_id) ' .
+           'WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '" LIMIT 1';
+
+  $result = mysqli_query($link, $query);
+  if (!$result) {
+    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
+    $message .= 'Whole query: ' . $query;
+    die($message);
+  }
+
+  $row = mysqli_fetch_assoc($result);
+
+  mysqli_close($link);
+  return $row;
 }
 
 /**

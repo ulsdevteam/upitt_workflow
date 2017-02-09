@@ -11,11 +11,10 @@ function upitt_workflow_batch_detail_form($batch_id) {
                   'JOIN workflow_sequence ws ON (ws.id = b.batch_sequence_id) ' .
                   'WHERE b.batch_id = \'' . $batch_id . '\' ';
 
-  $batch_items = 'SELECT "" as `ingested?`, i.do_id, i.`name`, GROUP_CONCAT(ca.`name`) `required actions` ' .
-//                 '  (SELECT `name` FROM `action` WHERE id = cwsa.action_id) `actions` ' .
+  $batch_items = 'SELECT "" as `ingested?`, i.do_id, i.`name`, IFNULL(GROUP_CONCAT(ca.`name`), \'\') `required actions` ' .
                  'FROM batch b ' .
-                 'JOIN workflow_sequence_actions cwsa ON (cwsa.workflow_sequence_id = b.batch_sequence_id) ' .
-                 'JOIN `action` ca ON (ca.id = cwsa.action_id) ' .
+                 'LEFT OUTER JOIN workflow_sequence_actions cwsa ON (cwsa.workflow_sequence_id = b.batch_sequence_id) ' .
+                 'LEFT OUTER JOIN `action` ca ON (ca.id = cwsa.action_id) ' .
                  'JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
                  'JOIN item i ON (bi.item_id = i.id) ' .
                  'WHERE b.batch_id = \'' . $batch_id . '\' ' .
@@ -104,7 +103,6 @@ function upitt_workflow_batch_detail_form($batch_id) {
            )
     );
   $form['table_markup'] = array('#markup' => $table_markup);
-
   return $form;
 }
 

@@ -21,6 +21,30 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
     }
   }
 
+  // Load the batch's file object into csv using file_header and file_rows for display below the form.
+  $file_rows = $file_header = array();
+  if (file_exists($batch['file'])) {
+
+    $row = 1;
+    if (($handle = fopen($batch['file'], "r")) !== FALSE) {
+      try {
+        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+          if ($row > 1) {
+            $file_rows[] = $data;
+          }
+          else {
+            $file_header = $data;
+          }
+          $row++;
+        }
+      }
+      catch (Exception $e) {
+        throw new Exception('The file "'.$batch['file'].'" could not be parsed as a CSV.');
+      } 
+      fclose($handle);
+    }
+  } 
+
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
     'nid' => array(
@@ -270,6 +294,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
       '#type' => 'file',
       '#title' => t('File'),
       '#description' => ($batch && isset($batch['file'])) ? '<i>saved value: ' . str_replace('/ingest/files/', '', $batch['file']) . '</i>' : '',
+      '#suffix' => theme('table', array('rows'=>$file_rows,'header'=>$file_header,'attributes' =>array('class'=>array('report_table')))),
     ),
 
     'submit' => array(
@@ -277,7 +302,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
       '#value' => t('Save batch'),
     ),
   );
-
+dpm($file_rows);
   return $form;
 }
 

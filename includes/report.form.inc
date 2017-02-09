@@ -26,11 +26,10 @@ function upitt_workflow_objects() {
   if (isset($_GET['type_filter']) && $_GET['type_filter'] <> '') {
     $where_clause .= ($where_clause ? ' AND ' : '') . "it.name = '" . upitt_workflow_safe_qstring($link, $_GET['type_filter']) . "' ";
   }
-//XX
-/*  if (isset($_GET['collection_filter']) && $_GET['collection_filter'] <> '') {
+  if (isset($_GET['collection_filter']) && $_GET['collection_filter'] <> '') {
     $where_clause .= ($where_clause ? ' AND ' : '') . "cc.name = '" . upitt_workflow_safe_qstring($link, $_GET['collection_filter']) . "' ";
   }
-*/
+
   $where_clause = ($where_clause) ? "WHERE " . $where_clause : ' ';
 
   $query = 'SELECT count(do_id) `total` ' .
@@ -58,7 +57,7 @@ function upitt_workflow_objects() {
            'JOIN collection cc ON (cc.id = i.primary_collection_id) ' .
            $where_clause .
            'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
-
+dpm($query);
   $result = mysqli_query($link, $query, MYSQLI_USE_RESULT);
   if (!$result) {
     $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
@@ -257,6 +256,8 @@ function upitt_workflow_objectreport_form($do_id) {
   }
 
   $links[] = l('Edit METS', '/workflow/object/' . $do_id . '/METS/edit');
+  $links[] = l('Islandora Ingest', '/workflow/object/' . $do_id . '/islandora_ingest');
+
   $table_markup = theme('upitt_workflow_report_with_detail_table',
       array('details' => $details,
             'workflow_sequence_name' => $workflow_sequence_name,
@@ -277,12 +278,18 @@ function upitt_workflow_objectreport_form($do_id) {
 }
 
 function upitt_workflow_editMETS_form(array $form, array &$form_state, $do_id) {
-  $xml_editor_markup = '<div id="xonomy_editor"></div>' .
-         '<button onclick="submit()">Update METS file</button>';
+  dpm($form_state);
+  $xml_editor_markup = '<div id="xonomy_editor"></div>' . 
+         '<button type="button" onclick="harvest();">Update METS file</button>';
   $form = array(
       'xmlfile' => array(
-        '#type' => 'hidden',
+        '#attributes' => array(
+          'id' => 'xmlfile',
+          'style' => 'display:none',
+        ),
+        '#type' => 'textarea',
         '#prefix' => $xml_editor_markup,
+        '#default_value' => (isset($form_state['input']['xmlfile']) ? htmlspecialchars($form_state['input']['xmlfile']) : ''),
       ),
       'submit' => array(
         '#type' => 'submit',
@@ -292,9 +299,9 @@ function upitt_workflow_editMETS_form(array $form, array &$form_state, $do_id) {
   return $form;
 }
 
-function upitt_workflow_editMETS_form_submit(array $form, array &$form_state, $do_id) {
-  dpm($form_state);
-  dpm($form);
+function upitt_workflow_editMETS_form_submit(array $form, array &$form_state) {
+//  dpm($form_state);
+//  dpm($form);
 }
 
 function upitt_workflow_xonomy_editor_javascript_call_script($xml, $docSpec, $editor_id = 'xonomy_editor') {  
@@ -304,10 +311,11 @@ function upitt_workflow_xonomy_editor_javascript_call_script($xml, $docSpec, $ed
     var editor=document.getElementById("' . $editor_id . '");
     Xonomy.render(xml, editor, docSpec);
   }
-  function submit() {
+  function harvest() {
     var xml=Xonomy.harvest();
     //do something with xml...
     $(\'#xmlfile\').text(xml);
+    return false;
   }';
 }
 
