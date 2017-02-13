@@ -1,6 +1,8 @@
 <?php
 
 function upitt_workflow_batches_form(array $form, array &$form_state) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   
@@ -45,9 +47,7 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
 
   $result = mysqli_query($link, $batch_records);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $batch_records;
-    die($message);
+    upitt_workflow_sql_error_die($link, $batch_records);
   }
 
   $batch_records_headings = $rows = array();

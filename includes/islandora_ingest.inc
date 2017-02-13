@@ -9,14 +9,13 @@
  * Any required files that become datastreams can immediately be ingested.
  *
  * The fedora_model_name is used as part of the dynamic function naming -- 
- *   1. To create base object:       "upitt_ingest_jobs_{FEDORA_MODEL_NAME}_create_object"
- *   2. To add a given datastream:   "upitt_ingest_jobs_{FEDORA_MODEL_NAME}_add_datastream"
- *   3. To generate a derivative:    "upitt_ingest_jobs_{FEDORA_MODEL_NAME}_make_derivative"
- *   4. To add relationships?:       "upitt_ingest_jobs_{FEDORA_MODEL_NAME}_add_relationship"
+ *   1. To create base object:       "upitt_workflow_{FEDORA_MODEL_NAME}_create_object"
+ *   2. To add a given datastream:   "upitt_workflow_{FEDORA_MODEL_NAME}_add_datastream"
+ *   3. To generate a derivative:    "upitt_workflow_{FEDORA_MODEL_NAME}_make_derivative"
+ *   4. To add relationships?:       "upitt_workflow_{FEDORA_MODEL_NAME}_add_relationship"
  */
 function upitt_workflow_islandora_ingest($object_id) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
-  module_load_include('inc', 'upitt_ingest_jobs', 'includes/utilities');
   $batch = upitt_workflow_batch_of_item($object_id);
 
   $markup = '<p>Ingest single item "' . $object_id . '"';
@@ -31,12 +30,36 @@ function upitt_workflow_islandora_ingest($object_id) {
 
     $markup .= '<h3 style="color:green">Batch `default_type_of_resource` = "' . $batch['default_type_of_resource'] . '", yields fedora model: "' . $fedora_model_name . '"</h3><br>';
 
-    $requirements = upitt_ingest_jobs_fedora_object_requirements($fedora_model_name);
+    $requirements = upitt_workflow_fedora_object_requirements($fedora_model_name);
     if ($requirements) {
       $markup  .= '<h3>Requirements for "' . $fedora_model_name . '"</h3><pre>' . print_r($requirements, true) . '</pre>';
     }
 
     $use_pid = 'pitt:' . $object_id;
+
+    // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.    
+    $parent = upitt_workflow_get_object_fedora_collections($object_id);
+    $site = upitt_workflow_get_object_fedora_sites($object_id);
+ 
+    $item_files = upitt_workflow_get_item_files($object_id);
+    $item_path = '/tmp/this/path/does/not/exist';
+    if (isset($item_files[0]['path'])) {
+      $parts = explode("/", $item_files[0]['path']);
+      array_pop($parts);
+      $item_path = implode("/", $parts);
+    } 
+
+    // NOTE -- the drush command does not yet support multiple parent values.  It will need to be enhanced so that it can 
+    //         take a CSV value for our needs.  This will also need to be extened to set our IsMemberOfSite value.
+    $drush_command = 'drush -v -u 1 --uri=http://dev.gamera.library.pitt.edu islandora_batch_scan_preprocess ' . 
+                     '--content_models=islandora:' . $fedora_model_name . ' ' .
+                     // assuming that only if the parent is set, than the parent_relationship_pred is needed
+                     (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') . 
+                     '--type=directory ' .
+                     (($site) ? '--site=' . $site . ' --site_relationship_pred=isMemberOfSite ': '') . 
+                     ' --target=' . $item_path;
+    $markup .= '<h3>Drush call</h3><h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
+
 
     $item_files = upitt_workflow_get_item_files($object_id);
     if ($item_files) {
@@ -62,7 +85,7 @@ function upitt_workflow_islandora_ingest($object_id) {
       }
       else {
         // create object job call
-        $function_name = 'upitt_ingest_jobs_' . $fedora_model_name . '_create_object';
+        $function_name = 'upitt_workflow_' . $fedora_model_name . '_create_object';
         $markup .= "<hr>Create object function call: <code>" . $function_name . "(\$pid = '" . $use_pid . "');</code> (" . ((function_exists($function_name)) ? 'exists' : 'no function') . ')';
         if (function_exists($function_name)) {
           $function_name($use_pid);
@@ -70,7 +93,7 @@ function upitt_workflow_islandora_ingest($object_id) {
       }
       
       // make derivatives job calls 
-      $function_name = 'upitt_ingest_jobs_' . $fedora_model_name . '_make_derivative';
+      $function_name = 'upitt_workflow_' . $fedora_model_name . '_make_derivative';
       foreach ($requirements['islandora_create_derivatives'] as $derivative_requirement) {
         $markup .= "<hr>Create derivatives function call: <code>" . $function_name . "(\$pid = '" . $use_pid . "', \$dsid = '" . $derivative_requirement . "');</code> " . 
                    "(" . ((function_exists($function_name)) ? 'exists' : 'no function') . ')';
@@ -80,7 +103,7 @@ function upitt_workflow_islandora_ingest($object_id) {
       }
 
       // passthrough datastream job calls
-      $function_name = 'upitt_ingest_jobs_' . $fedora_model_name . '_add_datastream';
+      $function_name = 'upitt_workflow_' . $fedora_model_name . '_add_datastream';
       foreach ($requirements['passthrough_datastreams'] as $passthrough_datastream_requirement) {
         $source_key = array_shift(array_keys($passthrough_datastream_requirement));
         $passthrough_source = upitt_workflow_get_item_file_for_specific_use($source_key, $item_files);
@@ -133,6 +156,65 @@ function upitt_workflow_get_item_file_for_specific_use($use, $item_files) {
  * set the appropriate drupal_set_message.
  */
 function upitt_workflow_validate_ingest_for_object($item_files, $requirements) {
-
+  // need to code some logic that scans the item_files to determine whether all of the requirements are satisified.
   return FALSE;
+}
+
+/**
+ * The purpose of this function is to return several metrics about ingesting each fedora object type.  The result of this function will 
+ * return a relational array that contains three key sections:
+ *
+ *   'source_files' -- The source files that make up an ingestable object for the various object types.  This element contains values
+ *       that are made up of target datastream value and source filename spec. 
+ *
+ *   'required_datastreams' -- This is a list of all datastreams that should exist on a working object of this model type.  This list will
+ *       frequently contain duplicate references to items listed under islandora_create_derivatives since the DRL system may have 
+ *       created the same datastream in the past, but we also want Islandora to generate it.
+ *
+ *   'islandora_create_derivatives' -- This is a list of any derivative datastreams that Islandora must create before this 
+ *       object has been fully ingested into Islandora.
+ *
+ *   'optional_passthrough_datastreams' -- This will point to any item_file reference that was created by DRL that we want to use 
+ *       without modification from the source item_files.  This value is an array (such as array(KEY=>VALUE,KEY2=VALUE2) where the KEY is
+ *       the `use` from the item_file record and the array VALUE would be the datasteam identifier within Islandora.  A good example of 
+ *       this passthrough might be for the FITS.xml files which will be datatreams with id of `TECHMD` within Islandora.
+ */
+function upitt_workflow_fedora_object_requirements($fedoraObjectModel) {
+  $source_files = $required_datastreams = $islandora_create_derivatives = $passthrough_datastreams = array();
+  switch ($fedoraObjectModel) {
+    case "sp_large_image_cmodel":
+      $source_files[] = array('OBJ' => '*.tif');
+      $required_datastreams[] = 'MODS';
+      $required_datastreams[] = 'DC';
+      $required_datastreams[] = 'JP2';
+      $required_datastreams[] = 'JPG';
+      $required_datastreams[] = 'THUMB';
+      $required_datastreams[] = 'TN';
+      $required_datastreams[] = 'TECHMD';
+      $islandora_create_derivatives[] = 'DC';
+      $islandora_create_derivatives[] = 'JP2';
+      $islandora_create_derivatives[] = 'JPG';
+      $islandora_create_derivatives[] = 'THUMB';
+      $islandora_create_derivatives[] = 'TN';
+      $islandora_create_derivatives[] = 'TECHMD';
+      $passthrough_datastreams[] = array('TARGET' => 'TARGET');
+      $passthrough_datastreams[] = array('FITS' => 'TECHMD');
+      break;
+    case "bookCModel":
+      break;
+    case "green":
+    default:
+  }
+  return array('source_files' => $source_files, 
+               'required_datastreams' => $required_datastreams, 
+               'islandora_create_derivatives' => $islandora_create_derivatives, 
+               'passthrough_datastreams' => $passthrough_datastreams);
+}
+
+function upitt_workflow_sp_large_image_cmodel_create_object($pid) {
+  drupal_set_message('<div style="color:#593">Called function upitt_workflow_sp_large_image_cmodel_create_object($pid="' . $pid . '");</div>');
+}
+
+function upitt_workflow_sp_large_image_cmodel_make_derivative($pid, $dsid) {
+  drupal_set_message('<div style="color:#593">Called function upitt_workflow_sp_large_image_cmodel_make_derivative($pid="' . $pid . '", $dsid="' . $dsid . '");</div>');
 }

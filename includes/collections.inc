@@ -12,6 +12,8 @@ function upitt_workflow_collections_form($c_id = '') {
 }
 
 function upitt_workflow_collections_get_table() {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $collection_records = 'SELECT c.c_id, c.name `collection`, ' .
                         '  (SELECT IFNULL(SUM(b.item_count), 0) FROM batch_collections bc JOIN batch b ON (b.batch_id = bc.batch_id) WHERE bc.collection_id = c.id) as `items`, ' .
@@ -29,9 +31,7 @@ function upitt_workflow_collections_get_table() {
 
   $result = mysqli_query($link, $collection_records);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $collection_records;
-    die($message);
+    upitt_workflow_sql_error_die($link, $collection_records);
   }
 
   $collection_records_headings = $rows = array();
@@ -61,14 +61,29 @@ function upitt_workflow_collections_get_table() {
 }
 
 function upitt_workflow_collections_get_c_id_table($c_id) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $collection_records = 'SELECT i.do_id `item id`, ' .
                         '  i.name, ' .
                         '  "" `ready for`, ' .
-                        '  "pending subquery lookup" `last action`, ' .
-                        '  "pending subquery lookup" `when`, ' .
-                        '  "pending subquery lookup" `who`, ' .
+                        '  (SELECT t.description ' .
+                        '   FROM `transaction` t ' .
+                        '   WHERE t.item_id = i.id ' .
+                        '   ORDER BY t.timestamp DESC ' .
+                        '   LIMIT 1) `last action`, ' .
+                        '  (SELECT t.timestamp ' .
+                        '   FROM `transaction` t ' .
+                        '   WHERE t.item_id = i.id ' .
+                        '   ORDER BY t.timestamp DESC ' .
+                        '   LIMIT 1) `when`, ' .
+                        '  (SELECT lau.username ' . 
+                        '   FROM `transaction` t ' . 
+                        '   JOIN `legacy_auth_user` lau ON (lau.id = t.user_id) ' . 
+                        '   WHERE t.item_id = i.id ' . 
+                        '   ORDER BY t.timestamp DESC ' . 
+                        '   LIMIT 1) `who`, ' . 
                         '    (SELECT CONCAT(" [", COUNT(s_itf.name), " files], ", GROUP_CONCAT(s_itf.name)) ' .
                         '    FROM item_file s_itf ' . 
                         '    WHERE s_itf.item_id = i.id) `files` ' .
@@ -101,9 +116,7 @@ function upitt_workflow_collections_get_c_id_table($c_id) {
 
   $result = mysqli_query($link, $collection_records);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $collection_records;
-    die($message);
+    upitt_workflow_sql_error_die($link, $collection_records);
   }
 
   $collection_records_headings = $rows = array();

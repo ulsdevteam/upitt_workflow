@@ -2,16 +2,15 @@
 
 function upitt_workflow_objects() {
   global $user;
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   if ($user->uid == 1 || user_access(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES, $user)) {
     $options = array('attributes' => array('title' => 'Requires "Workflow Manage Lookup Tables" permission'));
     $asterisk = "<sup style='color:blue' title='Requires \"Workflow Manage Lookup Tables\" permission'>*</super>";
     $links = array(l('Workflow Admin', '/workflow/admin', $options),
                    l('Create a New Batch', '/workflow/batch/new', $options),
-                   l('Manage Lookup Tables', '/workflow/admin/manage/collection', $options));
+                   l('Manage Lookup Tables', '/workflow/admin/manage/action', $options));
   }
-
-  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
@@ -57,12 +56,10 @@ function upitt_workflow_objects() {
            'JOIN collection cc ON (cc.id = i.primary_collection_id) ' .
            $where_clause .
            'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
-dpm($query);
+
   $result = mysqli_query($link, $query, MYSQLI_USE_RESULT);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $query;
-    die($message);
+    upitt_workflow_sql_error_die($link, $query);
   }
 
   $ob1_page = $page + 1;
@@ -116,16 +113,16 @@ function upitt_workflow_objectreport_form($do_id) {
 
   $result = mysqli_query($link, $detail_query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $detail_query;
-    die($message);
+    upitt_workflow_sql_error_die($link, $detail_query);
   }
   $collections = upitt_workflow_lookup_collection_names();
 
   $pid = 'pitt:' . $do_id;
   $islandora_object = islandora_object_load($pid);
   
+  $object_title = (is_object($islandora_object) ? $islandora_object->label : $do_id);
   $title = "Workflow object | " . (is_object($islandora_object) ? 'Islandora: "' . l($islandora_object->label, '/islandora/object/' . $pid) . '"' : $do_id);
+
   $files_headings = $status_headings = $files_rows = $required_workflow_actions = $status_rows = array();
   while ($row = mysqli_fetch_assoc($result)) {
     if (isset($row['batch_id']) && isset($row['name'])) {
@@ -139,7 +136,11 @@ function upitt_workflow_objectreport_form($do_id) {
       // this has to lookup the collection names from the array that is loaded before this loop.
       $row['collection/s'] = upitt_workflow_collection_id_map_names($row['collection/s'], $collections);
     }
-    $details = theme('workflow_item_details', array('details' => $row));
+
+    // TODO: this edit link may need to be suppressed if the batch is at a specific stage.
+    $edit_item_link = l('Edit "' . $object_title . '"', '/workflow/object/' . $do_id . '/edit');
+
+    $details = theme('workflow_item_details', array('details' => $row, 'edit_item_link' => $edit_item_link));
   }
   if (!$details) {
     drupal_set_message('Workflow object "' . $do_id . '" not found.  <a href="javascript:history.go(-1);">Return to previous page.</a>');
@@ -170,9 +171,7 @@ function upitt_workflow_objectreport_form($do_id) {
 
   $result = mysqli_query($link, $files_query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $files_query;
-    die($message);
+    upitt_workflow_sql_error_die($link, $files_query);
   }
   while ($row = mysqli_fetch_assoc($result)) {
     if (count($files_headings) < 1) {
@@ -203,15 +202,12 @@ function upitt_workflow_objectreport_form($do_id) {
                                'ORDER BY wsa.`order`';
   $result = mysqli_query($link, $workflow_sequence_actions);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $workflow_sequence_actions;
-    die($message);
+    upitt_workflow_sql_error_die($link, $workflow_sequence_actions);
   }
   while ($row = mysqli_fetch_assoc($result)) {
     $required_workflow_actions[] = $row;
     $workflow_sequence_name = $row['workflow_sequence_name'];
   }
-  
 
   // simple status ~ transactions table
   $status_query = 'SELECT t.description, t.`timestamp` `time` '.
@@ -223,9 +219,7 @@ function upitt_workflow_objectreport_form($do_id) {
 
   $result = mysqli_query($link, $status_query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $status_query;
-    die($message);
+    upitt_workflow_sql_error_die($link, $status_query);
   }
   while ($row = mysqli_fetch_assoc($result)) {
     if (count($status_headings) < 1) {
@@ -278,7 +272,6 @@ function upitt_workflow_objectreport_form($do_id) {
 }
 
 function upitt_workflow_editMETS_form(array $form, array &$form_state, $do_id) {
-  dpm($form_state);
   $xml_editor_markup = '<div id="xonomy_editor"></div>' . 
          '<button type="button" onclick="harvest();">Update METS file</button>';
   $form = array(
@@ -300,8 +293,7 @@ function upitt_workflow_editMETS_form(array $form, array &$form_state, $do_id) {
 }
 
 function upitt_workflow_editMETS_form_submit(array $form, array &$form_state) {
-//  dpm($form_state);
-//  dpm($form);
+  drupal_set_message('METS submitted, but not saved.  This is pending development', 'warning');
 }
 
 function upitt_workflow_xonomy_editor_javascript_call_script($xml, $docSpec, $editor_id = 'xonomy_editor') {  

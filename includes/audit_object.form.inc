@@ -112,6 +112,8 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
 }
 
 function upitt_workflow_lookup_audit_record($PID) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $tmp_parts = explode(":", $PID);
   $record_str = '';
@@ -128,9 +130,7 @@ function upitt_workflow_lookup_audit_record($PID) {
     $batch = array();
     $result = mysqli_query($link, $batch_detail);
     if (!$result) {
-      $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-      $message .= 'Whole query: ' . $batch_detail;
-      die($message);
+      upitt_workflow_sql_error_die($link, $batch_detail);
     }
 
     $fields = array();
@@ -161,6 +161,8 @@ function upitt_workflow_lookup_audit_record($PID) {
 }
 
 function upitt_workflow_lookup_object_items($batch_id, $item_do_id) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
   $object_items = 'SELECT itf.`name`, itf.timestamp ' .
@@ -168,13 +170,11 @@ function upitt_workflow_lookup_object_items($batch_id, $item_do_id) {
                   '  JOIN item_file itf ON (itf.item_id = bi.item_id AND itf.`use` = \'MASTER\') ' .
                   '  JOIN item i ON (i.id = bi.item_id) ' .
                   'WHERE bi.batch_id = ' . $batch_id . ' AND i.do_id = ' . $item_do_id;
-dpm($object_items);
+
   $batch = array();
   $result = mysqli_query($link, $object_items);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $object_items;
-    die($message);
+    upitt_workflow_sql_error_die($link, $object_items);
   }
 
   $rows = array();
@@ -189,8 +189,7 @@ function upitt_workflow_audit_analyze_pagecount_mismatch($audit_record, $child_p
   if (count($object_items) > 0) {
     $object_items_headings = array_keys($object_items[0]);
     $object_items_headings[] = 'Matching Islandora Object';
-    dpm($child_pages);
-    dpm($object_items);
+
     foreach ($object_items as $key => $row) {
       $name_parts = explode('.', $row['name']);
       if (strstr($row['name'], '.')) {

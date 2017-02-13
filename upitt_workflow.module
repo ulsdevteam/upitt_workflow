@@ -29,6 +29,14 @@ function upitt_workflow_menu() {
       'file' => 'includes/report.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
+    'workflow/object/%/edit' => array(
+      'title' => t('Edit Item'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_item_edit', 2),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/item.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
     'workflow/object/%/islandora_ingest' => array(
       'title' => t('Islandora Ingest'),
       'page callback' => 'upitt_workflow_islandora_ingest',
@@ -188,7 +196,7 @@ function upitt_workflow_theme() {
       'template' => 'theme/upitt-workflow-report-with-detail-table',
     ),
     'workflow_item_details' => array(
-      'variables' => array('details' => NULL),
+      'variables' => array('details' => NULL, 'edit_item_link' => ''),
       'template' => 'theme/upitt-workflow-details',
     ),
     'upitt_workflow_batches' => array(

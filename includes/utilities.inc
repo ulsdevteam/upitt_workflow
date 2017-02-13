@@ -24,7 +24,9 @@ function upitt_workflow_get_workflow_to_fedora_object_mappings() {
   return array('still image' => 'sp_large_image_cmodel',
                'photograph' => 'sp_large_image_cmodel',
                'manuscript' => 'manuscriptCModel',
-               'text' => array('bookCModel', 'newspaperCModel'),
+               'text' => 'bookCModel',
+               'cartographic' => 'sp_large_image_cmodel',
+               'newspaper' => 'newspaperCModel',
               );
 }
 
@@ -39,9 +41,7 @@ function upitt_workflow_get_collection_choices() {
 
   $result = mysqli_query($link, $query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $query;
-    die($message);
+    upitt_workflow_sql_error_die($link, $query);
   }
   while ($row = mysqli_fetch_assoc($result)) {
     $rows[$row['name']] = $row['name'];
@@ -57,9 +57,7 @@ function upitt_workflow_get_mysql_options($table_name, $option_name = '', $key_f
 
   $result = mysqli_query($link, $query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $query;
-    die($message);
+    upitt_workflow_sql_error_die($link, $query);
   }
 
   $rows = ($option_name) ? array($option_value => 'Select ' . $option_name) : array();
@@ -109,9 +107,7 @@ function upitt_workflow_lookup_collection_names() {
 
   $result = mysqli_query($link, $query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $query;
-    die($message);
+    upitt_workflow_sql_error_die($link, $query);
   }
   while ($row = mysqli_fetch_assoc($result)) {
     $rows[$row['id']] = $row;
@@ -146,9 +142,7 @@ function upitt_workflow_sync_solr_collections($pids, $collection_options) {
   $query = "SELECT `PID`, `name` FROM collection WHERE `PID` IN ('" . implode("','", $pids) . "')";
   $result = mysqli_query($link, $query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $query;
-    die($message);
+    upitt_workflow_sql_error_die($link, $query);
   }
   $found_pids = $bad_pids = array();
   while ($row = mysqli_fetch_assoc($result)) {
@@ -164,9 +158,7 @@ function upitt_workflow_sync_solr_collections($pids, $collection_options) {
     $sql = "INSERT INTO `collection` (`c_id`, `PID`, `name`) VALUES ('". $pid . "', '". $pid . "', '" . upitt_workflow_safe_qstring($link, $name) . "')";
     $result = mysqli_query($link, $sql);
     if (!$result) {
-      $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-      $message .= 'Whole query: ' . $query;
-      die($message);
+      upitt_workflow_sql_error_die($link, $sql);
     }
     drupal_set_message('added collection workflow record reference for "' . $name . '"');
   }
@@ -174,7 +166,7 @@ function upitt_workflow_sync_solr_collections($pids, $collection_options) {
 }
 
 function upitt_workflow_get_allowed_listnames() {
-  return array('action', 'collection', 'content_types', 'item_type', 'property_owner', 'sites', 'workflow_sequence', 'workflow_sequence_actions');
+  return array('action', 'collection', 'content_types', 'item_type', 'property_owner', 'wflocal_fedora_site', 'workflow_sequence', 'workflow_sequence_actions');
 }
 
 function upitt_workflow_update_object_status($object_id, $action) {
@@ -198,9 +190,7 @@ function upitt_workflow_get_status($object_id) {
 
   $result = mysqli_query($link, $query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $query;
-    die($message);
+    upitt_workflow_sql_error_die($link, $query);
   }
 
   $rows = array();
@@ -224,15 +214,43 @@ function upitt_workflow_batch_of_item($object_id) {
 
   $result = mysqli_query($link, $query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $query;
-    die($message);
+    upitt_workflow_sql_error_die($link, $query);
   }
 
   $row = mysqli_fetch_assoc($result);
 
   mysqli_close($link);
   return $row;
+}
+
+/**
+ * Will return just item file record for the given object_id (legacy :do_id value).
+ */
+function upitt_workflow_get_item($object_id) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $query = 'SELECT i.id, i.do_id, i.name, i.type_id, i.property_owner_id, i.primary_collection_id, ' .
+           ' (SELECT GROUP_CONCAT(lfc.pid) ' . 
+           ' FROM wflocal_local_item_fedora_collections lifc ' . 
+           ' JOIN wflocal_fedora_collection lfc ON (lfc.id = lifc.fedora_collection_id) ' .
+           ' WHERE lifc.local_item_id = i.id) `collections`, ' .
+           ' (SELECT GROUP_CONCAT(lfs.pid) ' .
+           ' FROM wflocal_local_item_fedora_sites lifs ' .
+           ' JOIN wflocal_fedora_site lfs ON (lfs.id = lifs.fedora_site_id) ' .
+           ' WHERE lifs.local_item_id = i.id) `sites` ' .	
+           'FROM item i ' .
+           'WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '"';
+
+  $result = mysqli_query($link, $query);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $query);
+  }
+
+  $retval = array();
+  if ($row = mysqli_fetch_assoc($result)) {
+    $retval = $row;
+  }
+  mysqli_close($link);
+  return $retval;
 }
 
 /**
@@ -248,9 +266,7 @@ function upitt_workflow_get_item_files($object_id) {
 
   $result = mysqli_query($link, $query);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $query;
-    die($message);
+    upitt_workflow_sql_error_die($link, $query);
   }
 
   $rows = array();
@@ -335,3 +351,111 @@ function upitt_workflow_timeago_from_timestamp($timestamp) {
   }
   return implode(", ", $ago_arr) . ((count($ago_arr) > 0) ? ' ago' : '');
 }
+
+function upitt_workflow_sql_error_die($link, $sql) {
+  $message  = 'Invalid query: ' . mysqli_error($link) . "<br>";
+  $message .= 'Query: <pre>' . $sql ."</pre>";
+  die($message);
+}
+
+/**
+ * This function will return the parent collection PID values for the given object by looking at the object's batch 
+ * record and the individual item mappings (stored in wflocal_local_item_fedora_collections)
+ */
+function upitt_workflow_get_object_fedora_collections($object_id) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  // Get item's collection mappings
+  $item_query = 'SELECT fc.pid `pid` ' .
+                'FROM item i ' .
+                'JOIN wflocal_local_item_fedora_collections wifc ON (wifc.local_item_id = i.id) ' .
+                'JOIN wflocal_fedora_collection fc ON (fc.id = wifc.fedora_collection_id) ' .
+                'WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '"';
+
+  $result = mysqli_query($link, $item_query);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $item_query);
+  }
+  // if this has a value, it is already in CSV format
+  $row = mysqli_fetch_assoc($result);
+
+  // Only look at the batch if there was no value set at the item level.
+  if (isset($row['pid'])) {
+    $retval = $row['pid'];
+  }
+  else {
+    // Get item's batch collection mappings
+    $i_batch_query = 'SELECT c.PID `pid` ' .
+                     'FROM collection c ' .
+                     'WHERE c.id IN ' .
+                     ' (SELECT b.mapto_collections ' .
+                     ' FROM item i ' .
+                     ' JOIN batch_item bi ON (bi.item_id = i.id) ' .
+                     ' JOIN batch b ON (b.batch_id = bi.batch_id) ' .
+                     ' WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '")';
+    $result = mysqli_query($link, $i_batch_query);
+    if (!$result) {
+      upitt_workflow_sql_error_die($link, $i_batch_query);
+    }
+
+    $rows = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+      $rows[$row['pid']] = $row['pid'];
+    }
+    $retval = implode(',', $rows);
+  }
+
+  mysqli_close($link);
+  return $retval;
+}
+
+/**
+ * This function will return the site PID values for the given object by looking at the object's batch
+ * record and the individual item mappings (stored in wflocal_local_item_fedora_sites)
+ */
+function upitt_workflow_get_object_fedora_sites($object_id) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  // Get item's site mappings
+  $item_query = 'SELECT wfs.pid ' .
+                'FROM item i ' .
+                'JOIN wflocal_local_item_fedora_sites wifs ON (wifs.local_item_id = i.id) ' .
+                'JOIN wflocal_fedora_site wfs ON (wfs.id = wifs.fedora_site_id) ' .
+                'WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '"';
+
+  $result = mysqli_query($link, $item_query);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $item_query);
+  }
+  // if this has a value, it is already in CSV format
+  $row = mysqli_fetch_assoc($result);
+
+  // Only look at the batch if there was no value set at the item level.
+  if (isset($row['pid'])) {
+    $retval = $row['pid'];
+  }
+  else {
+    // Get item's batch site mappings
+    $i_batch_query = 'SELECT wfs.pid `pid` ' .
+                     'FROM wflocal_fedora_site wfs ' .
+                     'WHERE wfs.id IN ' .
+                     ' (SELECT b.mapto_site_id_values ' .
+                     ' FROM item i ' .
+                     ' JOIN batch_item bi ON (bi.item_id = i.id) ' .
+                     ' JOIN batch b ON (b.batch_id = bi.batch_id) ' .
+                     ' WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '")';
+
+    $result = mysqli_query($link, $i_batch_query);
+    if (!$result) {
+      upitt_workflow_sql_error_die($link, $i_batch_query);
+    }
+
+    $rows = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+      $rows[$row['pid']] = $row['pid'];
+    }
+    $retval = implode(',', $rows);
+  }
+
+  mysqli_close($link);
+  return $retval;
+}
+

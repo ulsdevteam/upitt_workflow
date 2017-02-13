@@ -40,9 +40,7 @@ function upitt_workflow_batch_detail_form($batch_id) {
 
   $result = mysqli_query($link, $batch_detail);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $batch_detail;
-    die($message);
+    upitt_workflow_sql_error_die($link, $batch_detail);
   }
 
   $title = 'unknown batch';
@@ -70,9 +68,7 @@ function upitt_workflow_batch_detail_form($batch_id) {
 
   $result = mysqli_query($link, $batch_items);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $batch_items;
-    die($message);
+    upitt_workflow_sql_error_die($link, $batch_items);
   }
 
   $batch_item_headings = $batch_rows = array();

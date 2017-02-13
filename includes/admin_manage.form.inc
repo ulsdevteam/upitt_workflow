@@ -54,13 +54,14 @@ function upitt_workflow_get_table_record($listname, $primary_key_field, $primary
  *   item_file
  *   item_type                         YES
  *   property_owner
- *   sites
  *   transaction
  *   workflow_sequence                 YES
  *   workflow_sequence_actions         YES (moreless)
  *  
  */
 function upitt_workflow_admin_manage($listname = '') {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   $records_headings = $rows = $links = $values = array();
 
   $links = upitt_workflow_get_listname_manage_links($listname);
@@ -83,9 +84,7 @@ function upitt_workflow_admin_manage($listname = '') {
   $current_page = pager_default_initialize($count_rows, WF_OBJECTS_PER_PAGE);
   $result = mysqli_query($link_new, $records);
   if (!$result) {
-    $message  = 'Invalid query: ' . mysqli_error($link) . "\n";
-    $message .= 'Whole query: ' . $records;
-    die($message);
+    upitt_workflow_sql_error_die($link, $records);
   }
 
   while ($row = mysqli_fetch_assoc($result)) {
