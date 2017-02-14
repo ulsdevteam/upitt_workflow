@@ -182,9 +182,10 @@ function upitt_workflow_safe_qstring($link, $in) {
  */
 function upitt_workflow_get_status($object_id) {
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
-  $query = 'SELECT t.description, t.`timestamp` `time` ' .
+  $query = 'SELECT ta.description, t.`timestamp` `time` ' .
            'FROM item i ' .
            'JOIN `transaction` t ON (t.item_id = i.id) ' .
+           'JOIN `transaction_actions` ta ON (ta.id = t.transaction_action_id) ' .
            'WHERE i.do_id="' . upitt_workflow_safe_qstring($link, $object_id) . '" ' .
            'ORDER BY t.`timestamp` ASC';
 

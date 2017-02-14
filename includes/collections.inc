@@ -68,8 +68,9 @@ function upitt_workflow_collections_get_c_id_table($c_id) {
   $collection_records = 'SELECT i.do_id `item id`, ' .
                         '  i.name, ' .
                         '  "" `ready for`, ' .
-                        '  (SELECT t.description ' .
+                        '  (SELECT ta.description ' .
                         '   FROM `transaction` t ' .
+                        '   JOIN `transaction_actions` ta ON (ta.id = t.transaction_action_id) ' .
                         '   WHERE t.item_id = i.id ' .
                         '   ORDER BY t.timestamp DESC ' .
                         '   LIMIT 1) `last action`, ' .

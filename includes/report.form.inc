@@ -49,7 +49,7 @@ function upitt_workflow_objects() {
   $current_page = pager_default_initialize($count_rows, WF_OBJECTS_PER_PAGE);
 
   $query = 'SELECT "" as `ingested?`, i.do_id, i.name, it.name `type`, ' . //XX po.username, cc.name `collection`, ' .
-           '  (SELECT GROUP_CONCAT(description) FROM transaction ct JOIN item_current_status cics ON (cics.last_transaction_id = ct.id) WHERE cics.item_id = i.id ORDER BY ct.timestamp DESC) `last status`, ' .
+           '  (SELECT GROUP_CONCAT(ta.description) FROM transaction ct JOIN transaction_actions ta ON (ta.id = ct.transaction_action_id) JOIN item_current_status cics ON (cics.last_transaction_id = ct.id) WHERE cics.item_id = i.id ORDER BY ct.timestamp DESC) `last status`, ' .
            '  (SELECT ct.timestamp FROM `transaction` ct JOIN item_current_status cics ON (cics.last_transaction_id = ct.id) WHERE cics.item_id = i.id ORDER BY ct.timestamp DESC LIMIT 1) `status date` ' .
            'FROM `item` i ' .
            'JOIN item_type it ON (it.id = i.type_id) ' .
@@ -210,9 +210,10 @@ function upitt_workflow_objectreport_form($do_id) {
   }
 
   // simple status ~ transactions table
-  $status_query = 'SELECT t.description, t.`timestamp` `time` '.
+  $status_query = 'SELECT ta.description, t.`timestamp` `time` '.
                   'FROM item i ' .
                   'JOIN transaction t ON (t.item_id = i.id) ' .
+                  'JOIN transaction_actions ta ON (ta.id = t.transaction_action_id) ' .
 //                  'JOIN collection co ON (co.id = i.primary_collection_id) ' .
                   'WHERE i.do_id=\'' . upitt_workflow_safe_qstring($link,  $do_id) . '\' ' .
                   'ORDER BY i.do_id DESC, t.`timestamp` ASC';
