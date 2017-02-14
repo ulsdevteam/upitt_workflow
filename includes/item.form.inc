@@ -90,10 +90,10 @@ function upitt_workflow_item_edit_submit(array $form, array &$form_state) {
  * This will save or update the given item record.
  */
 function upitt_workflow_save_item($values) {
-  // TODO -- create the lookup records for item--collections and item--sites relationships.
-
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+  $pk_item_id = $values['id'];
   $collections_values = $values['collections'];
+  $sites_values = $values['sites'];
 
   $object_id = $values['do_id'];
 
@@ -128,5 +128,52 @@ function upitt_workflow_save_item($values) {
   }
 
   mysqli_close($link);
+
+  // Now, update the lookup tables for item-collections and item-sites
+  upitt_workflow_save_item_collections($pk_item_id, $collections_values);
+  upitt_workflow_save_item_sites($pk_item_id, $sites_values);
+
   return $object_id;
+}
+
+function upitt_workflow_save_item_collections($pk_item_id, $collections) {
+  if (count($collections) > 0) {
+    $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+    // Remove any existing collections records for this object before inserting the new relationships.
+    $sql = 'DELETE FROM `wflocal_local_item_fedora_collections` WHERE `local_item_id` = ' . $pk_item_id;
+    $result = mysqli_query($link, $sql);
+    if (!$result) { upitt_workflow_sql_error_die($link, $sql); }
+
+    $sql = array();
+    foreach ($collections as $collection_pid) {
+      $sql = 'INSERT INTO `wflocal_local_item_fedora_collections` (`local_item_id`, `fedora_collection_id`) VALUES ' . 
+             '(' . $pk_item_id . ', ' . 
+             ' (SELECT c.id FROM `wflocal_fedora_collection` c WHERE c.pid = \'' . upitt_workflow_safe_qstring($link, $collection_pid) . '\')' .
+             ')';
+      $result = mysqli_query($link, $sql);
+      if (!$result) { upitt_workflow_sql_error_die($link, $sql); }
+    }
+    mysqli_close($link);
+  }
+}
+
+function upitt_workflow_save_item_sites($pk_item_id, $sites) {
+  if (count($sites) > 0) {
+    $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+    // Remove any existing sites records for this object before inserting the new relationships.
+    $sql = 'DELETE FROM `wflocal_local_item_fedora_sites` WHERE `local_item_id` = ' . $pk_item_id;
+    $result = mysqli_query($link, $sql);
+    if (!$result) { upitt_workflow_sql_error_die($link, $sql); }
+
+    $sql = array();
+    foreach ($sites as $site_pid) {
+      $sql = 'INSERT INTO `wflocal_local_item_fedora_sites` (`local_item_id`, `fedora_site_id`) VALUES ' .
+             '(' . $pk_item_id . ', ' .
+             ' (SELECT s.id FROM `wflocal_fedora_site` s WHERE s.pid = \'' . upitt_workflow_safe_qstring($link, $site_pid) . '\')' .
+             ')';
+      $result = mysqli_query($link, $sql);
+      if (!$result) { upitt_workflow_sql_error_die($link, $sql); }
+    }
+    mysqli_close($link);
+  }
 }

@@ -33,6 +33,7 @@ function upitt_workflow_get_tablefield_stats($listname, $link_new) {
 
 function upitt_workflow_get_table_record($listname, $primary_key_field, $primary_id, $link_new) {
   $sql_record = "SELECT  * FROM `" . mysqli_real_escape_string($link_new, $listname) . "` where `" . $primary_key_field . "` = '" . $primary_id . "'";
+dpm($sql_record);
   $result = mysqli_query($link_new, $sql_record);
   return ($row = mysqli_fetch_assoc($result)) ? $row : array();
 }
@@ -73,6 +74,15 @@ function upitt_workflow_admin_manage($listname = '') {
   $records = 'SELECT * ' .
              'FROM `' . mysqli_real_escape_string($link_new, $listname) . '` ' .
              'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
+
+  if ($listname == 'workflow_sequence_actions') {
+    $records = 'SELECT wsa.id `id`, wsa.workflow_sequence_id `workflow_sequence_id`, wsa.action_id `action_id`, wsa.`order` `order`, ws.name, ws.description ' .
+               'FROM `workflow_sequence_actions` wsa ' .
+               'JOIN workflow_sequence ws ON (ws.id = wsa.workflow_sequence_id) ' .
+               'ORDER BY wsa.workflow_sequence_id, wsa.`order` ' . 
+               'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
+      // str_replace(array(' FROM ', ' LIMIT '), array(', ws.name, ws.description FROM ', ' JOIN workflow_sequence ws ON (ws.id = workflow_sequence_id) ORDER BY workflow_sequence_id, `order` LIMIT '), $records);
+  }
 
   $query = 'SELECT count(*) as `total` ' .
            'FROM `' . mysqli_real_escape_string($link_new, $listname) . '`';
@@ -205,7 +215,7 @@ function upitt_workflow_admin_manage_edit($form, &$form_state, $listname = '', $
          '#attributes' => ''
       );
     if ($field == $primary_key_field) {
-      $form[$field]['#attributes'] = array('class' => array('primary_key'));
+      $form[$field]['#attributes'] = array('class' => array('primary_key'), 'readonly' => 'readonly', 'disabled' => 'disabled');
       $form[$field]['#description'] = '`' . $primary_key_field . '` is the primary key for the `' . $listname . '` table.';
     }
 
