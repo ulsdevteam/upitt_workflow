@@ -282,7 +282,7 @@ function upitt_workflow_get_item_files($object_id) {
  * This function will return the Solr record for this object so that it can be compared to the expected values from the workflow record;
  */
 function upitt_workflow_get_solr_record($pid) {
-  module_load_include('inc', 'islandora_solr_search', 'includes/utilities');
+  module_load_include('inc', 'islandora_solr', 'includes/utilities');
   $query_processor = new IslandoraSolrQueryProcessor();
 
   // run two queries --
