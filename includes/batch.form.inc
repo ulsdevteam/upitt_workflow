@@ -2,7 +2,7 @@
 
 function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_id = NULL) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
-  module_load_include('module', 'islandora_solution_pack_collection', 'islandora_basic_collection');
+  module_load_include('module', 'islandora_basic_collection', 'islandora_basic_collection');
   $batch_item_type_options = upitt_workflow_get_mysql_options('batch_item_type', 'Item Type', 'name', 'name', 'name', '0');
   $batch_property_owners = upitt_workflow_get_mysql_options('property_owner', 'Property Owner', 'property_owner_id', 'description', 'description', '0');
   $batch_workflow_sequences = upitt_workflow_get_mysql_options('workflow_sequence', 'Workflow Sequence', 'id', 'name', 'id', '0');
@@ -21,6 +21,10 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
       $nid = $batch['nid'];
     }
   }
+
+  // Prepare a couple variables for use with file upload options:
+  $upload_size = min((int) ini_get('post_max_size'), (int) ini_get('upload_max_filesize'));
+  $extensions = array('csv');
 
   // Load the batch's file object into csv using file_header and file_rows for display below the form.
   $file_rows = $file_header = array();
@@ -61,7 +65,20 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
       '#default_value' => ($batch && isset($batch['batch_external_id']))? $batch['batch_external_id'] : '',
     ),
 
-//      '#default_value' => ($batch && isset($batch['']))? $batch[''] : '',
+    // File: file
+    'file' => array(
+      '#type' => 'file',
+      '#title' => t('File'),
+      '#description' => t('Select CSV file to upload.<br/>Files must be less than <strong>@size MB.</strong><br/>Allowed file types: <strong>@ext.</strong>', array('@size' => $upload_size, '@ext' => $extensions[0])) .
+                        (($batch && isset($batch['file']) && ($batch['file'] <> '')) ? '<i>saved value: *' . str_replace('/ingest/files/', '', $batch['file']) . '*</i>' : ''),
+      '#upload_location' => 'temporary://', 
+      '#upload_validators' => array(
+        'file_validate_extensions' => $extensions,
+         // Assume its specified in MB.
+        'file_validate_size' => array($upload_size * 1024 * 1024),
+      ),
+      '#suffix' => theme('table', array('rows'=>$file_rows,'header'=>$file_header,'attributes' =>array('class'=>array('report_table')))),
+    ),
 
     // Collection: select box
     //   THIS SELECTBOX WILL BE A PROBLEM SINCE WE MAP TO MORE THAN ONE COLLECTION
@@ -103,13 +120,14 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
       '#title' => t('Description'),
       '#default_value' => ($batch && isset($batch['batch_description']))? $batch['batch_description'] : '',
     ),
-    // Sequence: select (get options from `workflow_sequence`)
+
+/*    // Sequence: select (get options from `workflow_sequence`)
     'batch_sequence_id' => array(
       '#type' => 'select',
       '#title' => t('Sequence'),
       '#options' => $batch_workflow_sequences,
       '#default_value' => ($batch && isset($batch['sequence_id']))? $batch['sequence_id'] : '',
-    ),
+    ), */
     // Active? checkbox
     'is_batch_active' => array(
       '#type' => 'checkbox',
@@ -122,12 +140,12 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
       '#title' => t('Priority'),
       '#default_value' => ($batch && isset($batch['batch_priority']))? $batch['batch_priority'] : '',
     ),
-    // Source identifier: textfield
+/*    // Source identifier: textfield
     'batch_source_identifier' => array(
       '#type' => 'textfield',
       '#title' => t('Source Identifier'),
       '#default_value' => ($batch && isset($batch['batch_source_identifier']))? $batch['batch_source_identifier'] : '',
-    ),
+    ), */
     // Is a request? checkbox
     'is_batch_request' => array(
       '#type' => 'checkbox',
@@ -142,7 +160,6 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
     ),
     // Request due date: textfield
     'batch_request_due_date' => array(
-//      '#type' => 'textfield',
       '#type' => 'date',
       '#default_value' => array(
         'month' => format_date((($batch && isset($batch['batch_request_due_date']))? strtotime($batch['batch_request_due_date']) : time()), 'custom', 'n'), 
@@ -151,7 +168,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
        ),
       '#title' => t('Request Due Date'),
     ),
-    // Condition handling: textarea
+/*    // Condition handling: textarea
     'batch_condition_handling' => array(
       '#type' => 'textarea',
       '#title' => t('Condition Handling'),
@@ -231,7 +248,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
       '#type' => 'textfield',
       '#title' => t('Default EAD_id'),
       '#default_value' => ($batch && isset($batch['default_ead_id']))? $batch['default_ead_id'] : '',
-    ),
+    ), */
 
     // Default copyright status: select (hard-coded options)
     'batch_default_CR_status' => array(
@@ -292,20 +309,12 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
       '#default_value' => ($batch && isset($batch['default_genre']))? $batch['default_genre'] : '',
     ),
 
-    // Has file: checkbox
+/*    // Has file: checkbox
     'has_file' => array(
       '#type' => 'checkbox',
       '#title' => t('Has File?'),
       '#default_value' => ($batch && isset($batch['has_file']))? $batch['has_file'] : '',
-    ),
-
-    // File: file
-    'file' => array(
-      '#type' => 'file',
-      '#title' => t('File'),
-      '#description' => ($batch && isset($batch['file'])) ? '<i>saved value: ' . str_replace('/ingest/files/', '', $batch['file']) . '</i>' : '',
-      '#suffix' => theme('table', array('rows'=>$file_rows,'header'=>$file_header,'attributes' =>array('class'=>array('report_table')))),
-    ),
+    ), */
 
     'submit' => array(
       '#type' => 'submit',
@@ -371,6 +380,7 @@ function upitt_workflow_save_batch($values, $collection_options) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $collections_values = $values['mapto_collections'];
 
+dpm($values);
   $batch_id = upitt_workflow_get_batch_id($values['batch_external_id']);
 
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
@@ -387,13 +397,14 @@ function upitt_workflow_save_batch($values, $collection_options) {
     $sql_fields[] = 'batch_id';
     $sql_values[] = $batch_id;
   }
+dpm('batch_id = ' . $batch_id);
+
   // assume all fields need to be escaped and wrapped with '' characters -- EXCEPT for the integer fields.
   foreach ($values as $fieldname => $value) {
     $sql_fields[] = $fieldname;
-
     // If the file is set, the actual file behind this must be moved to the /files/workflow folder and the field value must be set to this path.
     if ($fieldname == 'file' && isset($_FILES['files'])) {
-      $dest = '/ingest/files/' . date('YmdHis') . '_' . $batch_external_id;
+      $dest = '/ingest/files/' . date('YmdHis') . '_' . $batch_id; // $batch_external_id;
       if ($_FILES['files']['error']['file'] == UPLOAD_ERR_OK) {
         $tmp_name = $_FILES["files"]["tmp_name"]['file'];
         // basename() may prevent filesystem traversal attacks;
@@ -444,7 +455,11 @@ function upitt_workflow_get_batch_id($batch_external_id) {
     $batch_id = $row['batch_id'];
   }
   else {
-    $batch_id = 0;
+    // Create a new batch record that has the batch_external_id and return that record's batch_id
+    $sql_insert = 'INSERT INTO `batch` (batch_external_id) VALUES (\'' . $batch_external_id . '\')';
+    mysqli_query($link, $sql_insert);
+    mysqli_close($link);
+    return upitt_workflow_get_batch_id($batch_external_id);
   }
 
   mysqli_close($link);

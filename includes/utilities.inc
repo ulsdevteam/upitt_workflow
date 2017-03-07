@@ -155,7 +155,7 @@ function upitt_workflow_sync_solr_collections($pids, $collection_options) {
     }
   }
   foreach ($bad_pids as $pid => $name) {
-    $sql = "INSERT INTO `collection` (`c_id`, `PID`, `name`) VALUES ('". $pid . "', '". $pid . "', '" . upitt_workflow_safe_qstring($link, $name) . "')";
+    $sql = "REPLACE INTO `collection` (`c_id`, `PID`, `name`) VALUES ('". $pid . "', '". $pid . "', '" . upitt_workflow_safe_qstring($link, $name) . "')";
     $result = mysqli_query($link, $sql);
     if (!$result) {
       upitt_workflow_sql_error_die($link, $sql);
@@ -460,3 +460,113 @@ function upitt_workflow_get_object_fedora_sites($object_id) {
   return $retval;
 }
 
+/**
+ * Helper function to return a set of filenames from a given path -- with the option to filter ($mask)
+ * and an option to recursively ($recurse) search for files under the initial directory path ($dir).
+ */
+function upitt_workflow_file_scan_directory($dir, $mask = '', $recurse = FALSE) {
+  $result = array();
+
+  $cdir = scandir($dir);
+  foreach ($cdir as $key => $value) {
+    if (!in_array($value,array(".",".."))) {
+      if ($recurse && (is_dir($dir . DIRECTORY_SEPARATOR . $value))) {
+        $result[$value] = upitt_workflow_file_scan_directory($dir . DIRECTORY_SEPARATOR . $value, $mask, $recurse);
+      }
+      else {
+        if (!$mask || (strstr($value, $mask))) {
+          $result[] = $value;
+        }
+      }
+    }
+  }
+  return $result;
+}
+
+/**
+ * This will run XML to MODS transformation and save resultant MODS
+ * over the original file.
+ *
+ * Returns the filename for the new MODS file.
+ */
+function upitt_workflow_XMLtoMODS($xml_filename) {
+  $xsl = str_replace("/includes", "", dirname(__FILE__).'/transforms/sheet2mods.xsl'); // xml2mods.xsl');
+
+  $xml_file = file_get_contents($xml_filename);
+  $MODS = ($xml_file) ? upitt_workflow_runXslTransform(
+            array(
+              'xsl' => $xsl,
+              'input' => $xml_file,
+            )
+          ) : '';
+
+  // This file must be deleted in the process function that called this.
+  $bytes_written = file_put_contents($xml_filename, $MODS);
+
+  echo "<h3>after XSL transform</h3><blockquote><pre style='color:#28f'>" . htmlspecialchars(print_r($MODS, true)) . "</pre></blockquote>";
+
+  return ($bytes_written) ? $xml_filename : '';
+}
+
+function upitt_workflow_runXslTransform($info) {
+  $xsl = new DOMDocument();
+  $xsl->load($info['xsl']);
+  $input = new DOMDocument();
+  $input->loadXML($info['input']);
+
+  $processor = new XSLTProcessor();
+  $processor->importStylesheet($xsl);
+
+/*
+  if (isset($info['php_functions'])) {
+    $processor->registerPHPFunctions($info['php_functions']);
+  }
+*/
+
+  // XXX: Suppressing warnings regarding unregistered prefixes.
+  return $processor->transformToXML($input);
+}
+
+function upitt_workflow_make_custom_csv_dates($short_date) {
+  $h_format = 'F j, Y';
+  if (strstr($short_date, '-') == '') {
+    if (strlen($short_date) == 4) {
+      $short_date .= '-01-01';
+      $h_format = 'Y';
+    }
+    elseif (strlen($short_date) == 6) {
+      $short_date = substr($short_date, 0, 4) . '-' . substr($short_date, 4, 2) . '-01';
+      $h_format = 'F Y';
+    }
+    elseif (strlen($short_date) <> 8) {
+      die('bad date format for date value of "' . $short_date . '".');
+    }
+  }
+  else {
+    if (strlen($short_date) == 7) {
+      $short_date .= '-01';
+      $h_format = 'F Y';
+    }
+    elseif (strlen($short_date) <> 10) {
+      die('bad date format for date value of "' . $short_date . '".');
+    }
+  }
+  $timestamp = strtotime($short_date);
+  return array(date('c', $timestamp), date($h_format, $timestamp));
+}
+
+/**
+ * Helper function for creating MODS from CSV - this will inspect the active row for the value in the 
+ * 'normalized_date_qualifier' field to see whether or not the date field value supplied row is approximate.
+ */
+function upitt_workflow_fix_if_csv_date_approximate($headers, &$row) {
+  $normalized_date_qualifier_index = array_search('normalized_date_qualifier', $headers);
+  $date_index = array_search('date', $headers);
+  // echo "<h3>normalized_date_qualifier_index = " . $normalized_date_qualifier_index . ", date_index = " . $date_index ."</h3>";
+  if ($normalized_date_qualifier_index && isset($row[$normalized_date_qualifier_index])) {
+    if ($row[$normalized_date_qualifier_index] == 'yes' || $row[$normalized_date_qualifier_index] == 'approximate') {
+      $row[$date_index] = 'ca. ' . $row[$date_index];
+    }
+  }
+  // echo "<pre style='color:red'>" . print_r($row, true)."</pre>";
+}
