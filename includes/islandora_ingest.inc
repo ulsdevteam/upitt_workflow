@@ -53,10 +53,11 @@ function upitt_workflow_islandora_ingest($object_id) {
       $item_path = implode("/", $parts);
     } 
     $markup .= upitt_workflow_item_file_fixnames($item_files, $use_pid, $batch['batch_external_id']);
+    $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 
     // NOTE -- the drush command does not yet support multiple parent values.  It will need to be enhanced so that it can 
     //         take a CSV value for our needs.  This will also need to be extened to set our IsMemberOfSite value.
-    $drush_command = 'drush -v -u 1 --uri=http://dev.gamera.library.pitt.edu islandora_batch_scan_preprocess ' . 
+    $drush_command = 'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' . 
                      '--content_models=islandora:' . $fedora_model_name . ' ' .
                      // assuming that only if the parent is set, than the parent_relationship_pred is needed
                      (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') . 
@@ -66,9 +67,9 @@ function upitt_workflow_islandora_ingest($object_id) {
                      ' --target=' . $item_path;
     $markup .= '<h3>Drush call</h3><h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
 
-    $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>drush -v -u 1 --uri=http://dev.gamera.library.pitt.edu islandora_batch_ingest --site=' . $site . '<br>' . 
+    $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest<br>' . 
                '<i># or if only one set to be processed, supply the ingest_set option</i><br>' .
-               'drush -v -u 1 --uri=http://dev.gamera.library.pitt.edu islandora_batch_ingest --site=' . $site . ' --ingest_set=82</code>';
+               'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=82</code>';
 
     $item_files = upitt_workflow_get_item_files($object_id);
     if ($item_files) {
@@ -114,7 +115,8 @@ function upitt_workflow_islandora_ingest($object_id) {
       // passthrough datastream job calls
       $function_name = 'upitt_workflow_' . $fedora_model_name . '_add_datastream';
       foreach ($requirements['passthrough_datastreams'] as $passthrough_datastream_requirement) {
-        $source_key = array_shift(array_keys($passthrough_datastream_requirement));
+        $keys = array_keys($passthrough_datastream_requirement);
+        $source_key = array_shift($keys);
         $passthrough_source = upitt_workflow_get_item_file_for_specific_use($source_key, $item_files);
         if ($passthrough_source) {
           $datastream_target = $passthrough_source['path'];
@@ -302,11 +304,10 @@ function upitt_workflow_rename_file($file_arr, $filename, $use_pid, $batch_exter
       exec($command, $output, $return_var);
     }
   }
-
   $command = 'cp ' . $file_arr['path'] . ' ' . $batch_object_path . '/' . $filename;
   exec($command, $output, $return_var);
 
-  return '<code><b style="color:green">' . $command . '</b></code><br>' . "<pre style='color:#458'>" . print_r($output, true) . "<hr>" . print_r($return_var, true) . "<pre>";; 
+  return '<code><b style="color:green">' . $command . '</b></code><br>' . "<pre style='color:#458'>" . print_r($output, true) . "<hr>" . print_r($return_var, true) . "</pre>";; 
 }
 
 /**
@@ -322,11 +323,13 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site) 
 
   $files = upitt_workflow_file_scan_directory($filepath, '.csv');
 //  $paths_and_identifiers = array();
+
+  $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
   foreach ($files as $file) {
     $csv_file_sources = upitt_workflow_prepare_csv2mods($filepath . '/' . $file);
     foreach ($csv_file_sources as $csv_file_source) {
 //    $paths_and_identifiers[] = upitt_workflow_prepare_csv2mods($filepath . '/' . $file);
-      $drush_command = 'drush -v -u 1 --uri=http://dev.gamera.library.pitt.edu islandora_batch_scan_preprocess ' .
+      $drush_command = 'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
                        // assuming that only if the parent is set, than the parent_relationship_pred is needed
                        (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
@@ -336,6 +339,10 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site) 
                        ' --target=' . $csv_file_source['path'];
       $markup = '<h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
       $retval .= $markup;
+
+      $output = $return_var = array();
+      exec($drush_command, $output, $return_var);
+      $retval .= '<pre>output<br>' . print_r($output, true) . "<hr>return<br>". print_r($return_var, true) ."</pre>";
     }
   }
 
@@ -395,6 +402,7 @@ function upitt_workflow_prepare_csv2mods($input_filename) {
         }
         elseif (($header == 'file_name' || $header == 'filename') && isset($row[$i])) {
           $row_file_name = $working_directory . '/' . $row[$i];
+          $outputFilename = str_replace(array('.tiff', '.tif'), '.xml', $row[$i]);
         }
         elseif ($header == 'normalized_date') {
           list($sort_date, $date) = upitt_workflow_make_custom_csv_dates($row[$i]);

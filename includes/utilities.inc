@@ -539,7 +539,12 @@ function upitt_workflow_make_custom_csv_dates($short_date) {
       $h_format = 'F Y';
     }
     elseif (strlen($short_date) <> 8) {
-      die('bad date format for date value of "' . $short_date . '".');
+      if ($short_date <> '') {
+	die('bad date format for date value of "' . $short_date . '".');
+      }
+      else {
+        return '';
+      }
     }
   }
   else {

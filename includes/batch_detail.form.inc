@@ -43,6 +43,7 @@ function upitt_workflow_batch_detail_form($batch_id) {
     upitt_workflow_sql_error_die($link, $batch_detail);
   }
 
+  $details = '';
   $title = 'unknown batch';
   while ($row = mysqli_fetch_assoc($result)) {
     $title = (isset($row['name']) ? $row['name'] : $title);
