@@ -325,6 +325,7 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site) 
 //  $paths_and_identifiers = array();
 
   $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+
   foreach ($files as $file) {
     $csv_file_sources = upitt_workflow_prepare_csv2mods($filepath . '/' . $file);
     foreach ($csv_file_sources as $csv_file_source) {
@@ -342,6 +343,7 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site) 
 
       $output = $return_var = array();
       exec($drush_command, $output, $return_var);
+
       $retval .= '<pre>output<br>' . print_r($output, true) . "<hr>return<br>". print_r($return_var, true) ."</pre>";
     }
   }
@@ -404,7 +406,7 @@ function upitt_workflow_prepare_csv2mods($input_filename) {
           $row_file_name = $working_directory . '/' . $row[$i];
           $outputFilename = str_replace(array('.tiff', '.tif'), '.xml', $row[$i]);
         }
-        elseif ($header == 'normalized_date') {
+        elseif ($header == 'normalized_date' && isset($row[$i])) {
           list($sort_date, $date) = upitt_workflow_make_custom_csv_dates($row[$i]);
           // Add the sort_date field and solr 'date' field
           if ((array_key_exists('sort_date', $headers) === FALSE)) {
