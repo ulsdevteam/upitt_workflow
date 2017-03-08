@@ -527,20 +527,55 @@ function upitt_workflow_runXslTransform($info) {
   return $processor->transformToXML($input);
 }
 
+/**
+ * Will handle the CSV values for dates and create a "display date" and a "sort date" value as best as it can assuming:
+ *      CSV value		Display date				Sort date
+ * -------------------------------------------------------------------------------------------------
+ *	1945/1955		1945-1955				1945-01-01T00:00:00-05:00
+ * a	1945/1955 		ca. 1945-1955				1945-01-01T00:00:00-05:00
+ *	1945-03/1955-04 	March 1945- April 1955			1945-03-01T00:00:00-05:00
+ * a	1945-03/1955-04 	ca. March 1945- April 1955		1945-03-01T00:00:00-05:00
+ * 	1945-03-05/1955-04-23	March 5, 1945- April 23, 1955		1945-03-05T00:00:00-05:00
+ * a	1945-03-05/1955-04-23 	ca. March 5, 1945- April 23, 1955	1945-03-05T00:00:00-05:00
+ */
 function upitt_workflow_make_custom_csv_dates($short_date) {
+  $short_date = trim($short_date);
+  $short_date_length = strlen($short_date);
   $h_format = 'F j, Y';
+  $from_date = '';
+  // Handle the special cases where there is a date range provided
+  if ($short_date_length == 9 && ($short_date[4] == '/' || $short_date[4] == '-')) {
+    $from_date = substr($short_date, 0, 4) . '-01-01';
+    $to_date = substr($short_date, 5, PHP_INT_MAX) . '-01-01';
+    $h_format = 'Y';
+  }
+  elseif ($short_date_length == 15 && ($short_date[7] == '/' || $short_date[7] == '-')) {
+    $from_date = substr($short_date, 0, 7);
+    $to_date = substr($short_date, 8, PHP_INT_MAX);
+    $h_format = 'F Y';
+  }
+  elseif ($short_date_length == 21 && ($short_date[10] == '/' || $short_date[10] == '-')) {
+    $from_date = substr($short_date, 0, 10);
+    $to_date = substr($short_date, 11, PHP_INT_MAX);
+  }
+  if ($from_date) {
+    $timestamp = strtotime($from_date);
+    $timestamp_to_date = strtotime($to_date);
+    $display_date = date($h_format, $timestamp) . '-' . date($h_format, $timestamp_to_date);
+    return array(date('c', $timestamp), $display_date);
+  }
   if (strstr($short_date, '-') == '') {
-    if (strlen($short_date) == 4) {
+    if ($short_date_length == 4) {
       $short_date .= '-01-01';
       $h_format = 'Y';
     }
-    elseif (strlen($short_date) == 6) {
+    elseif ($short_date_length == 6) {
       $short_date = substr($short_date, 0, 4) . '-' . substr($short_date, 4, 2) . '-01';
       $h_format = 'F Y';
     }
-    elseif (strlen($short_date) <> 8) {
+    elseif ($short_date_length <> 8 && !$from_date) {
       if ($short_date <> '') {
-	die('bad date format for date value of "' . $short_date . '".');
+        die('bad date format for date value of "' . $short_date . '".');
       }
       else {
         return '';
@@ -548,11 +583,11 @@ function upitt_workflow_make_custom_csv_dates($short_date) {
     }
   }
   else {
-    if (strlen($short_date) == 7) {
+    if ($short_date_length == 7) {
       $short_date .= '-01';
       $h_format = 'F Y';
     }
-    elseif (strlen($short_date) <> 10) {
+    elseif ($short_date_length <> 10 && !$from_date) {
       die('bad date format for date value of "' . $short_date . '".');
     }
   }
