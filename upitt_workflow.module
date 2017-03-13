@@ -1,6 +1,7 @@
 <?php
 
 // Full file path to the current installation's settings.php file
+///define('SETTINGS_PATH', '/var/www/drupal/sites/default/settings.php');
 define('SETTINGS_PATH', '/var/www/html/drupal_gamera_sandbox/sites/gamera/settings.php');
 define('WF_OBJECTS_PER_PAGE', 100);
 
@@ -56,8 +57,16 @@ function upitt_workflow_menu() {
     ),
     // handler to redirect when using the "look up an item by id" search box 
     'workflow/item/get' => array(
-      'title' => t('Workflow Report'),
+      'title' => t('Workflow Item'),
       'page callback' => array('upitt_workflow_redirect_item_get'),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/report.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
+    // handler to redirect to batch when using "look up batch by id"
+    'workflow/batch/get' => array(
+      'title' => t('Workflow Batch'),
+      'page callback' => array('upitt_workflow_redirect_batch_get'),
       'type' => MENU_CALLBACK,
       'file' => 'includes/report.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
@@ -309,6 +318,16 @@ function upitt_workflow_redirect_item_get() {
   $q = isset($_POST['q']) ? $_POST['q'] : NULL;
   if ($q) {
     drupal_goto('/workflow/object/' . $q);
+  }
+}
+
+/**
+ * Handler for menu route "/workflow/batch/get".  This simply redirects to the correct handler without the "q=" part.
+ */
+function upitt_workflow_redirect_batch_get() {
+  $q = isset($_POST['q']) ? $_POST['q'] : NULL;
+  if ($q) {
+    drupal_goto('/workflow/batch/' . $q);
   }
 }
 

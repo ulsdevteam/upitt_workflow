@@ -52,7 +52,7 @@ function upitt_workflow_islandora_ingest($object_id) {
       array_pop($parts);
       $item_path = implode("/", $parts);
     } 
-    $markup .= upitt_workflow_item_file_fixnames($item_files, $use_pid, $batch['batch_external_id']);
+
     $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 
     // NOTE -- the drush command does not yet support multiple parent values.  It will need to be enhanced so that it can 
@@ -230,86 +230,6 @@ function upitt_workflow_sp_large_image_cmodel_make_derivative($pid, $dsid) {
   drupal_set_message('<div style="color:#593">Called function upitt_workflow_sp_large_image_cmodel_make_derivative($pid="' . $pid . '", $dsid="' . $dsid . '");</div>');
 }
 
-// returns markup to represent the file move / renaming 
-function upitt_workflow_item_file_fixnames($item_files, $use_pid, $batch_external_id) {
-  $foldername_pid = str_replace(':', '_', $use_pid);
-  $markup = '';
-  $files = array();  
-  foreach ($item_files as $item_file) {
-    $files[$item_file['use']] = $item_file;
-  }
-  // MASTER
-  if (!isset($files['MASTER'])) {
-    $markup .= '<b>MASTER file missing</b>';
-  } else {
-    $markup .= upitt_workflow_rename_file($files['MASTER'], 'OBJ.tif', $use_pid, $batch_external_id);
-  }
-  // MODS
-  if (!isset($files['MODS'])) {
-    $markup .= '<b>MODS file missing</b>';
-  } else {
-    $markup .= upitt_workflow_rename_file($files['MODS'], 'MODS.xml', $use_pid, $batch_external_id);
-  }
-  // DC
-  if (!isset($files['DC'])) {
-  } else {
-    $markup .= upitt_workflow_rename_file($files['DC'], 'DC.bin', $use_pid, $batch_external_id);
-  }
-  // JP2
-  if (!isset($files['JP2'])) {
-    $markup .= '<b>JP2 file missing</b>';
-  } else {
-    $markup .= upitt_workflow_rename_file($files['JP2'], 'JP2.jp2', $use_pid, $batch_external_id);
-  }
-
-  // THUMB_LARGE
-  if (!isset($files['THUMB_LARGE'])) {
-  } else {
-    $markup .= upitt_workflow_rename_file($files['THUMB_LARGE'], 'TN_LARGE.jpg', $use_pid, $batch_external_id);
-  }
-
-  // THUMB
-  if (!isset($files['THUMB'])) {
-  } else {
-    $markup .= upitt_workflow_rename_file($files['THUMB'], 'TN.png', $use_pid, $batch_external_id);
-  }
-
-  return $markup;
-}
-
-/**
- * Helper function to rename a given file from a legacy workflow or given partner's files to the 
- * expected names that can be ingested using islandora_batch ingest calls.
- *
- * returns markup to represent the file move / renaming
- */
-function upitt_workflow_rename_file($file_arr, $filename, $use_pid, $batch_external_id) {
-  @list($batch_datepart, $batch_collectionnamepart) = explode("-", $batch_external_id);
-  if (!$batch_collectionnamepart) {
-    $batch_collectionnamepart = $batch_external_id;
-  }
-  $foldername_pid = str_replace(':', '_', $use_pid);
-  $batch_pid = str_replace("pitt:", "", $use_pid);
-
-  $batch_path = '/ingest/islandora_ingest/' . $batch_collectionnamepart;
-  $batch_object_path = $batch_path . '/' . $batch_pid;
-
-  // create the subfolders if needed
-  $output = $return_var = array();
-  if (!file_exists($batch_path)) {
-    $command = 'mkdir ' . $batch_path;
-    exec($command, $output, $return_var);   
-    if (!file_exists($batch_object_path)) {
-      $command = 'mkdir ' . $batch_object_path;
-      exec($command, $output, $return_var);
-    }
-  }
-  $command = 'cp ' . $file_arr['path'] . ' ' . $batch_object_path . '/' . $filename;
-  exec($command, $output, $return_var);
-
-  return '<code><b style="color:green">' . $command . '</b></code><br>' . "<pre style='color:#458'>" . print_r($output, true) . "<hr>" . print_r($return_var, true) . "</pre>";; 
-}
-
 /**
  * Helper function to generate MODS from a spreadsheet.
  */
@@ -394,7 +314,6 @@ function upitt_workflow_prepare_csv2mods($input_filename) {
       $header = str_replace(" ", "_", strtolower(trim($header)));
       if (isset($row[$i])) {
         // ALL LOWERCASE, replace spaces with "_"
-        $header = str_replace(" ", "_", strtolower(trim($header)));
         if ($header == 'identifier') {
           $row_mods_id = $row[$i];
           $mods_directory_path = $working_directory . '/' . $row_mods_id;
@@ -479,57 +398,3 @@ function upitt_workflow_prepare_csv2mods($input_filename) {
   return $identifiers_and_filepaths;
 }
 
-/**
- * This still provides a test as to whether or not a field gets into the initial XML from the sheet - and the headings title
- * that would match for that field.
- */
-function upitt_workflow_get_csv_header_xpath_mappings() {
-  return array('genre'                     => '/mods:mods/mods:genre',
-//               'description'               => '/mods:mods/mods:abstract[1]',
-               'description'               => '/mods:mods/mods:abstract',
-               'type_of_resource'          => '/mods:mods/mods:typeOfResource',
-               'gift_of'                   => '/mods:mods/mods:note[@type="donor"]',
-               'address'                   => '/mods:mods/mods:note[@type="address"]',
-//               'subject'                   => '/mods:mods/mods:subject/mods:topic[1]',
-               'subject'                   => '/mods:mods/mods:subject/mods:topic',
-//               'contributor'               => '/mods:mods/mods:name[2]/mods:namePart[1]',
-               'contributor'               => '/mods:mods/mods:name/mods:namePart[../mods:role/mods:roleTerm[(text()="contributor") and @type="text"]]',
-//               'creator'                   => '/mods:mods/mods:name[1]/mods:namePart[1]',
-               'creator'                   => '/mods:mods/mods:name/mods:namePart[../mods:role/mods:roleTerm[(text()="creator") and @type="text"]]',
-//               'depositor'                 => '/mods:mods/mods:name[2]/mods:namePart[1]',
-               'depositor'                 => '/mods:mods/mods:name/mods:namePart[../mods:role/mods:roleTerm[(text()="depositor") and @type="text"]]',
-               'identifier'                => '/mods:mods/mods:identifier[@type="pitt"]',
-               'source_id'                 => '/mods:mods/mods:identifier[@type="source"]',
-               'source_identifier'         => '/mods:mods/mods:identifier[@type="source"]',
-               'title'                     => '/mods:mods/mods:titleInfo/mods:title',
-               'publisher'                 => '/mods:mods/mods:originInfo/mods:publisher',
-               'date_digitized'            => '/mods:mods/mods:originInfo/mods:dateCaptured',
-               'format'                    => '/mods:mods/mods:physicalDescription/mods:form',
-               'subject_name'              => '/mods:mods/mods:subject[@authority="lcsh"]/mods:name',
-               'dimension'                 => '/mods:mods/mods:physicalDescription/mods:extent',
-               'source_citation'           => '/mods:mods/mods:relatedItem/note[@type="prefercite"]',
-               'subject_lcsh'              => '/mods:mods/mods:subject[@authority="lcsh"]/mods:topic',
-               'source_collection_id'      => '/mods:mods/mods:relatedItem[@type="host"]/mods:identifier',
-               'subject_local'             => '/mods:mods/mods:subject[@authority="local"]/mods:topic',
-               'sort_date'                 => '/mods:mods/mods:originInfo/mods:dateOther[@type="sort"]',
-               'subject_location'          => '/mods:mods/mods:subject[@authority="lcsh"]/mods:geographic',
-               'date'                      => '/mods:mods/mods:originInfo/mods:dateOther[@type="display"]',
-               'scale'                     => '/mods:mods/mods:subject/mods:cartographics/mods:scale',
-               'source_collection'         => '/mods:mods/mods:relatedItem/mods:titleInfo/mods:title',
-               'copyright_status'          => '/mods:mods/mods:accessCondition/copyrightMD:copyright/@copyright.status',
-               'source_container'          => '/mods:mods/mods:relatedItem[@type="host"]/mods:note[@type="container"]',
-               'source_ownership'          => '/mods:mods/mods:relatedItem[@type="host"]/mods:note[@type="ownership"]',
-               'publication_status'        => '/mods:mods/mods:accessCondition/copyrightMD:copyright/@publication.status',
-               'pub_place'                 => '/mods:mods/mods:originInfo/mods:place/mods:placeTerm[@type="text"]',
-               'source_collection_date'    => '/mods:mods/mods:relatedItem[@type="host"]/mods:originInfo/mods:dateCreated',
-               'normalized_date'           => '/mods:mods/mods:originInfo/mods:dateCreated[@encoding="iso8601" @keyDate="yes"]',
-               'rights_holder'             => '/mods:mods/mods:accessCondition/copyrightMD:copyright/copyrightMD:rights.holder/copyrightMD:name',
-               'normalized_date_qualifier' => '/mods:mods/mods:originInfo/mods:dateCreated[@qualifier="approximate" @encoding="iso8601" @keyDate="yes"]',
-// 'batch' => '',
-// 'collection' => '',
-// 'date_qualifier' => '',
-// 'file_name' => '',
-// 'location' => '',
-    );
-
-}

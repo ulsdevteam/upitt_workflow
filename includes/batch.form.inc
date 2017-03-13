@@ -1,6 +1,6 @@
 <?php
 
-function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_id = NULL) {
+function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch = NULL) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('module', 'islandora_basic_collection', 'islandora_basic_collection');
   $batch_item_type_options = upitt_workflow_get_mysql_options('batch_item_type', 'Item Type', 'name', 'name', 'name', '0');
@@ -11,6 +11,8 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
   // for legacy batches, this array may need to be joined with the legacy collection `c_id` pointers instead of Solr PID values.
   $collections = upitt_workflow_get_solr_options('RELS_EXT_hasModel_uri_ms:info\:fedora\/islandora\:collectionCModel', 'PID', 'fgs_label_s');
   asort($collections);
+
+  $batch_id = ((is_numeric($batch)) ? $batch : upitt_workflow_get_batch_id($batch, FALSE));
 
   $read_only_att = array();
   $nid = '';
@@ -29,24 +31,36 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
   // Load the batch's file object into csv using file_header and file_rows for display below the form.
   $file_rows = $file_header = array();
   if (file_exists($batch['file'])) {
-
     $row = 1;
     if (($handle = fopen($batch['file'], "r")) !== FALSE) {
       try {
         while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-          if ($row > 1) {
-            $file_rows[] = $data;
-          }
-          else {
-            $file_header = $data;
+	  if ($row < 50) {
+            if ($row > 1) {
+              $file_rows[] = $data;
+            }
+            else {
+              $file_header = $data;
+            }
           }
           $row++;
+        }
+        if ($row > 50) {
+          drupal_set_message('There are ' . number_format($row) . ' rows in the CSV file "' . $batch['file'] . '".  Only the first 50 rows are displayed.', 'warning');
         }
       }
       catch (Exception $e) {
         throw new Exception('The file "'.$batch['file'].'" could not be parsed as a CSV.');
       } 
       fclose($handle);
+    }
+
+    $csv_header_mappings = upitt_workflow_get_csv_header_xpath_mappings();
+    foreach ($file_header as $header) {
+      $machine_header = str_replace(" ", "_", strtolower(trim($header)));
+      if (array_search($machine_header, $csv_header_mappings) === FALSE) {
+        drupal_set_message('CSV column "' . $header . '" not recognized.  Batch will not be able to ingest or process.  Please replace the attached CSV file "' . $batch['file'] . '".', 'error');
+      }
     }
   } 
 
@@ -61,7 +75,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
       '#type' => 'textfield',
       '#title' => t('Name'),
       '#attributes' => $read_only_att,
-      '#description' => t('<pre>batch_external_id</pre>'),
+      '#description' => t('Legacy batch name, `batch_external_id`'),
       '#default_value' => ($batch && isset($batch['batch_external_id']))? $batch['batch_external_id'] : '',
     ),
 
@@ -77,7 +91,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch_i
          // Assume its specified in MB.
         'file_validate_size' => array($upload_size * 1024 * 1024),
       ),
-      '#suffix' => theme('table', array('rows'=>$file_rows,'header'=>$file_header,'attributes' =>array('class'=>array('report_table')))),
+      '#suffix' => theme('table', array('rows' => $file_rows, 'header' => $file_header, 'attributes' => array('class' => array('report_table')))),
     ),
 
     // Collection: select box
@@ -380,8 +394,7 @@ function upitt_workflow_save_batch($values, $collection_options) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $collections_values = $values['mapto_collections'];
 
-dpm($values);
-  $batch_id = upitt_workflow_get_batch_id($values['batch_external_id']);
+  $batch_id = upitt_workflow_get_batch_id($values['batch_external_id'], TRUE);
 
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
@@ -397,7 +410,6 @@ dpm($values);
     $sql_fields[] = 'batch_id';
     $sql_values[] = $batch_id;
   }
-dpm('batch_id = ' . $batch_id);
 
   // assume all fields need to be escaped and wrapped with '' characters -- EXCEPT for the integer fields.
   foreach ($values as $fieldname => $value) {
@@ -437,10 +449,10 @@ dpm('batch_id = ' . $batch_id);
   }
 
   mysqli_close($link);
-  return $batch_id; // upitt_workflow_get_batch_id($values['batch_external_id']);
+  return $batch_id;
 }
 
-function upitt_workflow_get_batch_id($batch_external_id) {
+function upitt_workflow_get_batch_id($batch_external_id, $create_if_not_exists = FALSE) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
@@ -451,15 +463,17 @@ function upitt_workflow_get_batch_id($batch_external_id) {
     upitt_workflow_sql_error_die($link, $sql);
   }
 
+  $batch_id = 0;
   if ($row = mysqli_fetch_assoc($result)) {
     $batch_id = $row['batch_id'];
   }
-  else {
+  elseif ($create_if_not_exists) {
     // Create a new batch record that has the batch_external_id and return that record's batch_id
     $sql_insert = 'INSERT INTO `batch` (batch_external_id) VALUES (\'' . $batch_external_id . '\')';
     mysqli_query($link, $sql_insert);
     mysqli_close($link);
-    return upitt_workflow_get_batch_id($batch_external_id);
+    // recurse, but be sure to not pass $create_if_not_exists = TRUE because that could lead to endless recursion.
+    return upitt_workflow_get_batch_id($batch_external_id, FALSE);
   }
 
   mysqli_close($link);

@@ -1,15 +1,19 @@
 <?php
 
-function upitt_workflow_batch_detail_form($batch_id) {
+function upitt_workflow_batch_detail_form($batch) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
-  $batch_detail = 'SELECT b.batch_id, b.nid, b.batch_external_id `name`, b.date `date`, b.mapto_collections `collection/s`, ws.name `workflow` ' .
+  $where_batch_clause = ((is_numeric($batch)) ? 'WHERE b.batch_id = \'' . $batch . '\' ' :
+    'WHERE b.batch_external_id = \'' . $batch . '\' ');
+
+
+  $batch_detail = 'SELECT b.batch_id, b.nid, b.batch_external_id `name`, b.date `date`, b.mapto_collections `collection/s`, ws.name `workflow`, b.file ' .
                   'FROM batch b ' .
-                  'JOIN workflow_sequence ws ON (ws.id = b.batch_sequence_id) ' .
-                  'WHERE b.batch_id = \'' . $batch_id . '\' ';
+                  'LEFT OUTER JOIN workflow_sequence ws ON (ws.id = b.batch_sequence_id) ' .
+                  $where_batch_clause;
 
   $batch_items = 'SELECT "" as `ingested?`, i.do_id, i.`name`, IFNULL(GROUP_CONCAT(ca.`name`), \'\') `required actions` ' .
                  'FROM batch b ' .
@@ -17,7 +21,7 @@ function upitt_workflow_batch_detail_form($batch_id) {
                  'LEFT OUTER JOIN `action` ca ON (ca.id = cwsa.action_id) ' .
                  'JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
                  'JOIN item i ON (bi.item_id = i.id) ' .
-                 'WHERE b.batch_id = \'' . $batch_id . '\' ' .
+                 $where_batch_clause . 
                  'GROUP BY i.id ORDER BY i.id ASC, cwsa.`order` ASC ' .
                  'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
 
@@ -25,7 +29,7 @@ function upitt_workflow_batch_detail_form($batch_id) {
            'FROM batch b ' .
            'JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
            'JOIN item i ON (bi.item_id = i.id) ' .
-           'WHERE b.batch_id = \'' . $batch_id . '\'';
+           $where_batch_clause;
 
   $result = mysqli_query($link, $query);
 
@@ -45,6 +49,8 @@ function upitt_workflow_batch_detail_form($batch_id) {
 
   $details = '';
   $title = 'unknown batch';
+  $file_rows = $file_header = array();
+
   while ($row = mysqli_fetch_assoc($result)) {
     $title = (isset($row['name']) ? $row['name'] : $title);
     if (isset($row['batch_id']) && isset($row['batch'])) {
@@ -60,11 +66,40 @@ function upitt_workflow_batch_detail_form($batch_id) {
       }
       unset($row['nid']);
     }
+
     if (isset($row['collection/s'])) { 
       // this has to lookup the collection names from the array that is loaded before this loop.
       $row['collection/s'] = upitt_workflow_collection_id_map_names($row['collection/s'], $collections);
     }
-    $details = theme('workflow_item_details', array('details' => $row));
+
+    if (file_exists($row['file'])) {
+      $row_index = 1;
+      if (($handle = fopen($row['file'], "r")) !== FALSE) {
+        try {
+          while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+            if ($row_index < 1000) {
+              if ($row_index > 1) {
+                $file_rows[] = $data;
+              }
+              else {
+                $file_header = $data;
+              }
+            }
+            $row_index++;
+          }
+          if ($row_index > 1000) {
+            drupal_set_message('There are ' . number_format($row_index) . ' rows in the CSV file "' . $row['file'] . '".  Only the first 1000 rows are displayed.', 'warning');
+          }
+        }
+        catch (Exception $e) {
+          throw new Exception('The file "'.$row['file'].'" could not be parsed as a CSV.');
+        }
+        fclose($handle);
+      }
+    }
+
+    $details =  theme('table', array('rows' => $file_rows, 'header' => $file_header, 'attributes' => array('class' => array('report_table max_height_500'))));
+       // theme('workflow_item_details', array('details' => $row));
   }
 
   $result = mysqli_query($link, $batch_items);
@@ -91,12 +126,12 @@ function upitt_workflow_batch_detail_form($batch_id) {
   mysqli_close($link);
   $pager = theme('pager', array('quantity',$count_rows));
   $table_markup = theme('upitt_workflow_report',
-      array('table' => $pager . theme('table', array('rows'=>$batch_rows,'header'=>$batch_item_headings,'attributes' =>array('class'=>array('report_table')))) . $pager,
+      array('table' => $details, //$pager . theme('table', array('rows'=>$batch_rows,'header'=>$batch_item_headings,'attributes' =>array('class'=>array('report_table')))) . $pager,
             'count_rows' => $count_rows_markup,
-            'links' => array(l('Edit', '/workflow/batch/edit/' . $batch_id)),
+            'links' => array(l('Edit', '/workflow/batch/edit/' . $batch)),
             'post_to' => '/workflow',
             'collection_filter_choices' => upitt_workflow_get_collection_choices(),
-            'details' => $details
+            'details' => '', // $details
            )
     );
   $form['table_markup'] = array('#markup' => $table_markup);

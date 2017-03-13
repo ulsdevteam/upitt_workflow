@@ -121,7 +121,18 @@ function upitt_workflow_collection_id_map_names($ids = '', $collections = array(
     $ids_arr = explode(",", $ids);
     foreach ($ids_arr as $id) {
       $id = trim($id);
-      $retvals[] = $collections[$id]['c_id'];
+      if (isset($collections[$id])) {
+        $retvals[] = $collections[$id]['c_id'];
+      }
+      else {
+        $found = FALSE;
+        foreach ($collections as $collection) { 
+          if (!$found && $collection['PID'] == $id) {
+            $retvals[] = $collection['c_id'];
+            $found = TRUE;
+          }
+        }
+      }
     }
     return implode(", ", $retvals);
   }
@@ -610,3 +621,54 @@ function upitt_workflow_fix_if_csv_date_approximate($headers, &$row) {
   }
   // echo "<pre style='color:red'>" . print_r($row, true)."</pre>";
 }
+
+/**
+ * This still provides a test as to whether or not a field gets into the initial XML from the sheet - and the headings title
+ * that would match for that field.
+ */
+function upitt_workflow_get_csv_header_xpath_mappings() {
+  return array('genre'                     => '/mods:mods/mods:genre',
+               'description'               => '/mods:mods/mods:abstract',
+               'type_of_resource'          => '/mods:mods/mods:typeOfResource',
+               'gift_of'                   => '/mods:mods/mods:note[@type="donor"]',
+               'address'                   => '/mods:mods/mods:note[@type="address"]',
+               'subject'                   => '/mods:mods/mods:subject/mods:topic',
+               'contributor'               => '/mods:mods/mods:name/mods:namePart[../mods:role/mods:roleTerm[(text()="contributor") and @type="text"]]',
+               'creator'                   => '/mods:mods/mods:name/mods:namePart[../mods:role/mods:roleTerm[(text()="creator") and @type="text"]]',
+               'depositor'                 => '/mods:mods/mods:name/mods:namePart[../mods:role/mods:roleTerm[(text()="depositor") and @type="text"]]',
+               'identifier'                => '/mods:mods/mods:identifier[@type="pitt"]',
+               'source_id'                 => '/mods:mods/mods:identifier[@type="source"]',
+               'source_identifier'         => '/mods:mods/mods:identifier[@type="source"]',
+               'title'                     => '/mods:mods/mods:titleInfo/mods:title',
+               'publisher'                 => '/mods:mods/mods:originInfo/mods:publisher',
+               'date_digitized'            => '/mods:mods/mods:originInfo/mods:dateCaptured',
+               'format'                    => '/mods:mods/mods:physicalDescription/mods:form',
+               'subject_name'              => '/mods:mods/mods:subject[@authority="lcsh"]/mods:name',
+               'dimension'                 => '/mods:mods/mods:physicalDescription/mods:extent',
+               'source_citation'           => '/mods:mods/mods:relatedItem/note[@type="prefercite"]',
+               'subject_lcsh'              => '/mods:mods/mods:subject[@authority="lcsh"]/mods:topic',
+               'source_collection_id'      => '/mods:mods/mods:relatedItem[@type="host"]/mods:identifier',
+               'subject_local'             => '/mods:mods/mods:subject[@authority="local"]/mods:topic',
+               'sort_date'                 => '/mods:mods/mods:originInfo/mods:dateOther[@type="sort"]',
+               'subject_location'          => '/mods:mods/mods:subject[@authority="lcsh"]/mods:geographic',
+               'date'                      => '/mods:mods/mods:originInfo/mods:dateOther[@type="display"]',
+               'scale'                     => '/mods:mods/mods:subject/mods:cartographics/mods:scale',
+               'source_collection'         => '/mods:mods/mods:relatedItem/mods:titleInfo/mods:title',
+               'copyright_status'          => '/mods:mods/mods:accessCondition/copyrightMD:copyright/@copyright.status',
+               'source_container'          => '/mods:mods/mods:relatedItem[@type="host"]/mods:note[@type="container"]',
+               'source_ownership'          => '/mods:mods/mods:relatedItem[@type="host"]/mods:note[@type="ownership"]',
+               'publication_status'        => '/mods:mods/mods:accessCondition/copyrightMD:copyright/@publication.status',
+               'pub_place'                 => '/mods:mods/mods:originInfo/mods:place/mods:placeTerm[@type="text"]',
+               'source_collection_date'    => '/mods:mods/mods:relatedItem[@type="host"]/mods:originInfo/mods:dateCreated',
+               'normalized_date'           => '/mods:mods/mods:originInfo/mods:dateCreated[@encoding="iso8601" @keyDate="yes"]',
+               'rights_holder'             => '/mods:mods/mods:accessCondition/copyrightMD:copyright/copyrightMD:rights.holder/copyrightMD:name',
+               'normalized_date_qualifier' => '/mods:mods/mods:originInfo/mods:dateCreated[@qualifier="approximate" @encoding="iso8601" @keyDate="yes"]',
+               // These field values are not represented in a MODS file, but will appear in the CSV file
+	       'batch' => '',
+               'collection' => '',
+               // 'date_qualifier' => '',
+               'file_name' => '',
+               'location' => '',
+    );
+}
+

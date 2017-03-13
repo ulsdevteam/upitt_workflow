@@ -30,3 +30,8 @@ h5 {
 	color: #333;
 	white-space: nowrap;
 }
+
+.report_table {
+	font-size: 0.825em;
+	font-family: Andale Mono, monospace;
+}
