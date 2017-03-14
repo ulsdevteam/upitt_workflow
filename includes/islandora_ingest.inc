@@ -20,8 +20,6 @@ function upitt_workflow_islandora_ingest($object_id) {
 
   $markup = '<p>Ingest single item "' . $object_id . '"';
 
-//  $modsXML = upitt_workflow_csv2mods('/ingest/holding/MSS960_B015_F070_I001/');
-//  $markup .= "<pre>" . htmlspecialchars($modsXML) . "</pre>";
   if ($batch) {
     $workflow_type_to_fedoramodel_mapping = upitt_workflow_get_workflow_to_fedora_object_mappings();
 
@@ -256,7 +254,7 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
                        // assuming that only if the parent is set, than the parent_relationship_pred is needed
                        (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
-                       '--type=directory ' .
+                       '--type=directory --overwrite_existing=1 ' .
                        '--assign_pid=' . $csv_file_source['identifier'] . ' ' .
                        (($site) ? '--site=' . $site . ' --site_relationship_pred=isMemberOfSite ': '') .
                        ' --target=' . $csv_file_source['path'];
