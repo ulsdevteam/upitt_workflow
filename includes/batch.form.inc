@@ -58,7 +58,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     $csv_header_mappings = upitt_workflow_get_csv_header_xpath_mappings();
     foreach ($file_header as $header) {
       $machine_header = str_replace(" ", "_", strtolower(trim($header)));
-      if (array_search($machine_header, $csv_header_mappings) === FALSE) {
+      if (!(array_key_exists($machine_header, $csv_header_mappings))) {
         drupal_set_message('CSV column "' . $header . '" not recognized.  Batch will not be able to ingest or process.  Please replace the attached CSV file "' . $batch['file'] . '".', 'error');
       }
     }

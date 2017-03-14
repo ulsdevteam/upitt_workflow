@@ -42,12 +42,13 @@ function upitt_workflow_islandora_ingest($object_id) {
     // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.    
     $parent = upitt_workflow_get_object_fedora_collections($object_id);
     $site = upitt_workflow_get_object_fedora_sites($object_id);
+    $batch_default_depositor = $batch['default_depositor'];
 
-    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSS960_B015_F070_I001/', $fedora_model_name, $parent, $site); 
+    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSS960_B015_F070_I001/', $fedora_model_name, $parent, $site, $batch_default_depositor); 
 
     $item_files = upitt_workflow_get_item_files($object_id);
     $item_path = '/tmp/this/path/does/not/exist';
-    if (isset($item_files[0]['path'])) {
+    if (array_key_exists(0, $item_files) && array_key_exists('path', $item_files[0])) {
       $parts = explode("/", $item_files[0]['path']);
       array_pop($parts);
       $item_path = implode("/", $parts);
@@ -233,7 +234,7 @@ function upitt_workflow_sp_large_image_cmodel_make_derivative($pid, $dsid) {
 /**
  * Helper function to generate MODS from a spreadsheet.
  */
-function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site) {
+function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, $batch_default_depositor) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   
   $retval = '';
@@ -247,8 +248,9 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site) 
   $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 
   foreach ($files as $file) {
-    $csv_file_sources = upitt_workflow_prepare_csv2mods($filepath . '/' . $file);
+    $csv_file_sources = upitt_workflow_prepare_csv2mods($filepath . '/' . $file, $batch_default_depositor);
     foreach ($csv_file_sources as $csv_file_source) {
+      // TODO: make sure this row is not an empty line
 //    $paths_and_identifiers[] = upitt_workflow_prepare_csv2mods($filepath . '/' . $file);
       $drush_command = 'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
@@ -278,7 +280,7 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site) 
  * $prepared_filepath = The path to the folder that contains the MODS and image TIF.
  * $identifier - the identifier value (if provided in the spreadsheet).
  */
-function upitt_workflow_prepare_csv2mods($input_filename) {
+function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '') {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   ini_set('auto_detect_line_endings', true);
@@ -292,6 +294,7 @@ function upitt_workflow_prepare_csv2mods($input_filename) {
   if ((array_search('identifier', $headers) === FALSE) and (array_search('Identifier', $headers) === FALSE)) {
     return FALSE;
   }
+
   $working_directory = dirname($input_filename);
 
   echo "<h3>Working directory " . $working_directory . "</h3>";
@@ -312,7 +315,7 @@ function upitt_workflow_prepare_csv2mods($input_filename) {
     $rowcopy = $row;
     foreach($headers as $i => $header) {
       $header = str_replace(" ", "_", strtolower(trim($header)));
-      if (isset($row[$i])) {
+      if (array_key_exists($i, $row)) {
         // ALL LOWERCASE, replace spaces with "_"
         if ($header == 'identifier') {
           $row_mods_id = $row[$i];
@@ -321,11 +324,11 @@ function upitt_workflow_prepare_csv2mods($input_filename) {
             mkdir($mods_directory_path);
           }
         }
-        elseif (($header == 'file_name' || $header == 'filename') && isset($row[$i])) {
+        elseif (($header == 'file_name' || $header == 'filename') && array_key_exists($i, $row)) {
           $row_file_name = $working_directory . '/' . $row[$i];
           $outputFilename = str_replace(array('.tiff', '.tif'), '.xml', $row[$i]);
         }
-        elseif ($header == 'normalized_date' && isset($row[$i])) {
+        elseif ($header == 'normalized_date' && array_key_exists($i, $row)) {
           list($sort_date, $date) = upitt_workflow_make_custom_csv_dates($row[$i]);
           // Add the sort_date field and solr 'date' field
           if ((array_key_exists('sort_date', $headers) === FALSE)) {
@@ -346,9 +349,9 @@ function upitt_workflow_prepare_csv2mods($input_filename) {
     // MOVE the file into the row's working directory
     if ($row_file_name) {
       if (file_exists($row_file_name)) {
-        $command = "cp $row_file_name to $working_directory" . '/' . $row_mods_id;
+        $command = "cp $row_file_name to $working_directory" . '/' . $row_mods_id . '/.';
         exec($command);
-        echo "COPY $row_file_name to $working_directory" . '/' . $row_mods_id ."<br>";
+        echo "COPY $row_file_name to $working_directory" . '/' . $row_mods_id ."/.<br>";
         $files_copied++;
       }
     }
@@ -360,22 +363,35 @@ function upitt_workflow_prepare_csv2mods($input_filename) {
     // Start creating the MODS XML by adding the root node to the document.
     $root = $doc->createElement('sheet'); // mods:mods'); // ,'test value');
     $root->appendChild($doc->createAttribute('xmlns:xsi'))->appendChild($doc->createTextNode("http://www.w3.org/2001/XMLSchema-instance"));
-//    $root->appendChild($doc->createAttribute('xsi:schemaLocation'))->appendChild($doc->createTextNode('http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd http://www.cdlib.org/inside/diglib/copyrightMD'));
 
     $root = $doc->appendChild($root);
-
+    $child = NULL;
+    $depositor_in_CSV = FALSE;
     foreach($headers as $i => $header) {
       if (array_key_exists($header, $csv_header_xpath_mappings)) {
-        $mapping = $csv_header_xpath_mappings[$header];
-        if (is_array($rowcopy) && isset($rowcopy[$i]) && $rowcopy[$i]) {
+        if (is_array($rowcopy) && array_key_exists($i, $rowcopy) && $rowcopy[$i]) {
           $child = $doc->createElement($header);
           $child = $root->appendChild($child);
           $value = $doc->createTextNode($rowcopy[$i]);
           $value = $child->appendChild($value);
+          if (!$depositor_in_CSV && $header == 'depositor') {
+            $depositor_in_CSV = TRUE;
+          }
         }
       }
     }
-    $root->appendChild($child);
+    if ($child) {
+      $root->appendChild($child);
+    }
+
+    // After the CSV row has been processed, as long as the depositor value was not provided in that row, 
+    // and the batch provided a "default_depositor" value, then create this node now.
+    if (!$depositor_in_CSV && $default_depositor && !array_key_exists('depositor', $headers)) {
+      $child = $doc->createElement('depositor');
+      $child = $root->appendChild($child);
+      $value = $doc->createTextNode($default_depositor);
+      $value = $child->appendChild($value);
+    }
     $strxml = $doc->saveXML();
 
     echo "<blockquote><pre style='color:#c55'>".htmlspecialchars($strxml) ."</pre></blockquote>";

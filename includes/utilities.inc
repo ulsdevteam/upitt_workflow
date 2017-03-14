@@ -396,7 +396,7 @@ function upitt_workflow_get_object_fedora_collections($object_id) {
   }
   else {
     // Get item's batch collection mappings
-    $i_batch_query = 'SELECT c.PID `pid` ' .
+/*    $i_batch_query = 'SELECT c.PID `pid` ' .
                      'FROM collection c ' .
                      'WHERE c.id IN ' .
                      ' (SELECT b.mapto_collections ' .
@@ -404,6 +404,13 @@ function upitt_workflow_get_object_fedora_collections($object_id) {
                      ' JOIN batch_item bi ON (bi.item_id = i.id) ' .
                      ' JOIN batch b ON (b.batch_id = bi.batch_id) ' .
                      ' WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '")';
+*/
+    $i_batch_query = 'SELECT b.mapto_collections ' .
+                     'FROM item i ' .
+                     'JOIN batch_item bi ON (bi.item_id = i.id) ' .
+                     'JOIN batch b ON (b.batch_id = bi.batch_id) ' .
+                     'WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '"';
+
     $result = mysqli_query($link, $i_batch_query);
     if (!$result) {
       upitt_workflow_sql_error_die($link, $i_batch_query);
@@ -411,7 +418,8 @@ function upitt_workflow_get_object_fedora_collections($object_id) {
 
     $rows = array();
     while ($row = mysqli_fetch_assoc($result)) {
-      $rows[$row['pid']] = $row['pid'];
+//      $rows[$row['pid']] = $row['mapto_collections'];
+      $rows[$row['mapto_collections']] = $row['mapto_collections'];
     }
     $retval = implode(',', $rows);
   }
@@ -446,7 +454,7 @@ function upitt_workflow_get_object_fedora_sites($object_id) {
   }
   else {
     // Get item's batch site mappings
-    $i_batch_query = 'SELECT wfs.pid `pid` ' .
+/*    $i_batch_query = 'SELECT wfs.pid `pid` ' .
                      'FROM wflocal_fedora_site wfs ' .
                      'WHERE wfs.id IN ' .
                      ' (SELECT b.mapto_site_id_values ' .
@@ -454,6 +462,12 @@ function upitt_workflow_get_object_fedora_sites($object_id) {
                      ' JOIN batch_item bi ON (bi.item_id = i.id) ' .
                      ' JOIN batch b ON (b.batch_id = bi.batch_id) ' .
                      ' WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '")';
+*/
+    $i_batch_query = 'SELECT b.mapto_site_id_values ' .
+                     'FROM item i ' .
+                     'JOIN batch_item bi ON (bi.item_id = i.id) ' .
+                     'JOIN batch b ON (b.batch_id = bi.batch_id) ' .
+                     'WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '"';
 
     $result = mysqli_query($link, $i_batch_query);
     if (!$result) {
@@ -462,7 +476,7 @@ function upitt_workflow_get_object_fedora_sites($object_id) {
 
     $rows = array();
     while ($row = mysqli_fetch_assoc($result)) {
-      $rows[$row['pid']] = $row['pid'];
+      $rows[$row['mapto_site_id_values']] = $row['mapto_site_id_values'];
     }
     $retval = implode(',', $rows);
   }
@@ -668,6 +682,7 @@ function upitt_workflow_get_csv_header_xpath_mappings() {
                'collection' => '',
                // 'date_qualifier' => '',
                'file_name' => '',
+               'filename' => '',
                'location' => '',
     );
 }

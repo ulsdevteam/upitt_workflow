@@ -169,7 +169,7 @@
                         </mods:abstract>
                 </xsl:if>
 
-		<xsl:if test="count(rights_holder) &gt; 0">
+		<xsl:if test="count(rights_holder|copyright_status|publication_status) &gt; 0">
                     	<mods:accessCondition>
                         	<xsl:attribute name="copyright.status">
                                 	<xsl:value-of select="copyright_status" />
