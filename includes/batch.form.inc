@@ -395,6 +395,7 @@ function upitt_workflow_save_batch($values, $collection_options) {
   $collections_values = $values['mapto_collections'];
 
   $batch_id = upitt_workflow_get_batch_id($values['batch_external_id'], TRUE);
+  $existing_batch_record = ($batch_id) ? upitt_workflow_batch_load($batch_id) : array();
 
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
@@ -413,31 +414,48 @@ function upitt_workflow_save_batch($values, $collection_options) {
 
   // assume all fields need to be escaped and wrapped with '' characters -- EXCEPT for the integer fields.
   foreach ($values as $fieldname => $value) {
-    $sql_fields[] = $fieldname;
     // If the file is set, the actual file behind this must be moved to the /files/workflow folder and the field value must be set to this path.
-    if ($fieldname == 'file' && isset($_FILES['files'])) {
+    if ($fieldname == 'file' && isset($_FILES['files']) && is_array($_FILES['files'])) {
       $dest = '/ingest/files/' . date('YmdHis') . '_' . $batch_id; // $batch_external_id;
       if ($_FILES['files']['error']['file'] == UPLOAD_ERR_OK) {
         $tmp_name = $_FILES["files"]["tmp_name"]['file'];
         // basename() may prevent filesystem traversal attacks;
         // further validation/sanitation of the filename may be appropriate
-        move_uploaded_file($tmp_name, $dest);
-        $value = $dest;
+        if (move_uploaded_file($tmp_name, $dest)) {
+          $value = $dest;
+        }
+        else {
+          $value = NULL;
+        }
       }
+      if (($fieldname == 'file' && $value) || $fieldname <> 'file' || (isset($existing_batch_record['file']))) {
+        $sql_fields[] = $fieldname;
+        if (!$value && isset($existing_batch_record['file']) && $fieldname == 'file') {
+          $value = $existing_batch_record['file'];
+        }
+      }
+    } else {
+      $sql_fields[] = $fieldname;
     }
+
     if ($fieldname == 'mapto_collections') {
       upitt_workflow_sync_solr_collections($value, $collection_options);
     }
 
-    if (array_search($fieldname, $batch_integer_fields) === FALSE) {
-      if ($fieldname == 'batch_request_due_date' || $fieldname == 'date') {
-        $value = $value['month'] . '/' . $value['day'] . '/' . $value['year'];
-      } elseif (is_array($value)) {
-        $value = implode(",", $value);
+    if (!is_null($value)) {
+      if (array_search($fieldname, $batch_integer_fields) === FALSE) {
+        if ($fieldname == 'batch_request_due_date' || $fieldname == 'date') {
+          $value = $value['month'] . '/' . $value['day'] . '/' . $value['year'];
+        } elseif (is_array($value)) {
+          $value = implode(",", $value);
+        }
+        // Don't add any update to file value if it is not set from previous batch editing.
+        if (($fieldname == 'file' && $value) || $fieldname <> 'file') {
+          $sql_values[] = "'" . mysqli_real_escape_string($link, $value) . "'";
+        }
+      } else {
+        $sql_values[] = $value;
       }
-      $sql_values[] = "'" . mysqli_real_escape_string($link, $value) . "'";
-    } else {
-      $sql_values[] = $value;
     }
   }
 

@@ -171,7 +171,7 @@ function upitt_workflow_sync_solr_collections($pids, $collection_options) {
     if (!$result) {
       upitt_workflow_sql_error_die($link, $sql);
     }
-    drupal_set_message('added collection workflow record reference for "' . $name . '"');
+    drupal_set_message('Replaced collection workflow record reference for "' . $name . '"');
   }
   mysqli_close($link);
 }
