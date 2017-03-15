@@ -171,21 +171,21 @@
 
 		<xsl:if test="count(rights_holder|copyright_status|publication_status) &gt; 0">
                     	<mods:accessCondition>
-                        	<xsl:attribute name="copyright.status">
-                                	<xsl:value-of select="copyright_status" />
-                        	</xsl:attribute>
-				<xsl:attribute name="publication.status">
-					<xsl:value-of select="publication_status" />
-				</xsl:attribute>
-        	                <xsl:for-each select="rights_holder">
-	                                <copyrightMD:copyright>
-                	                        <copyrightMD:rights.holder>
+                                <copyrightMD:copyright>
+                        		<xsl:attribute name="copyright.status">
+                	                	<xsl:value-of select="copyright_status" />
+        	                	</xsl:attribute>
+					<xsl:attribute name="publication.status">
+						<xsl:value-of select="publication_status" />
+					</xsl:attribute>
+        		                <xsl:for-each select="rights_holder">
+        	       	                        <copyrightMD:rights.holder>
                         	                        <copyrightMD:name>
                                 	                        <xsl:value-of select="." />
                                         	        </copyrightMD:name>
 	                                        </copyrightMD:rights.holder>
-        	                        </copyrightMD:copyright>
-                	        </xsl:for-each>
+	                	        </xsl:for-each>
+                                </copyrightMD:copyright>
                     	</mods:accessCondition>
                 </xsl:if>
 
