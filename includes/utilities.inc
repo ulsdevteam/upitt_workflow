@@ -687,3 +687,7 @@ function upitt_workflow_get_csv_header_xpath_mappings() {
     );
 }
 
+function upitt_workflow_batch_of_object($pid) {
+  return 'test';
+}
+

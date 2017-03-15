@@ -38,11 +38,15 @@ function upitt_workflow_islandora_ingest($object_id) {
     $use_pid = 'pitt:' . $object_id;
 
     // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.    
-    $parent = upitt_workflow_get_object_fedora_collections($object_id);
-    $site = upitt_workflow_get_object_fedora_sites($object_id);
+//    $parent = upitt_workflow_get_object_fedora_collections($object_id);
+//    $site = upitt_workflow_get_object_fedora_sites($object_id);
+    $parent = $batch['mapto_collections'];  
+    $site = $batch['mapto_site_id_values'];
+
     $batch_default_depositor = $batch['default_depositor'];
 
-    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSS960_B015_F070_I001/', $fedora_model_name, $parent, $site, $batch_default_depositor); 
+//    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSS960_B015_F070_I001/', $fedora_model_name, $parent, $site, $batch_default_depositor); 
+    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSP282/', $fedora_model_name, $parent, $site, $batch_default_depositor);
 
     $item_files = upitt_workflow_get_item_files($object_id);
     $item_path = '/tmp/this/path/does/not/exist';

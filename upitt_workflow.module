@@ -420,3 +420,17 @@ function upitt_workflow_filters_clause($in) {
   }
 }
 
+/**
+ * Implements hook_islandora_batch_object_processed().
+ *
+ * Log processed objects and sets into database.
+ */
+function upitt_workflow_islandora_batch_object_processed($object, $state) {
+  // Look at the object - and delete the related temporary files that were needed for this object.
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  $batch_of_object = upitt_workflow_batch_of_object($object->id);
+  if ($batch_of_object) {
+    error_log('in hook upitt_workflow_islandora_batch_object_processed - ready to delete files for object ' . $object->id . '\'s batch : ' . $batch_of_object);
+  }
+}
