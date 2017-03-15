@@ -90,6 +90,7 @@
                                                         <xsl:value-of select="." />
                                                 </mods:dateCreated>
                                         </mods:originInfo>
+                                </xsl:for-each>
                                 <xsl:for-each select="source_citation">
                                         <mods:note type="prefercite">
                                                 <xsl:value-of select="." />
