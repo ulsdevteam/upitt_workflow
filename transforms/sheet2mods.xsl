@@ -67,7 +67,7 @@
                         </xsl:for-each>
                 </xsl:if>
 
-                <xsl:if test="count(source_collection_id|source_container|source_ownership|source_collection_date) &gt; 0">
+                <xsl:if test="count(source_collection_id|source_container|source_ownership|source_collection_date|source_citation|source_collection) &gt; 0">
                         <mods:relatedItem type="host">
                                 <xsl:for-each select="source_collection_id">
                                         <mods:identifier>
@@ -90,12 +90,6 @@
                                                         <xsl:value-of select="." />
                                                 </mods:dateCreated>
                                         </mods:originInfo>
-                                </xsl:for-each>
-                        </mods:relatedItem>
-                </xsl:if>
-
-                <xsl:if test="count(source_citation|source_collection) &gt; 0">
-                        <mods:relatedItem>
                                 <xsl:for-each select="source_citation">
                                         <mods:note type="prefercite">
                                                 <xsl:value-of select="." />

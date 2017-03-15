@@ -241,15 +241,14 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
   $module_lib_path =  str_replace('/includes', '/lib', dirname(__FILE__));
 
   $files = upitt_workflow_file_scan_directory($filepath, '.csv');
-//  $paths_and_identifiers = array();
 
   $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 
+  $alerted_on_err = FALSE;
   foreach ($files as $file) {
     $csv_file_sources = upitt_workflow_prepare_csv2mods($filepath . '/' . $file, $batch_default_depositor);
     foreach ($csv_file_sources as $csv_file_source) {
       // TODO: make sure this row is not an empty line
-//    $paths_and_identifiers[] = upitt_workflow_prepare_csv2mods($filepath . '/' . $file);
       $drush_command = 'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
                        // assuming that only if the parent is set, than the parent_relationship_pred is needed
@@ -264,10 +263,11 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
       $output = $return_var = array();
       exec($drush_command, $output, $return_var);
 
-      $retval .= '<pre>output<br>' . print_r($output, true) . "<hr>return<br>". print_r($return_var, true) ."</pre>";
+      if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
+        drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+      }
     }
   }
-
   
   return $retval;
 }
