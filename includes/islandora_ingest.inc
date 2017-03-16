@@ -38,8 +38,6 @@ function upitt_workflow_islandora_ingest($object_id) {
     $use_pid = 'pitt:' . $object_id;
 
     // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.    
-//    $parent = upitt_workflow_get_object_fedora_collections($object_id);
-//    $site = upitt_workflow_get_object_fedora_sites($object_id);
     $parent = $batch['mapto_collections'];  
     $site = $batch['mapto_site_id_values'];
 
@@ -48,31 +46,12 @@ function upitt_workflow_islandora_ingest($object_id) {
 //    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSS960_B015_F070_I001/', $fedora_model_name, $parent, $site, $batch_default_depositor); 
     $markup .= upitt_workflow_csv2mods('/ingest/holding/MSP282/', $fedora_model_name, $parent, $site, $batch_default_depositor);
 
-    $item_files = upitt_workflow_get_item_files($object_id);
-    $item_path = '/tmp/this/path/does/not/exist';
-    if (array_key_exists(0, $item_files) && array_key_exists('path', $item_files[0])) {
-      $parts = explode("/", $item_files[0]['path']);
-      array_pop($parts);
-      $item_path = implode("/", $parts);
-    } 
+    $markup .= '<h3>All rows islandora_batch_scan_preprocess called</h3><h3>Subsequent Drush call to ingest</h3>';
 
     $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
-
-    // NOTE -- the drush command does not yet support multiple parent values.  It will need to be enhanced so that it can 
-    //         take a CSV value for our needs.  This will also need to be extened to set our IsMemberOfSite value.
-    $drush_command = 'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' . 
-                     '--content_models=islandora:' . $fedora_model_name . ' ' .
-                     // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                     (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') . 
-                     '--type=directory ' .
-                     '--assign_pid=' . $use_pid . ' ' .
-                     (($site) ? '--site=' . $site . ' --site_relationship_pred=isMemberOfSite ': '') . 
-                     ' --target=' . $item_path;
-    $markup .= '<h3>Drush call</h3><h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
-
-    $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest<br>' . 
+    $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>sudo su -s /bin/sh apache -c "/usr/bin/drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest"<br>' . 
                '<i># or if only one set to be processed, supply the ingest_set option</i><br>' .
-               'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=82</code>';
+               'sudo su -s /bin/sh apache -c "/usr/bin/drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=82"</code>';
 
     $item_files = upitt_workflow_get_item_files($object_id);
     if ($item_files) {
