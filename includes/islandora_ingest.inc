@@ -44,11 +44,8 @@ function upitt_workflow_islandora_ingest($batch_id) {
     } */
 
     $batch_path = upitt_workflow_batch_path($batch['batch_external_id']);
-//    $use_pid = 'pitt:' . $object_id;
 
     // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.    
-//    $parent = upitt_workflow_get_object_fedora_collections($object_id);
-//    $site = upitt_workflow_get_object_fedora_sites($object_id);
     $parent = $batch['mapto_collections'];  
     $site = $batch['mapto_site_id_values'];
 
@@ -258,6 +255,7 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
   foreach ($files as $file) {
     $csv_file_sources = upitt_workflow_prepare_csv2mods($filepath . '/' . $file, $batch_default_depositor);
     foreach ($csv_file_sources as $csv_file_source) {
+
       // TODO: make sure this row is not an empty line
       $drush_command = 'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
@@ -272,9 +270,10 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
 
       $output = $return_var = array();
       exec($drush_command, $output, $return_var);
-
+      
       if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
         drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+        $alerted_on_err = TRUE;
       }
     }
   }
@@ -314,7 +313,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
 
   $identifiers_and_filepaths = array();
   // Loop through each row creating a <row> node with the correct data
-  while (($row = fgetcsv($inputFile, 65000, ',')) !== FALSE) {
+  while (($row = fgetcsv($inputFile, 1000, ',')) !== FALSE) {
     // First, scan the entire row to get the identifier and the file_name value
     $toggle = !$toggle;
     echo '<div' . ($toggle ? $st : " style='border:1px solid #222'") . '>';
@@ -357,7 +356,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
     // MOVE the file into the row's working directory
     if ($row_file_name) {
       if (file_exists($row_file_name)) {
-        $command = "cp $row_file_name to $working_directory" . '/' . $row_mods_id . '/.';
+        $command = "cp $row_file_name $working_directory" . '/' . $row_mods_id . '/.';
         exec($command);
         echo "COPY $row_file_name to $working_directory" . '/' . $row_mods_id ."/.<br>";
         $files_copied++;

@@ -14,6 +14,13 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
   asort($collections);
 
   $batch_id = ((is_numeric($batch)) ? $batch : upitt_workflow_get_batch_id($batch, FALSE));
+  $fedora_object_mappings = upitt_workflow_get_workflow_to_fedora_object_mappings();
+  $default_types_of_resource = array();
+  // These values are actually the inverse of the keys/values from the mappings variable.  Flip-flop 
+  // them for the options parameter needed for the default_type_of_resource prompt.
+  foreach ($fedora_object_mappings as $k => $v) {
+    $default_types_of_resource[$k] = $k;
+  }
 
   $read_only_att = array();
   $nid = '';
@@ -262,8 +269,9 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     ),
     // Default type of resource: textfield -- THIS SHOULD BE A SELECT BOX
     'default_type_of_resource' => array(
-      '#type' => 'textfield',
+      '#type' => 'select',
       '#title' => t('Default Type of Resource'),
+      '#options' => $default_types_of_resource,
       '#default_value' => ($batch && isset($batch['default_type_of_resource']))? $batch['default_type_of_resource'] : '',
     ),
 /*
