@@ -1,7 +1,7 @@
 <?php
 
 // Full file path to the current installation's settings.php file
-//// define('SETTINGS_PATH', '/var/www/drupal/sites/default/settings.php');
+///// define('SETTINGS_PATH', '/var/www/drupal/sites/default/settings.php');
 define('SETTINGS_PATH', '/var/www/html/drupal_gamera_sandbox/sites/gamera/settings.php');
 define('WF_OBJECTS_PER_PAGE', 100);
 

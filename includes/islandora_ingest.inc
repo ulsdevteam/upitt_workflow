@@ -44,7 +44,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
     } */
 
     $batch_path = upitt_workflow_batch_path($batch['batch_external_id']);
-    $use_pid = 'pitt:' . $object_id;
+//    $use_pid = 'pitt:' . $object_id;
 
     // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.    
 //    $parent = upitt_workflow_get_object_fedora_collections($object_id);
@@ -250,13 +250,14 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
   // Get the path for the lib folder - a bit of a hack, but it's safe...
   $module_lib_path =  str_replace('/includes', '/lib', dirname(__FILE__));
 
-  $files = upitt_workflow_file_scan_directory($filepath, '.csv');
+  $files = upitt_workflow_file_scan_directory($filepath, 'metadata.csv');
 
   $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 
   $alerted_on_err = FALSE;
   foreach ($files as $file) {
     $csv_file_sources = upitt_workflow_prepare_csv2mods($filepath . '/' . $file, $batch_default_depositor);
+    die("<pre>".$fedora_model_name);
     foreach ($csv_file_sources as $csv_file_source) {
       // TODO: make sure this row is not an empty line
       $drush_command = 'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .

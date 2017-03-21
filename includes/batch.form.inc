@@ -260,14 +260,12 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#title' => t('Default Depositor'),
       '#default_value' => ($batch && isset($batch['default_depositor']))? $batch['default_depositor'] : '',
     ),
-/*
     // Default type of resource: textfield -- THIS SHOULD BE A SELECT BOX
     'default_type_of_resource' => array(
       '#type' => 'textfield',
       '#title' => t('Default Type of Resource'),
       '#default_value' => ($batch && isset($batch['default_type_of_resource']))? $batch['default_type_of_resource'] : '',
     ),
-*/
 /*
     // Default genre: textfield
     'default_genre' => array(
