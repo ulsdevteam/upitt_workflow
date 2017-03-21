@@ -257,7 +257,6 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
   $alerted_on_err = FALSE;
   foreach ($files as $file) {
     $csv_file_sources = upitt_workflow_prepare_csv2mods($filepath . '/' . $file, $batch_default_depositor);
-    die("<pre>".$fedora_model_name);
     foreach ($csv_file_sources as $csv_file_source) {
       // TODO: make sure this row is not an empty line
       $drush_command = 'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
