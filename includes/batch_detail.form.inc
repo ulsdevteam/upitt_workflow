@@ -72,32 +72,9 @@ function upitt_workflow_batch_detail_form($batch) {
       $row['collection/s'] = upitt_workflow_collection_id_map_names($row['collection/s'], $collections);
     }
 
-    if (file_exists($row['file'])) {
-      $row_index = 1;
-      if (($handle = fopen($row['file'], "r")) !== FALSE) {
-        try {
-          while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-            if ($row_index < 1000) {
-              if ($row_index > 1) {
-                $file_rows[] = $data;
-              }
-              else {
-                $file_header = $data;
-              }
-            }
-            $row_index++;
-          }
-          if ($row_index > 1000) {
-            drupal_set_message('There are ' . number_format($row_index) . ' rows in the CSV file "' . $row['file'] . '".  Only the first 1000 rows are displayed.', 'warning');
-          }
-        }
-        catch (Exception $e) {
-          throw new Exception('The file "'.$row['file'].'" could not be parsed as a CSV.');
-        }
-        fclose($handle);
-      }
-    }
-
+    $arr = upitt_workflow_csv_file_as_array($row['file']);
+    $file_header = (isset($arr['header']) ? $arr['header'] : array());
+    $file_rows = (isset($arr['rows']) ? $arr['rows'] : array());
     $details =  theme('table', array('rows' => $file_rows, 'header' => $file_header, 'attributes' => array('class' => array('report_table max_height_500'))));
        // theme('workflow_item_details', array('details' => $row));
   }
@@ -125,10 +102,13 @@ function upitt_workflow_batch_detail_form($batch) {
   }
   mysqli_close($link);
   $pager = theme('pager', array('quantity',$count_rows));
+  $links = array(l('Edit', '/workflow/batch/edit/' . $batch),
+                 l('Islandora Ingest', '/workflow/batch/' . $batch . '/islandora_ingest'),
+                 l('Export', '/workflow/batch/export/' . $batch));
   $table_markup = theme('upitt_workflow_report',
       array('table' => $details, //$pager . theme('table', array('rows'=>$batch_rows,'header'=>$batch_item_headings,'attributes' =>array('class'=>array('report_table')))) . $pager,
             'count_rows' => $count_rows_markup,
-            'links' => array(l('Edit', '/workflow/batch/edit/' . $batch)),
+            'links' => $links,
             'post_to' => '/workflow',
             'collection_filter_choices' => upitt_workflow_get_collection_choices(),
             'details' => '', // $details

@@ -1,5 +1,11 @@
 <?php
 
+function upitt_workflow_islandora_object_ingest($object_id) {
+  drupal_set_message('ingest by object not currently supported');
+  // This code would need to use the upitt_workflow_batch_of_item function to determine
+  // the batch of the given object id
+}
+
 /**
  * This function will check that all requirements for this ingest are provided -- and then it will prepare the workflow objects 
  * and generate the appropriate islandora_job batch call to ingest this to islandora using the Gearman process to do the work.
@@ -14,13 +20,14 @@
  *   3. To generate a derivative:    "upitt_workflow_{FEDORA_MODEL_NAME}_make_derivative"
  *   4. To add relationships?:       "upitt_workflow_{FEDORA_MODEL_NAME}_add_relationship"
  */
-function upitt_workflow_islandora_ingest($object_id) {
+function upitt_workflow_islandora_ingest($batch_id) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
-  $batch = upitt_workflow_batch_of_item($object_id);
+  $batch = upitt_workflow_batch_load($batch_id);
 
-  $markup = '<p>Ingest single item "' . $object_id . '"';
+  $markup = '<p>Attempt to ingest batch #' . $batch_id;
 
   if ($batch) {
+    $markup .= ', "' . $batch['batch_external_id'] . '"';
     $workflow_type_to_fedoramodel_mapping = upitt_workflow_get_workflow_to_fedora_object_mappings();
 
     // translate the batch's object type to a fedora object type for the requirements:
@@ -30,29 +37,46 @@ function upitt_workflow_islandora_ingest($object_id) {
 
     $markup .= '<h3 style="color:green">Batch `default_type_of_resource` = "' . $batch['default_type_of_resource'] . '", yields fedora model: "' . $fedora_model_name . '"</h3><br>';
 
+    /* // bgg - skip this -
     $requirements = upitt_workflow_fedora_object_requirements($fedora_model_name);
     if ($requirements) {
       $markup  .= '<h3>Requirements for "' . $fedora_model_name . '"</h3><pre>' . print_r($requirements, true) . '</pre>';
-    }
+    } */
 
+    $batch_path = upitt_workflow_batch_path($batch['batch_external_id']);
     $use_pid = 'pitt:' . $object_id;
 
     // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.    
+//    $parent = upitt_workflow_get_object_fedora_collections($object_id);
+//    $site = upitt_workflow_get_object_fedora_sites($object_id);
     $parent = $batch['mapto_collections'];  
     $site = $batch['mapto_site_id_values'];
 
     $batch_default_depositor = $batch['default_depositor'];
 
 //    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSS960_B015_F070_I001/', $fedora_model_name, $parent, $site, $batch_default_depositor); 
-    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSP282/', $fedora_model_name, $parent, $site, $batch_default_depositor);
+    $markup .= upitt_workflow_csv2mods($batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
 
-    $markup .= '<h3>All rows islandora_batch_scan_preprocess called</h3><h3>Subsequent Drush call to ingest</h3>';
+    // bgg - skip this - $item_files = upitt_workflow_get_item_files($object_id);
 
+    // NOTE -- the drush command does not yet support multiple parent values.  It will need to be enhanced so that it can 
+    //         take a CSV value for our needs.  This will also need to be extened to set our IsMemberOfSite value.
+    /* // bgg - skip this - $drush_command = 'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
+                     '--content_models=islandora:' . $fedora_model_name . ' ' .
+                     // assuming that only if the parent is set, than the parent_relationship_pred is needed
+                     (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') . 
+                     '--type=directory ' .
+                     '--assign_pid=' . $use_pid . ' ' .
+                     (($site) ? '--site=' . $site . ' --site_relationship_pred=isMemberOfSite ': '') . 
+                     ' --target=' . $item_path;
+    $markup .= '<h3>Drush call</h3><h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
+    */
     $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
-    $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>sudo su -s /bin/sh apache -c "/usr/bin/drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest"<br>' . 
+    $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest<br>' . 
                '<i># or if only one set to be processed, supply the ingest_set option</i><br>' .
-               'sudo su -s /bin/sh apache -c "/usr/bin/drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=82"</code>';
+               'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=82</code>';
 
+    /* // bgg - skip this -
     $item_files = upitt_workflow_get_item_files($object_id);
     if ($item_files) {
       $markup  .= '<h3>Item Files for "' . $object_id . '"</h3>';
@@ -113,11 +137,14 @@ function upitt_workflow_islandora_ingest($object_id) {
         }
       }
     }
+    */
+    /* // bgg - skip this -
     if (upitt_workflow_validate_ingest_for_object($item_files, $requirements)) {
       $markup .= '<h3 style="color: green">Requirements all satisfied</h3>';      
     } else {
       $markup .= '<h3 style="color: red">Requirements not satisfied</h3>';
     }
+    */
     $markup .= '<h3>Batch values</h3>';
     $markup .= theme('workflow_item_details', array('details' => $batch));
   } else {
@@ -287,7 +314,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
 
   $identifiers_and_filepaths = array();
   // Loop through each row creating a <row> node with the correct data
-  while (($row = fgetcsv($inputFile)) !== FALSE) {
+  while (($row = fgetcsv($inputFile, 65000, ',')) !== FALSE) {
     // First, scan the entire row to get the identifier and the file_name value
     $toggle = !$toggle;
     echo '<div' . ($toggle ? $st : " style='border:1px solid #222'") . '>';

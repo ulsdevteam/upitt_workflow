@@ -1,9 +1,12 @@
 <?php
 
 // Full file path to the current installation's settings.php file
-///define('SETTINGS_PATH', '/var/www/drupal/sites/default/settings.php');
+//// define('SETTINGS_PATH', '/var/www/drupal/sites/default/settings.php');
 define('SETTINGS_PATH', '/var/www/html/drupal_gamera_sandbox/sites/gamera/settings.php');
 define('WF_OBJECTS_PER_PAGE', 100);
+
+// Maximum number of objects returned for an datastreams CRUD export routine.
+define('UPITT_WORKFLOW_SOLR_LIMIT', 10000);
 
 // Permissions.
 define('ISLANDORA_WORKFLOW_MANAGE', 'manage upitt workflow');
@@ -15,6 +18,14 @@ define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup t
  */
 function upitt_workflow_menu() {
   return array(
+    'admin/islandora/workflow' => array(
+      'title' => 'University of Pittsburgh Workflow',
+      'description' => 'Change the settings for workflow folders, etc.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_admin_form'),
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+      'file' => 'includes/admin.form.inc',
+    ),
     'workflow' => array(
       'title' => t('Workflow'),
       'page callback' => array('upitt_workflow_objects'),
@@ -40,7 +51,7 @@ function upitt_workflow_menu() {
     ),
     'workflow/object/%/islandora_ingest' => array(
       'title' => t('Islandora Ingest'),
-      'page callback' => 'upitt_workflow_islandora_ingest',
+      'page callback' => 'upitt_workflow_islandora_object_ingest',
       'page arguments' => array(2),
       'type' => MENU_CALLBACK,
       'file' => 'includes/islandora_ingest.inc',
@@ -95,6 +106,22 @@ function upitt_workflow_menu() {
       'file' => 'includes/batches.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
+    'workflow/batch/%/islandora_ingest' => array(
+      'title' => t('Islandora Ingest'),
+      'page callback' => 'upitt_workflow_islandora_ingest',
+      'page arguments' => array(2),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/islandora_ingest.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
+    'workflow/batch/export/%' => array(
+      'title' => t('Export Batch'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_export_batch_form', 3),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/export.batch.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
     'workflow/batch/edit/%' => array(
       'title' => t('Edit Batch'),
       'page callback' => 'drupal_get_form',
@@ -128,32 +155,32 @@ function upitt_workflow_menu() {
     ),
 
     // ADMIN functions 
-    'workflow/admin' => array(
+    'workflow/workflowadmin' => array(
       'title' => t('Workflow Admin'),
-      'page callback' => 'upitt_workflow_admin',
+      'page callback' => 'upitt_workflow_workflowadmin',
       'page arguments' => array(3),
       'type' => MENU_CALLBACK,
-      'file' => 'includes/admin.form.inc',
+      'file' => 'includes/workflowadmin.form.inc',
       'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES),
-      'access callback' => 'upitt_workflow_admin_manage_access_callback',
+      'access callback' => 'upitt_workflow_workflowadmin_manage_access_callback',
     ),
-    'workflow/admin/manage/%' => array(
+    'workflow/workflowadmin/manage/%' => array(
       'title' => ('Manage Lookup Tables'),
       'page callback' => 'upitt_workflow_admin_manage',
       'page arguments' => array(3),
       'type' => MENU_CALLBACK,
       'file' => 'includes/admin_manage.form.inc',
       'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES, 3),
-      'access callback' => 'upitt_workflow_admin_manage_access_callback',
+      'access callback' => 'upitt_workflow_workflowadmin_manage_access_callback',
     ),
-    'workflow/admin/manage/%/edit/%' => array(
+    'workflow/workflowadmin/manage/%/edit/%' => array(
       'title' => ('Edit Lookup Tables'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('upitt_workflow_admin_manage_edit', 3, 5),
       'type' => MENU_CALLBACK,
       'file' => 'includes/admin_manage.form.inc',
       'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES, 3, 5),
-      'access callback' => 'upitt_workflow_admin_manage_access_callback',
+      'access callback' => 'upitt_workflow_workflowadmin_manage_access_callback',
     ),
     // not certain about permissions on this one
     'workflow/status/change' => array(
@@ -173,7 +200,7 @@ function upitt_workflow_menu() {
       'type' => MENU_LOCAL_TASK,
       'file' => 'includes/audit_object.form.inc',
       'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE),
-      'access callback' => 'upitt_workflow_admin_manage_access_callback',
+      'access callback' => 'upitt_workflow_workflowadmin_manage_access_callback',
     ),
   );
 }
@@ -212,9 +239,9 @@ function upitt_workflow_theme() {
       'variables' => array('table' => NULL, 'links' => '', 'post_to' => '', 'count_rows' => 0),
       'template' => 'theme/upitt-workflow-batches',
     ),
-    'upitt_workflow_admin' => array(
+    'upitt_workflow_workflowadmin' => array(
       'variables' => array('links' => '', 'task_links' => '', 'breadcrumb' => '', 'markup' => ''),
-      'template' => 'theme/upitt-workflow-admin',
+      'template' => 'theme/upitt-workflow-workflowadmin',
     ),
     'upitt_workflow_collection_page' => array(
       'variables' => array('links' => '', 'breadcrumb' => '', 'table' => NULL, 'count_rows' => 0),
@@ -296,6 +323,7 @@ function upitt_workflow_preprocess_page(&$vars) {
 
       $vars['page']['sidebar_first'] = array();
       $vars['page']['sidebar'] = array();
+      drupal_add_js($path . '/js/batch_functions.js');
       drupal_add_css($path . '/style/workflow.css');
 
       if (isset($vars['node']) && $vars['node']->type == 'workflow_batch') {
@@ -331,7 +359,7 @@ function upitt_workflow_redirect_batch_get() {
   }
 }
 
-function upitt_workflow_admin_manage_access_callback($perm, $which_lookup_table = NULL) {
+function upitt_workflow_workflowadmin_manage_access_callback($perm, $which_lookup_table = NULL) {
   global $user;
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
@@ -421,16 +449,32 @@ function upitt_workflow_filters_clause($in) {
 }
 
 /**
- * Implements hook_islandora_batch_object_processed().
+ * Implements hook_islandora_batch_process_finished().
  *
- * Log processed objects and sets into database.
+ * Delete successfully ingested batch sets.
  */
-function upitt_workflow_islandora_batch_object_processed($object, $state) {
+function upitt_workflow_islandora_batch_process_finished($sets) {
   // Look at the object - and delete the related temporary files that were needed for this object.
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
-  $batch_of_object = upitt_workflow_batch_of_object($object->id);
-  if ($batch_of_object) {
-    error_log('in hook upitt_workflow_islandora_batch_object_processed - ready to delete files for object ' . $object->id . '\'s batch : ' . $batch_of_object);
+  $objects = upitt_workflow_get_objects_from_set($sets);
+  error_log('set = ' .print_r($objects, true));
+  error_log('in hook upitt_workflow_islandora_batch_process_finished - ready to delete files for object');
+
+/*  $auto_remove = variable_get('islandora_batch_auto_remove_set', FALSE);
+  if ($auto_remove) {
+    if (!empty($sets)) {
+      module_load_include('inc', 'islandora_batch', 'includes/db');
+      foreach ($sets as $set) {
+        // Delete set and associated queued items.
+        islandora_batch_delete_set($set);
+        // Set a message that the batch set was removed.
+        drupal_set_message(t('The batch set (@set_id) has been processed successfully and has been automatically removed from the queue.', array(
+          '@set_id' => $set,
+        )));
+      }
+    }
   }
+*/
 }
+

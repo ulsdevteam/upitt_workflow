@@ -33,7 +33,6 @@ function upitt_workflow_get_tablefield_stats($listname, $link_new) {
 
 function upitt_workflow_get_table_record($listname, $primary_key_field, $primary_id, $link_new) {
   $sql_record = "SELECT  * FROM `" . mysqli_real_escape_string($link_new, $listname) . "` where `" . $primary_key_field . "` = '" . $primary_id . "'";
-dpm($sql_record);
   $result = mysqli_query($link_new, $sql_record);
   return ($row = mysqli_fetch_assoc($result)) ? $row : array();
 }

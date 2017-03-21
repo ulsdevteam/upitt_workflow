@@ -96,6 +96,15 @@ function upitt_workflow_get_solr_options($solr_query, $key_field, $value_field, 
   return $results;
 }
 
+function upitt_workflow_get_models() {
+  form_load_include($form_state, 'inc', 'islandora', 'includes/content_model.autocomplete');
+
+  // Retrieve all content models and unset those currently in use in this
+  // configuration and any others from other configurations.
+  $add_options = islandora_get_content_model_names();
+  return $add_options;
+}
+
 /**
  * Helper function to look up the names of the collections based on a possible comma-separated list
  */
@@ -687,7 +696,271 @@ function upitt_workflow_get_csv_header_xpath_mappings() {
     );
 }
 
-function upitt_workflow_batch_of_object($pid) {
-  return 'test';
+/**
+ * Get the batch set id related to a queued object.
+ *
+ * @param string $pid
+ *   The object id identifying the queued batch object.
+ *
+ * @return int
+ *   The id of the batch set the object is apart of.
+ */
+function upitt_workflow_get_objects_from_set($sid) {
+  $object_ids = db_select('islandora_batch_queue', 'q')
+    ->fields('q', array('id'))
+    ->condition('sid', $sid)
+    ->execute()
+    ->fetchAllAssoc('id', PDO::FETCH_ASSOC); 
+  return $object_ids;
 }
 
+function upitt_workflow_get_batch_id($batch_external_id, $create_if_not_exists = FALSE) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $sql = 'SELECT `batch_id` FROM `batch` WHERE `batch_external_id` = "' . mysqli_real_escape_string($link, $batch_external_id) . '"';
+
+  $result = mysqli_query($link, $sql);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+
+  $batch_id = 0;
+  if ($row = mysqli_fetch_assoc($result)) {
+    $batch_id = $row['batch_id'];
+  }
+  elseif ($create_if_not_exists) {
+    // Create a new batch record that has the batch_external_id and return that record's batch_id
+    $sql_insert = 'INSERT INTO `batch` (batch_external_id) VALUES (\'' . $batch_external_id . '\')';
+    mysqli_query($link, $sql_insert);
+    mysqli_close($link);
+    // recurse, but be sure to not pass $create_if_not_exists = TRUE because that could lead to endless recursion.
+    return upitt_workflow_get_batch_id($batch_external_id, FALSE);
+  }
+
+  mysqli_close($link);
+  return $batch_id;
+}
+
+function upitt_workflow_batch_load($batch_id) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+
+  $batch_detail = 'SELECT * ' .
+                  'FROM batch ' .
+                  'WHERE batch_id = \'' . $batch_id . '\' LIMIT 1';
+
+  $batch = array();
+
+  $result = mysqli_query($link, $batch_detail);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $batch_detail);
+  }
+
+  $batch = $fields = array();
+  if ($row = mysqli_fetch_assoc($result)) {
+    $fields = array_keys($row);
+    foreach ($fields as $field) {
+      $batch[$field] = $row[$field];
+    }
+  }
+
+  mysqli_close($link);
+  return $batch;
+}
+
+/**
+ * Helper function that will return the list of datastreams that are currently in
+ * use from running a Solr query.
+ *
+ * @return string
+ */
+function upitt_workflow_get_datastreams() {
+  $query_processor = new IslandoraSolrQueryProcessor();
+  $query_processor->solrQuery = '*:*';
+  $query_processor->solrStart = 0;
+  $query_processor->solrLimit = 0;
+  $query_processor->solrParams = array('facet' => 'true',
+                                       'facet.query' => 'fedora_datastreams_ms:["" TO *]',
+                                       'facet.field' => 'fedora_datastreams_ms');
+
+  $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
+  $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
+  $solr->setCreateDocuments(FALSE);
+  $results = array();
+  try {
+    $search_results = $solr->search($query_processor->solrQuery, $query_processor->solrStart, $query_processor->solrLimit, $query_processor->solrParams, 'GET');
+    $tmp = json_decode($search_results->getRawResponse(), TRUE);
+    if ($tmp['response']['numFound'] > 0) {
+      foreach ($tmp['facet_counts']['facet_fields']['fedora_datastreams_ms'] as $key => $num) {
+        $results[$key] = $key . ' (' . $num . ')';
+      }
+    }
+  }
+  catch (Exception $e) {
+  }
+  return $results;
+}
+
+/**
+ * Helper function that will load a CSV spreadsheet by name $csv_file, and return
+ * it as an associative array.  This will make sure that the headers are all lowercase.
+ * 
+ * @param type $csv_file
+ * @return array('header' => $file_header, 'rows' => $file_rows)
+ * @throws Exception
+ */
+function upitt_workflow_csv_file_as_array($csv_file) {
+  $file_rows = $file_header = array();
+  if (file_exists($csv_file)) {
+    $row = 0;
+    if (($handle = fopen($csv_file, "r")) !== FALSE) {
+      try {
+        while (($data = fgetcsv($handle, 65000, ",")) !== FALSE) {
+          $row++;
+	  if ($row < 50) {
+            if ($row > 1) {
+              $file_rows[] = $data;
+            }
+            else {
+              $tmp_data = $data;
+              foreach ($tmp_data as $i => $val) {
+                $tmp_data[$i] = strtolower($val);
+              }
+              $file_header = $tmp_data;
+            }
+          }
+        }
+        if ($row > 50) {
+          // Subtract the header row -
+          $data_rows = $row - 1;
+          drupal_set_message('There are ' . number_format($data_rows) . ' rows in the CSV file "' . $csv_file . '".  Only the first 50 rows are displayed.', 'warning');
+        }
+      }
+      catch (Exception $e) {
+        throw new Exception('The file "'.$csv_file.'" could not be parsed as a CSV.');
+      }
+      fclose($handle);
+    }
+  }
+  return array('header' => $file_header, 'rows' => $file_rows);
+}
+
+/**
+ * Helper function that will return the pid values from a spreadsheet.  This will
+ * need to inspect the header column to find out which index represents the
+ * identifier field - and then return that column of data from the rows.
+ *
+ * @param type $csv_arr  ('header' => $file_header, 'rows' => $file_rows)
+ */
+function upitt_workflow_csv_extract_identifiers($csv_arr) {
+  $identifier_key = array_search('identifier', $csv_arr['header']);
+  $ns_prefix = '';
+  $ret_arr = array();
+  if (!$identifier_key === FALSE) {
+    foreach ($csv_arr['rows'] as $row) {
+      $ret_arr[] = ((strstr($row[$identifier_key], 'pitt:') == '') ? 'pitt:' : '') . $row[$identifier_key];
+    }
+  }
+  return $ret_arr;
+}
+
+function upitt_workflow_get_pids_solr_query($solr_query) {
+  return implode('
+', upitt_workflow_get_pids($solr_query));
+}
+
+function upitt_workflow_get_pids_collection($collection) {
+  $query = format_string('!field:!value', array(
+    '!field' => 'RELS_EXT_isMemberOfCollection_uri_ms',
+    '!value' => str_replace(array("/", ":", "-", "+"), array("\/", "\:", "\-", "\+"), $collection),
+   ));
+  return implode('
+', upitt_workflow_get_pids($query));
+}
+
+function upitt_workflow_get_pids_model($model) {
+  $query = format_string('!field:!value', array(
+    '!field' => 'RELS_EXT_hasModel_uri_ms',
+    '!value' => str_replace(array("/", ":", "-", "+"), array("\/", "\:", "\-", "\+"), $model),
+   ));
+  return implode('
+', upitt_workflow_get_pids($query));
+}
+
+function upitt_workflow_get_pids($query) {
+  module_load_include('inc', 'islandora_solr_search', 'includes/utilities');
+  $query_processor = new IslandoraSolrQueryProcessor();
+
+  $ret_arr = array();
+  // run two queries --
+  // 1) to get the datastreams available on this object
+  $query_processor->solrQuery = $query;
+  $query_processor->solrStart = 0;
+  $query_processor->solrLimit = UPITT_WORKFLOW_SOLR_LIMIT;
+  $query_processor->solrParams = array('fl' => 'PID');
+
+  $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
+  $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
+  $solr->setCreateDocuments(FALSE);
+  try {
+    $search_results = $solr->search($query_processor->solrQuery, $query_processor->solrStart, $query_processor->solrLimit, $query_processor->solrParams, 'GET');
+    $tmp = json_decode($search_results->getRawResponse(), TRUE);
+
+    $results = array();
+    $numFound = $tmp['response']['numFound'];
+    if ($numFound == UPITT_WORKFLOW_SOLR_LIMIT) {
+      drupal_set_message(t('The number of objects returned is the same as the maximum limit.  It is likely that there are more objects than ' . UPITT_WORKFLOW_SOLR_LIMIT));
+    }
+    
+    if ($tmp['response']['numFound'] > 0) {
+      foreach ($tmp['response']['docs'] as $k=>$rec) {
+        $ret_arr[] = $rec['PID'];
+      }
+    }
+  }
+  catch (Exception $e) {
+    error_log('EXCEPTION in _save_solr_search_session : called from ' . $_SERVER['SERVER_NAME'] .
+' - ' . $_SERVER['REQUEST_URI'] . '
+' . print_r($e, true));
+  }
+  return $ret_arr;
+}
+
+/**
+ * This will return the ingest path for a given batch by batch_external_id.  If the folder
+ * does not exist, it will be created.  It will be named 'batch_{$batch_external_id}'.
+ *
+ * @param type $batch_external_id
+ * @return type
+ */
+function upitt_workflow_batch_path($batch_external_id) {
+  if (!$batch_external_id) {
+    return '';
+  }
+  $ingest_path = variable_get('upitt_workflow_ingest_path', '/ingest/incoming');
+  $batch_path = rtrim($ingest_path, '/') . '/batch_' . $batch_external_id;
+  if (!file_exists($batch_path)) {
+    mkdir($batch_path);
+  }
+  return (file_exists($batch_path)) ? $batch_path : '';
+}
+
+/**
+ * This will return the export path for a given batch by batch_external_id and
+ * optional datastream id.  If the folder does not exist, it will be created.
+ * It will be named 'batch_{$dsid_}{$batch_external_id}'.
+ *
+ * @param type $batch_external_id
+ * @return type
+ */
+function upitt_workflow_batch_export_path($batch_external_id, $dsid = '') {
+  $export_path = variable_get('upitt_workflow_export_path', '/ingest/incoming');
+
+  $batch_path = rtrim($export_path, '/') . '/batch_' . ($dsid ? $dsid . '_' : '') . $batch_external_id;
+  if (!file_exists($batch_path)) {
+    mkdir($batch_path);
+  }
+  return (file_exists($batch_path)) ? $batch_path : '';
+}

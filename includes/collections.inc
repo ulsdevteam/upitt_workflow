@@ -97,7 +97,7 @@ function upitt_workflow_collections_get_c_id_table($c_id) {
                         'WHERE c.c_id = \'' . mysqli_real_escape_string($link, $c_id) . '\' ' .
                         'ORDER BY itf.timestamp ' .
                         'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
-dpm($collection_records);
+
   // perhaps this query can just return the item_count field value at the branch level, but this query is the actual count - so it should be more accurate (but slower) to query the table this way.
   $query = 'SELECT count(itf.name) as `total` ' .
            'FROM collection c ' . 
