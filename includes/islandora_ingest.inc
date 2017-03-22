@@ -313,7 +313,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
 
   $identifiers_and_filepaths = array();
   // Loop through each row creating a <row> node with the correct data
-  while (($row = fgetcsv($inputFile, 1000, ',')) !== FALSE) {
+  while (($row = fgetcsv($inputFile)) !== FALSE) {
     // First, scan the entire row to get the identifier and the file_name value
     $toggle = !$toggle;
     echo '<div' . ($toggle ? $st : " style='border:1px solid #222'") . '>';
