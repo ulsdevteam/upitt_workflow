@@ -21,6 +21,8 @@ function upitt_workflow_islandora_object_ingest($object_id) {
  *   4. To add relationships?:       "upitt_workflow_{FEDORA_MODEL_NAME}_add_relationship"
  */
 function upitt_workflow_islandora_ingest($batch_id) {
+  global $user;
+
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $batch = upitt_workflow_batch_load($batch_id);
 
@@ -44,8 +46,11 @@ function upitt_workflow_islandora_ingest($batch_id) {
     } */
 
     $batch_path = upitt_workflow_batch_path($batch['batch_external_id']);
+//    $use_pid = 'pitt:' . $object_id;
 
     // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.    
+//    $parent = upitt_workflow_get_object_fedora_collections($object_id);
+//    $site = upitt_workflow_get_object_fedora_sites($object_id);
     $parent = $batch['mapto_collections'];  
     $site = $batch['mapto_site_id_values'];
 
@@ -71,7 +76,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
     $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
     $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest<br>' . 
                '<i># or if only one set to be processed, supply the ingest_set option</i><br>' .
-               'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=82</code>';
+               'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=82</code>';
 
     /* // bgg - skip this -
     $item_files = upitt_workflow_get_item_files($object_id);
@@ -240,6 +245,7 @@ function upitt_workflow_sp_large_image_cmodel_make_derivative($pid, $dsid) {
  * Helper function to generate MODS from a spreadsheet.
  */
 function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, $batch_default_depositor) {
+  global $user;
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   
   $retval = '';
@@ -257,7 +263,7 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
     foreach ($csv_file_sources as $csv_file_source) {
 
       // TODO: make sure this row is not an empty line
-      $drush_command = 'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
+      $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
                        // assuming that only if the parent is set, than the parent_relationship_pred is needed
                        (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
@@ -267,6 +273,7 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
                        ' --target=' . $csv_file_source['path'];
       $markup = '<h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
       $retval .= $markup;
+      echo $markup . "<hr>";
 
       $output = $return_var = array();
       exec($drush_command, $output, $return_var);
@@ -313,7 +320,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
 
   $identifiers_and_filepaths = array();
   // Loop through each row creating a <row> node with the correct data
-  while (($row = fgetcsv($inputFile)) !== FALSE) {
+  while (($row = fgetcsv($inputFile, 1000, ',')) !== FALSE) {
     // First, scan the entire row to get the identifier and the file_name value
     $toggle = !$toggle;
     echo '<div' . ($toggle ? $st : " style='border:1px solid #222'") . '>';

@@ -315,7 +315,7 @@ function upitt_workflow_xonomy_editor_javascript_call_script($xml, $docSpec, $ed
 function upitt_workflow_docSpec() {
   return '{
 	onchange: function(){
-		//console.log("Ah been chaaanged!");
+		//
 	},
 	validate: function(jsElement){
 		if(typeof(jsElement)=="string") jsElement=Xonomy.xml2js(jsElement);

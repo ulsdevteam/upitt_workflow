@@ -16,6 +16,9 @@
  *   The Drupal form definition.
  */
 function upitt_workflow_admin_form() {
+  $password_field_description = (variable_get('upitt_workflow_ftp_password') ?
+          '<span style="color:red">There is a value for the password, but it is not displayed.  Only enter text here if the password value needs to change.</span>':
+          'There is NOT any password value.  FTP will not work without a valid password.');
   $form = array(
     'incoming_ingest_path' => array(
       '#type' => 'textfield',
@@ -24,22 +27,32 @@ function upitt_workflow_admin_form() {
       '#default_value' => variable_get('upitt_workflow_ingest_path', '/ingest/incoming'),
       '#size' => 100,
     ),
-    'exports_ingest_path' => array(
-      '#type' => 'textfield',
-      '#title' => t('Exports Path'),
-      '#description' => t('This directory is where exported datastreams would be saved in a folder corresponding to the batch identifier, the date, and the datastream identifier.'),
-      '#default_value' => variable_get('upitt_workflow_export_path', '/ingest/tmp'),
-      '#size' => 100,
+    'ftp_panel' => array(
+      '#type' => 'fieldset',
+      '#title' => t('FTP settings for box.com account access.'),
+      'ftp_username' => array(
+        '#type' => 'textfield',
+        '#title' => t('Username with FTP access'),
+        '#default_value' => variable_get('upitt_workflow_ftp_username'),
+      ),
+      'ftp_password' => array(
+        '#type' => 'password',
+        '#title' => t('Password'),
+        '#description' => $password_field_description,
+      ),
+      'ftp_port' => array(
+        '#type' => 'textfield',
+        '#title' => t('FTP Port'),
+        '#description' => t('21 default FTP, 990 default sFTP.'),
+        '#default_value' => variable_get('upitt_workflow_ftp_port', 990),
+      ),
     ),
     'submit' => array(
       '#type' => 'submit',
       '#value' => t('Save configuration'),
     ),
-    'reset' => array(
-      '#type' => 'submit',
-      '#value' => t('Reset to defaults'),
-    ),
   );
+
   return $form;
 }
 
@@ -57,12 +70,17 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
   switch ($id) {
     case 'edit-submit':
       variable_set('upitt_workflow_ingest_path', $form_state['values']['incoming_ingest_path']);
-      variable_set('upitt_workflow_export_path', $form_state['values']['exports_ingest_path']);
+      variable_set('upitt_workflow_ftp_username', $form_state['values']['ftp_username']);
+      variable_set('upitt_workflow_ftp_password', $form_state['values']['ftp_password']);
+      variable_set('upitt_workflow_ftp_port', $form_state['values']['ftp_port']);
+
       break;
 
     case 'edit-reset':
       variable_del('upitt_workflow_ingest_path');
-      variable_del('upitt_workflow_export_path');
+      variable_del('upitt_workflow_ftp_username');
+      variable_del('upitt_workflow_ftp_password');
+      variable_del('upitt_workflow_ftp_port');
       break;
   }
 }

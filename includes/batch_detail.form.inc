@@ -101,10 +101,16 @@ function upitt_workflow_batch_detail_form($batch) {
     $batch_rows[] = $row;
   }
   mysqli_close($link);
+
   $pager = theme('pager', array('quantity',$count_rows));
   $links = array(l('Edit', '/workflow/batch/edit/' . $batch),
-                 l('Islandora Ingest', '/workflow/batch/' . $batch . '/islandora_ingest'),
-                 l('Export', '/workflow/batch/export/' . $batch));
+                 l('Islandora Ingest', '/workflow/batch/' . $batch . '/islandora_ingest'));
+  // If the islandora_datastreams_io module is installed and the user has permission, create the export link.
+  $export_link = ((module_exists('islandora_datastreams_io') && user_access(ISLANDORA_DATASTREAMS_IO)) ?
+    l('Export', '/islandora/datastreams_io/export/batch/' . $batch) : '');
+  if ($export_link) {
+    $links[] = $export_link;
+  }
   $table_markup = theme('upitt_workflow_report',
       array('table' => $details, //$pager . theme('table', array('rows'=>$batch_rows,'header'=>$batch_item_headings,'attributes' =>array('class'=>array('report_table')))) . $pager,
             'count_rows' => $count_rows_markup,

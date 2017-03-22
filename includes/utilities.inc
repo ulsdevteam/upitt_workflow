@@ -379,7 +379,7 @@ function upitt_workflow_sql_error_die($link, $sql) {
   die($message);
 }
 
-/** DEPRECATED
+/**
  * This function will return the parent collection PID values for the given object by looking at the object's batch 
  * record and the individual item mappings (stored in wflocal_local_item_fedora_collections)
  */
@@ -437,7 +437,7 @@ function upitt_workflow_get_object_fedora_collections($object_id) {
   return $retval;
 }
 
-/** DEPRECATED
+/**
  * This function will return the site PID values for the given object by looking at the object's batch
  * record and the individual item mappings (stored in wflocal_local_item_fedora_sites)
  */
@@ -817,7 +817,7 @@ function upitt_workflow_csv_file_as_array($csv_file) {
     $row = 0;
     if (($handle = fopen($csv_file, "r")) !== FALSE) {
       try {
-        while (($data = fgetcsv($handle)) !== FALSE) {
+        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
           $row++;
 	  if ($row < 50) {
             if ($row > 1) {
@@ -826,7 +826,7 @@ function upitt_workflow_csv_file_as_array($csv_file) {
             else {
               $tmp_data = $data;
               foreach ($tmp_data as $i => $val) {
-                $tmp_data[$i] = strtolower($val);
+                $tmp_data[$i] = str_replace(" ", "_", strtolower($val));
               }
               $file_header = $tmp_data;
             }
