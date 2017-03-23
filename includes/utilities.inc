@@ -817,7 +817,7 @@ function upitt_workflow_csv_file_as_array($csv_file) {
     $row = 0;
     if (($handle = fopen($csv_file, "r")) !== FALSE) {
       try {
-        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+        while (($data = fgetcsv($handle)) !== FALSE) {
           $row++;
 	  if ($row < 50) {
             if ($row > 1) {
