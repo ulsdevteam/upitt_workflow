@@ -937,6 +937,11 @@ function upitt_workflow_get_pids($query) {
  * the return the Default Ingest Path (configured admin/islandora/workflow) and the files
  * would the downloaded and extracted to this path from "box.com"
  *
+ * Note about the folder permissions:
+ *   The folder must be writable by apache as well as by other admin members of our department.
+ *   A group has been created on archive-01 as well as pa-staff-01 named "webwrite" and apache
+ *   is a member of that group as well as the users who would need write permissions there.
+ * 
  * @param array $batch_values
  * @return string
  */
@@ -956,12 +961,13 @@ function upitt_workflow_batch_path($batch_values) {
             'to be configured as a mounted folder under the /ingest directory and the ' . l('Available Host Alias', '/admin/islandora/workflow/') .
             ' configuration would need to be updated to point to the mounted location.', 'error');
   } else {
-    $ingest_path = $batch['batch_host'];
+    $ingest_path = $batch_values['batch_host'];
   }
-  $batch_path = rtrim($ingest_path, '/') . '/batch_' . $batch_external_id;
+  $batch_path = rtrim($ingest_path, '/') . '/batch_' . $batch_values['batch_external_id'];
   if (!file_exists($batch_path)) {
-    if (!mkdir($batch_path)) {
-      drupal_set_message('');
+    $call = mkdir($batch_path);
+    if (!$call) {
+      drupal_set_message('The batch folder "' . $batch_path . '" could not be created.');
     }
   }
   return (file_exists($batch_path)) ? $batch_path : '';
