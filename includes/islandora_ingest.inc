@@ -7,14 +7,14 @@ function upitt_workflow_islandora_object_ingest($object_id) {
 }
 
 /**
- * This function will check that all requirements for this ingest are provided -- and then it will prepare the workflow objects 
+ * This function will check that all requirements for this ingest are provided -- and then it will prepare the workflow objects
  * and generate the appropriate islandora_job batch call to ingest this to islandora using the Gearman process to do the work.
  *
  * The pid value is created by adding "pitt:" to the beginning of the object_id (legacy: item.do_id) value.
  *
  * Any required files that become datastreams can immediately be ingested.
  *
- * The fedora_model_name is used as part of the dynamic function naming -- 
+ * The fedora_model_name is used as part of the dynamic function naming --
  *   1. To create base object:       "upitt_workflow_{FEDORA_MODEL_NAME}_create_object"
  *   2. To add a given datastream:   "upitt_workflow_{FEDORA_MODEL_NAME}_add_datastream"
  *   3. To generate a derivative:    "upitt_workflow_{FEDORA_MODEL_NAME}_make_derivative"
@@ -45,36 +45,36 @@ function upitt_workflow_islandora_ingest($batch_id) {
       $markup  .= '<h3>Requirements for "' . $fedora_model_name . '"</h3><pre>' . print_r($requirements, true) . '</pre>';
     } */
 
-    $batch_path = upitt_workflow_batch_path($batch['batch_external_id']);
+    $batch_path = upitt_workflow_batch_path($batch);
 //    $use_pid = 'pitt:' . $object_id;
 
-    // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.    
+    // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.
 //    $parent = upitt_workflow_get_object_fedora_collections($object_id);
 //    $site = upitt_workflow_get_object_fedora_sites($object_id);
-    $parent = $batch['mapto_collections'];  
+    $parent = $batch['mapto_collections'];
     $site = $batch['mapto_site_id_values'];
 
     $batch_default_depositor = $batch['default_depositor'];
 
-//    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSS960_B015_F070_I001/', $fedora_model_name, $parent, $site, $batch_default_depositor); 
+//    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSS960_B015_F070_I001/', $fedora_model_name, $parent, $site, $batch_default_depositor);
     $markup .= upitt_workflow_csv2mods($batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
 
     // bgg - skip this - $item_files = upitt_workflow_get_item_files($object_id);
 
-    // NOTE -- the drush command does not yet support multiple parent values.  It will need to be enhanced so that it can 
+    // NOTE -- the drush command does not yet support multiple parent values.  It will need to be enhanced so that it can
     //         take a CSV value for our needs.  This will also need to be extened to set our IsMemberOfSite value.
     /* // bgg - skip this - $drush_command = 'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
                      '--content_models=islandora:' . $fedora_model_name . ' ' .
                      // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                     (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') . 
+                     (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                      '--type=directory ' .
                      '--assign_pid=' . $use_pid . ' ' .
-                     (($site) ? '--site=' . $site . ' --site_relationship_pred=isMemberOfSite ': '') . 
+                     (($site) ? '--site=' . $site . ' --site_relationship_pred=isMemberOfSite ': '') .
                      ' --target=' . $item_path;
     $markup .= '<h3>Drush call</h3><h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
     */
     $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
-    $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_ingest<br>' . 
+    $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest<br>' .
                '<i># or if only one set to be processed, supply the ingest_set option</i><br>' .
                'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=82</code>';
 
@@ -86,7 +86,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
         $exists_color = (file_exists($item_file['path']) ? 'green' : 'red');
         // Is this file one of the required files?  That could potentially be batched out ez...
 
-        $markup .= '<pre style="color:' . $exists_color . '">' . 
+        $markup .= '<pre style="color:' . $exists_color . '">' .
           '<b>id</b>: ' . $item_file['id'] . '<br>' .
           '<b>item_id</b>: ' . $item_file['item_id'] . '<br>' .
           '<b>name</b>: ' . $item_file['name'] . '<br>' .
@@ -109,11 +109,11 @@ function upitt_workflow_islandora_ingest($batch_id) {
           $function_name($use_pid);
         }
       }
-      
-      // make derivatives job calls 
+
+      // make derivatives job calls
       $function_name = 'upitt_workflow_' . $fedora_model_name . '_make_derivative';
       foreach ($requirements['islandora_create_derivatives'] as $derivative_requirement) {
-        $markup .= "<hr>Create derivatives function call: <code>" . $function_name . "(\$pid = '" . $use_pid . "', \$dsid = '" . $derivative_requirement . "');</code> " . 
+        $markup .= "<hr>Create derivatives function call: <code>" . $function_name . "(\$pid = '" . $use_pid . "', \$dsid = '" . $derivative_requirement . "');</code> " .
                    "(" . ((function_exists($function_name)) ? 'exists' : 'no function') . ')';
         if (function_exists($function_name)) {
           $function_name($use_pid, $derivative_requirement);
@@ -128,7 +128,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
         $passthrough_source = upitt_workflow_get_item_file_for_specific_use($source_key, $item_files);
         if ($passthrough_source) {
           $datastream_target = $passthrough_source['path'];
-          $markup .= "<hr>Passthrough derivative function call: <code>" . $function_name . "(\$pid = '" . $use_pid . "', " . 
+          $markup .= "<hr>Passthrough derivative function call: <code>" . $function_name . "(\$pid = '" . $use_pid . "', " .
                      "\$dsid = '" . $passthrough_datastream_requirement . "', \$datastream_source = '" . $datastream_source . "');</code> (" . ((function_exists($function_name)) ? 'exists' : 'no function') . ')';
           if (function_exists($function_name)) {
             $function_name($use_pid, $passthrough_datastream_requirement, $datastream_source);
@@ -142,7 +142,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
     */
     /* // bgg - skip this -
     if (upitt_workflow_validate_ingest_for_object($item_files, $requirements)) {
-      $markup .= '<h3 style="color: green">Requirements all satisfied</h3>';      
+      $markup .= '<h3 style="color: green">Requirements all satisfied</h3>';
     } else {
       $markup .= '<h3 style="color: red">Requirements not satisfied</h3>';
     }
@@ -157,7 +157,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
 }
 
 /**
- * This function will return the specific item file record that corresponds to a given `use` value, like the `TARGET` reference 
+ * This function will return the specific item file record that corresponds to a given `use` value, like the `TARGET` reference
  * would be whichever item_file record that had that value.
  *
  * NOTE: There should only be one item_file reference for each of the `use` values that the code which calls this - since it has
@@ -173,8 +173,8 @@ function upitt_workflow_get_item_file_for_specific_use($use, $item_files) {
 }
 
 /**
- * This will inspect the current workflow object for ingest -- and the object type's requirements and will return 
- * TRUE if the object can be ingested (all requirements met).  If there are any failure reasons, the function will 
+ * This will inspect the current workflow object for ingest -- and the object type's requirements and will return
+ * TRUE if the object can be ingested (all requirements met).  If there are any failure reasons, the function will
  * set the appropriate drupal_set_message.
  */
 function upitt_workflow_validate_ingest_for_object($item_files, $requirements) {
@@ -183,22 +183,22 @@ function upitt_workflow_validate_ingest_for_object($item_files, $requirements) {
 }
 
 /**
- * The purpose of this function is to return several metrics about ingesting each fedora object type.  The result of this function will 
+ * The purpose of this function is to return several metrics about ingesting each fedora object type.  The result of this function will
  * return a relational array that contains three key sections:
  *
  *   'source_files' -- The source files that make up an ingestable object for the various object types.  This element contains values
- *       that are made up of target datastream value and source filename spec. 
+ *       that are made up of target datastream value and source filename spec.
  *
  *   'required_datastreams' -- This is a list of all datastreams that should exist on a working object of this model type.  This list will
- *       frequently contain duplicate references to items listed under islandora_create_derivatives since the DRL system may have 
+ *       frequently contain duplicate references to items listed under islandora_create_derivatives since the DRL system may have
  *       created the same datastream in the past, but we also want Islandora to generate it.
  *
- *   'islandora_create_derivatives' -- This is a list of any derivative datastreams that Islandora must create before this 
+ *   'islandora_create_derivatives' -- This is a list of any derivative datastreams that Islandora must create before this
  *       object has been fully ingested into Islandora.
  *
- *   'optional_passthrough_datastreams' -- This will point to any item_file reference that was created by DRL that we want to use 
+ *   'optional_passthrough_datastreams' -- This will point to any item_file reference that was created by DRL that we want to use
  *       without modification from the source item_files.  This value is an array (such as array(KEY=>VALUE,KEY2=VALUE2) where the KEY is
- *       the `use` from the item_file record and the array VALUE would be the datasteam identifier within Islandora.  A good example of 
+ *       the `use` from the item_file record and the array VALUE would be the datasteam identifier within Islandora.  A good example of
  *       this passthrough might be for the FITS.xml files which will be datatreams with id of `TECHMD` within Islandora.
  */
 function upitt_workflow_fedora_object_requirements($fedoraObjectModel) {
@@ -227,9 +227,9 @@ function upitt_workflow_fedora_object_requirements($fedoraObjectModel) {
     case "green":
     default:
   }
-  return array('source_files' => $source_files, 
-               'required_datastreams' => $required_datastreams, 
-               'islandora_create_derivatives' => $islandora_create_derivatives, 
+  return array('source_files' => $source_files,
+               'required_datastreams' => $required_datastreams,
+               'islandora_create_derivatives' => $islandora_create_derivatives,
                'passthrough_datastreams' => $passthrough_datastreams);
 }
 
@@ -247,7 +247,7 @@ function upitt_workflow_sp_large_image_cmodel_make_derivative($pid, $dsid) {
 function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, $batch_default_depositor) {
   global $user;
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
-  
+
   $retval = '';
   // First step, look for a "*.csv" file in the filepath.
   // Get the path for the lib folder - a bit of a hack, but it's safe...
@@ -277,14 +277,14 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
 
       $output = $return_var = array();
       exec($drush_command, $output, $return_var);
-      
+
       if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
         drupal_set_message('There was an error calling the drush command : ' . $drush_command);
         $alerted_on_err = TRUE;
       }
     }
   }
-  
+
   return $retval;
 }
 
@@ -329,31 +329,35 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
     $rowcopy = $row;
     foreach($headers as $i => $header) {
       $header = str_replace(" ", "_", strtolower(trim($header)));
-      if (array_key_exists($i, $row)) {
-        // ALL LOWERCASE, replace spaces with "_"
-        if ($header == 'identifier') {
-          $row_mods_id = $row[$i];
-          $mods_directory_path = $working_directory . '/' . $row_mods_id;
-          if (!file_exists($mods_directory_path)) {
-            mkdir($mods_directory_path);
+      // Some partner decided to end the row of headers with a few commas like "depositor,,,,," - so must
+      // check that the header actually has a value.
+      if ($header) {
+        if (array_key_exists($i, $row)) {
+          // ALL LOWERCASE, replace spaces with "_"
+          if ($header == 'identifier') {
+            $row_mods_id = $row[$i];
+            $mods_directory_path = $working_directory . '/' . $row_mods_id;
+            if (!file_exists($mods_directory_path)) {
+              mkdir($mods_directory_path);
+            }
           }
-        }
-        elseif (($header == 'file_name' || $header == 'filename') && array_key_exists($i, $row)) {
-          $row_file_name = $working_directory . '/' . $row[$i];
-          $outputFilename = str_replace(array('.tiff', '.tif'), '.xml', $row[$i]);
-        }
-        elseif ($header == 'normalized_date' && array_key_exists($i, $row)) {
-          list($sort_date, $date) = upitt_workflow_make_custom_csv_dates($row[$i]);
-          // Add the sort_date field and solr 'date' field
-          if ((array_key_exists('sort_date', $headers) === FALSE)) {
-            $headers[] = 'sort_date';
-            $rowcopy[] = $sort_date;
+          elseif (($header == 'file_name' || $header == 'filename') && array_key_exists($i, $row)) {
+            $row_file_name = $working_directory . '/' . $row[$i];
+            $outputFilename = str_replace(array('.tiff', '.tif'), '.xml', $row[$i]);
           }
-          if ((array_key_exists('date', $headers) === FALSE)) {
-            $headers[] = 'date';
-            $rowcopy[] = $date;
+          elseif ($header == 'normalized_date' && array_key_exists($i, $row)) {
+            list($sort_date, $date) = upitt_workflow_make_custom_csv_dates($row[$i]);
+            // Add the sort_date field and solr 'date' field
+            if ((array_key_exists('sort_date', $headers) === FALSE)) {
+              $headers[] = 'sort_date';
+              $rowcopy[] = $sort_date;
+            }
+            if ((array_key_exists('date', $headers) === FALSE)) {
+              $headers[] = 'date';
+              $rowcopy[] = $date;
+            }
+            upitt_workflow_fix_if_csv_date_approximate($headers, $rowcopy);
           }
-          upitt_workflow_fix_if_csv_date_approximate($headers, $rowcopy);
         }
       }
       $headers[$i] = $header;
@@ -398,7 +402,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
       $root->appendChild($child);
     }
 
-    // After the CSV row has been processed, as long as the depositor value was not provided in that row, 
+    // After the CSV row has been processed, as long as the depositor value was not provided in that row,
     // and the batch provided a "default_depositor" value, then create this node now.
     if (!$depositor_in_CSV && $default_depositor && !array_key_exists('depositor', $headers)) {
       $child = $doc->createElement('depositor');
@@ -427,4 +431,3 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
 
   return $identifiers_and_filepaths;
 }
-

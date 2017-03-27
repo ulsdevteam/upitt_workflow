@@ -807,7 +807,7 @@ function upitt_workflow_get_datastreams() {
  * Helper function that will load a CSV spreadsheet by name $csv_file, and return
  * it as an associative array.  This will make sure that the headers are all lowercase.
  * 
- * @param type $csv_file
+ * @param string $csv_file
  * @return array('header' => $file_header, 'rows' => $file_rows)
  * @throws Exception
  */
@@ -852,7 +852,7 @@ function upitt_workflow_csv_file_as_array($csv_file) {
  * need to inspect the header column to find out which index represents the
  * identifier field - and then return that column of data from the rows.
  *
- * @param type $csv_arr  ('header' => $file_header, 'rows' => $file_rows)
+ * @param array $csv_arr  ('header' => $file_header, 'rows' => $file_rows)
  */
 function upitt_workflow_csv_extract_identifiers($csv_arr) {
   $identifier_key = array_search('identifier', $csv_arr['header']);
@@ -929,20 +929,40 @@ function upitt_workflow_get_pids($query) {
 }
 
 /**
- * This will return the ingest path for a given batch by batch_external_id.  If the folder
- * does not exist, it will be created.  It will be named 'batch_{$batch_external_id}'.
+ * This will return the ingest path for a given batch by combining the batch's host setting 
+ * and the batch_external_id.  If the folder does not exist, it will be created.  It will be
+ * named 'batch_{$batch_external_id}'.
  *
- * @param type $batch_external_id
- * @return type
+ * In the case when the batch is coming from the ftp_access to box.com, the system will use
+ * the return the Default Ingest Path (configured admin/islandora/workflow) and the files
+ * would the downloaded and extracted to this path from "box.com"
+ *
+ * @param array $batch_values
+ * @return string
  */
-function upitt_workflow_batch_path($batch_external_id) {
-  if (!$batch_external_id) {
+function upitt_workflow_batch_path($batch_values) {
+  if (!is_array($batch_values) || !array_key_exists('batch_external_id', $batch_values)) {
+    drupal_set_message('The batch path could not be determined.  Either the values are missing or ' .
+            'there is no value for the batch "Name" (batch_external_id field) yet.', 'warning');
     return '';
   }
-  $ingest_path = variable_get('upitt_workflow_ingest_path', '/ingest/incoming');
+  $ingest_path = $batch_values['batch_host'];
+
+  if ($ingest_path == 'ftp_access') {
+    $ingest_path = variable_get('upitt_workflow_ingest_path', '/ingest/incoming');
+  } elseif (strstr($ingest_path, ":")) {
+    @list($ingest_host, $ingest_path) = explode(":", $batch_values['batch_host']);
+    drupal_set_message('This batch is configured to use files from a different server.  That server needs ' .
+            'to be configured as a mounted folder under the /ingest directory and the ' . l('Available Host Alias', '/admin/islandora/workflow/') .
+            ' configuration would need to be updated to point to the mounted location.', 'error');
+  } else {
+    $ingest_path = $batch['batch_host'];
+  }
   $batch_path = rtrim($ingest_path, '/') . '/batch_' . $batch_external_id;
   if (!file_exists($batch_path)) {
-    mkdir($batch_path);
+    if (!mkdir($batch_path)) {
+      drupal_set_message('');
+    }
   }
   return (file_exists($batch_path)) ? $batch_path : '';
 }
@@ -952,8 +972,8 @@ function upitt_workflow_batch_path($batch_external_id) {
  * optional datastream id.  If the folder does not exist, it will be created.
  * It will be named 'batch_{$dsid_}{$batch_external_id}'.
  *
- * @param type $batch_external_id
- * @return type
+ * @param string $batch_external_id
+ * @return string
  */
 function upitt_workflow_batch_export_path($batch_external_id, $dsid = '') {
   $export_path = variable_get('upitt_workflow_export_path', '/ingest/incoming');
@@ -963,4 +983,22 @@ function upitt_workflow_batch_export_path($batch_external_id, $dsid = '') {
     mkdir($batch_path);
   }
   return (file_exists($batch_path)) ? $batch_path : '';
+}
+
+/**
+ * This function will fetch the config value for "Available Host Aliases for Batch ingest"
+ * and split the alias_and_value value at the "=" character and then add items to the return 
+ * associative array with the actual host value as the array keys and the alias is the value.
+ * @return array
+ */
+function upitt_workflow_get_batch_host_values() {
+  $arr = explode("\r\n", variable_get('upitt_workflow_hosts_for_ingest'));
+  $return_array = array(variable_get('upitt_workflow_ingest_path', '/ingest/incoming') => 'Default Incoming Ingest Path');
+
+  foreach ($arr as $alias_and_value) {
+    @list($alias, $value) = explode("=", $alias_and_value);
+    $alias = trim($alias);
+    $return_array[$value] = $alias;
+  }
+  return $return_array;
 }

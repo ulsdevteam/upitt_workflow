@@ -16,7 +16,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
   $batch_id = ((is_numeric($batch)) ? $batch : upitt_workflow_get_batch_id($batch, FALSE));
   $fedora_object_mappings = upitt_workflow_get_workflow_to_fedora_object_mappings();
   $default_types_of_resource = array();
-  // These values are actually the inverse of the keys/values from the mappings variable.  Flip-flop 
+  // These values are actually the inverse of the keys/values from the mappings variable.  Flip-flop
   // them for the options parameter needed for the default_type_of_resource prompt.
   foreach ($fedora_object_mappings as $k => $v) {
     $default_types_of_resource[$k] = $k;
@@ -32,7 +32,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     }
   }
   $batch_external_id = ($batch && isset($batch['batch_external_id']))? $batch['batch_external_id'] : '';
-  $batch_path = upitt_workflow_batch_path($batch_external_id);
+  $batch_path = upitt_workflow_batch_path($batch);
 
   // Prepare a couple variables for use with file upload options:
   $upload_size = min((int) ini_get('post_max_size'), (int) ini_get('upload_max_filesize'));
@@ -44,15 +44,16 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     $arr = upitt_workflow_csv_file_as_array($batch['file']);
     $file_header = (isset($arr['header']) ? $arr['header'] : array());
     $file_rows = (isset($arr['rows']) ? $arr['rows'] : array());
-
     $csv_header_mappings = upitt_workflow_get_csv_header_xpath_mappings();
     foreach ($file_header as $header) {
       $machine_header = str_replace(" ", "_", strtolower(trim($header)));
-      if (!(array_key_exists($machine_header, $csv_header_mappings))) {
+      if ($machine_header && !(array_key_exists($machine_header, $csv_header_mappings))) {
         drupal_set_message('CSV column "' . $header . '" not recognized.  Batch will not be able to ingest or process.  Please replace the attached CSV file "' . $batch['file'] . '".', 'error');
       }
     }
-  } 
+  }
+
+  $batch_hosts = upitt_workflow_get_batch_host_values();
 
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
@@ -89,6 +90,106 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#default_value' => ($batch && isset($batch['mapto_site_id_values']))? explode(",", $batch['mapto_site_id_values']) : '',
       '#size' => 10,
     ),
+    // Default depositor: textfield
+    'default_depositor' => array(
+      '#type' => 'textfield',
+      '#description' => 'This value will only be used if the spreadsheet MODS does not contain a value for the depositor.',
+      '#title' => t('Default Depositor'),
+      '#default_value' => ($batch && isset($batch['default_depositor']))? $batch['default_depositor'] : '',
+    ),
+    // Description: textarea
+    'batch_description' => array(
+      '#type' => 'textarea',
+      '#title' => t('Description'),
+      '#default_value' => ($batch && isset($batch['batch_description']))? $batch['batch_description'] : '',
+    ),
+    // Priority: textfield
+    'batch_priority' => array(
+      '#type' => 'textfield',
+      '#title' => t('Priority'),
+      '#default_value' => ($batch && isset($batch['batch_priority']))? $batch['batch_priority'] : '',
+    ),
+    // Default copyright status: select (hard-coded options)
+    'batch_default_CR_status' => array(
+      '#type' => 'select',
+      '#title' => t('Default Copyright Status'),
+      '#options' => array(''=>'Select Default Copyright Status',
+        'copyrighted' => 'copyrighted',
+        'pd' => 'public domain',
+        'pd_usfed' => 'public domain - us federal document',
+        'pd_holder' => 'public domain - dedicated by rights holder',
+        'pd_expired' => 'public domain - expired copyright',
+        'unknown' => 'unknown',
+      ),
+      '#default_value' => ($batch && isset($batch['batch_default_CR_status']))? $batch['batch_default_CR_status'] : '',
+    ),
+    // Default publication status: select (hard-coded options)
+    'batch_default_pub_status' => array(
+      '#type' => 'select',
+      '#title' => t('Default Publication Status'),
+      '#options' => array(''=>'Select Default Publication Status',
+        'published' => 'published',
+        'unpublished' => 'unpublished',
+        'unknown' => 'unknown',
+      ),
+      '#default_value' => ($batch && isset($batch['batch_default_pub_status']))? $batch['batch_default_pub_status'] : '',
+    ),
+    // Default type of resource: textfield -- THIS SHOULD BE A SELECT BOX
+    'default_type_of_resource' => array(
+      '#type' => 'select',
+      '#title' => t('Default Type of Resource'),
+      '#options' => $default_types_of_resource,
+      '#default_value' => ($batch && isset($batch['default_type_of_resource']))? $batch['default_type_of_resource'] : '',
+    ),
+    // Is a request? checkbox
+    'batch_request' => array(
+      '#title' => 'Batch Request?',
+      '#type' => 'fieldset',
+      'is_batch_request' => array(
+        '#type' => 'checkbox',
+        '#title' => t('Is a Request?'),
+        '#default_value' => ($batch && isset($batch['is_batch_request']))? $batch['is_batch_request'] : '',
+      ),
+      // Requestor: textfield
+      'batch_requestor' => array(
+        '#type' => 'textfield',
+        '#title' => t('Requestor'),
+        '#default_value' => ($batch && isset($batch['batch_requestor']))? $batch['batch_requestor'] : '',
+      ),
+      // Request due date: textfield
+      'batch_request_due_date' => array(
+        '#type' => 'date',
+        '#default_value' => array(
+          'month' => format_date((($batch && isset($batch['batch_request_due_date']))? strtotime($batch['batch_request_due_date']) : time()), 'custom', 'n'),
+          'day' => format_date((($batch && isset($batch['batch_request_due_date']))? strtotime($batch['batch_request_due_date']) : time()), 'custom', 'j'),
+          'year' => format_date((($batch && isset($batch['batch_request_due_date']))? strtotime($batch['batch_request_due_date']) : time()), 'custom', 'Y'),
+         ),
+        '#title' => t('Request Due Date'),
+      ),
+    ),
+    // Requestor: textfield
+    'batch_host' => array(
+      '#type' => 'select',
+      '#title' => t('Ingest files from host'),
+      '#options' => $batch_hosts,
+      '#default_value' => ($batch && isset($batch['batch_host']))? $batch['batch_host'] : '',
+      '#description' => t('Specify the location of the files that relate to the uploaded spreadsheet.')
+    ),
+    // File: file
+    'file' => array(
+      '#type' => 'file',
+      '#title' => t('File'),
+      '#description' => t('Select CSV file to upload.<br/>Files must be less than <strong>@size MB.</strong><br/>Allowed file types: <strong>@ext.</strong>', array('@size' => $upload_size, '@ext' => $extensions[0])) .
+                        (($batch && isset($batch['file']) && ($batch['file'] <> '')) ? '<br>Upload file will be stored: <em>' . str_replace($batch_path, '', $batch['file']) . '</em>' : ''),
+      '#upload_location' => 'temporary://',
+      '#upload_validators' => array(
+        'file_validate_extensions' => $extensions,
+         // Assume its specified in MB.
+        'file_validate_size' => array($upload_size * 1024 * 1024),
+      ),
+      '#suffix' => theme('table', array('rows' => $file_rows, 'header' => $file_header, 'attributes' => array('class' => array('report_table')))),
+    ),
+
 /*
     // Type: select (get options from `batch_item_type`)
     'batch_item_type_id' => array(
@@ -106,13 +207,6 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#default_value' => ($batch && isset($batch['property_owner_id']))? $batch['property_owner_id'] : '',
     ),
  */
-    // Description: textarea
-    'batch_description' => array(
-      '#type' => 'textarea',
-      '#title' => t('Description'),
-      '#default_value' => ($batch && isset($batch['batch_description']))? $batch['batch_description'] : '',
-    ),
-
 /*    // Sequence: select (get options from `workflow_sequence`)
     'batch_sequence_id' => array(
       '#type' => 'select',
@@ -127,12 +221,6 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#default_value' => ($batch && isset($batch['is_batch_active']))? $batch['is_batch_active'] : '',
     ),
  */
-    // Priority: textfield
-    'batch_priority' => array(
-      '#type' => 'textfield',
-      '#title' => t('Priority'),
-      '#default_value' => ($batch && isset($batch['batch_priority']))? $batch['batch_priority'] : '',
-    ),
 /*    // Source identifier: textfield
     'batch_source_identifier' => array(
       '#type' => 'textfield',
@@ -221,31 +309,6 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#default_value' => ($batch && isset($batch['default_ead_id']))? $batch['default_ead_id'] : '',
     ), */
 
-    // Default copyright status: select (hard-coded options)
-    'batch_default_CR_status' => array(
-      '#type' => 'select',
-      '#title' => t('Default Copyright Status'),
-      '#options' => array(''=>'Select Default Copyright Status',
-        'copyrighted' => 'copyrighted',
-        'pd' => 'public domain',
-        'pd_usfed' => 'public domain - us federal document',
-        'pd_holder' => 'public domain - dedicated by rights holder',
-        'pd_expired' => 'public domain - expired copyright',
-        'unknown' => 'unknown',
-      ),
-      '#default_value' => ($batch && isset($batch['batch_default_CR_status']))? $batch['batch_default_CR_status'] : '',
-    ),
-    // Default publication status: select (hard-coded options)
-    'batch_default_pub_status' => array(
-      '#type' => 'select',
-      '#title' => t('Default Publication Status'),
-      '#options' => array(''=>'Select Default Publication Status',
-        'published' => 'published',
-        'unpublished' => 'unpublished',
-        'unknown' => 'unknown',
-      ),
-      '#default_value' => ($batch && isset($batch['batch_default_pub_status']))? $batch['batch_default_pub_status'] : '',
-    ),
 /*
     // Default copyright holder name: textarea
     'batch_default_CR_holder' => array(
@@ -260,20 +323,6 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#default_value' => ($batch && isset($batch['batch_default_perm_notes']))? $batch['batch_default_perm_notes'] : '',
     ),
 */
-    // Default depositor: textfield
-    'default_depositor' => array(
-      '#type' => 'textfield',
-      '#description' => 'This value will only be used if the spreadsheet MODS does not contain a value for the depositor.',
-      '#title' => t('Default Depositor'),
-      '#default_value' => ($batch && isset($batch['default_depositor']))? $batch['default_depositor'] : '',
-    ),
-    // Default type of resource: textfield -- THIS SHOULD BE A SELECT BOX
-    'default_type_of_resource' => array(
-      '#type' => 'select',
-      '#title' => t('Default Type of Resource'),
-      '#options' => $default_types_of_resource,
-      '#default_value' => ($batch && isset($batch['default_type_of_resource']))? $batch['default_type_of_resource'] : '',
-    ),
 /*
     // Default genre: textfield
     'default_genre' => array(
@@ -282,56 +331,14 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#default_value' => ($batch && isset($batch['default_genre']))? $batch['default_genre'] : '',
     ),
 */
-    // Is a request? checkbox
-    'batch_request' => array(
-      '#title' => 'Batch Request?',
-      '#type' => 'fieldset',
-      'is_batch_request' => array(
-        '#type' => 'checkbox',
-        '#title' => t('Is a Request?'),
-        '#default_value' => ($batch && isset($batch['is_batch_request']))? $batch['is_batch_request'] : '',
-      ),
-      // Requestor: textfield
-      'batch_requestor' => array(
-        '#type' => 'textfield',
-        '#title' => t('Requestor'),
-        '#default_value' => ($batch && isset($batch['batch_requestor']))? $batch['batch_requestor'] : '',
-      ),
-      // Request due date: textfield
-      'batch_request_due_date' => array(
-        '#type' => 'date',
-        '#default_value' => array(
-          'month' => format_date((($batch && isset($batch['batch_request_due_date']))? strtotime($batch['batch_request_due_date']) : time()), 'custom', 'n'),
-          'day' => format_date((($batch && isset($batch['batch_request_due_date']))? strtotime($batch['batch_request_due_date']) : time()), 'custom', 'j'),
-          'year' => format_date((($batch && isset($batch['batch_request_due_date']))? strtotime($batch['batch_request_due_date']) : time()), 'custom', 'Y'),
-         ),
-        '#title' => t('Request Due Date'),
-      ),
-    ),
-
 /*
     // Has file: checkbox
     'has_file' => array(
       '#type' => 'checkbox',
       '#title' => t('Has File?'),
       '#default_value' => ($batch && isset($batch['has_file']))? $batch['has_file'] : '',
-    ), */
-
-    // File: file
-    'file' => array(
-      '#type' => 'file',
-      '#title' => t('File'),
-      '#description' => t('Select CSV file to upload.<br/>Files must be less than <strong>@size MB.</strong><br/>Allowed file types: <strong>@ext.</strong>', array('@size' => $upload_size, '@ext' => $extensions[0])) .
-                        (($batch && isset($batch['file']) && ($batch['file'] <> '')) ? '<i>saved value: *' . str_replace($batch_path, '', $batch['file']) . '*</i>' : ''),
-      '#upload_location' => 'temporary://', 
-      '#upload_validators' => array(
-        'file_validate_extensions' => $extensions,
-         // Assume its specified in MB.
-        'file_validate_size' => array($upload_size * 1024 * 1024),
-      ),
-      '#suffix' => theme('table', array('rows' => $file_rows, 'header' => $file_header, 'attributes' => array('class' => array('report_table')))),
     ),
-
+*/
     'submit' => array(
       '#type' => 'submit',
       '#value' => t('Save batch'),
@@ -409,12 +416,16 @@ function upitt_workflow_save_batch($values, $collection_options) {
 
   $batch_external_id = $values['batch_external_id'];
 
+  if (!$batch_external_id) {
+    drupal_set_message('The batch Name is a required field.  The batch could not be saved.', 'error');
+    return;
+  }
   $sql_fields = $sql_values = array();
   if ($batch_id) {
     $sql_fields[] = 'batch_id';
     $sql_values[] = $batch_id;
   }
-  $batch_path = upitt_workflow_batch_path($values['batch_external_id']);
+  $batch_path = upitt_workflow_batch_path($values);
   // assume all fields need to be escaped and wrapped with '' characters -- EXCEPT for the integer fields.
   foreach ($values as $fieldname => $value) {
     // If the file is set, the actual file behind this must be moved to the incoming ingest folder and the field value must be set to this path.

@@ -2,11 +2,11 @@
 
 /**
  * @file
- * Administration forms and submit handling for isMemberOfSite module.
+ * Administration forms and submit handling for upitt_workflow module.
  */
 
 /**
- * Administration and configuration form for memberofsite.
+ * Administration and configuration form for upitt_workflow.
  *
  * @ingroup forms
  *
@@ -17,15 +17,37 @@
  */
 function upitt_workflow_admin_form() {
   $password_field_description = (variable_get('upitt_workflow_ftp_password') ?
-          '<span style="color:red">There is a value for the password, but it is not displayed.  Only enter text here if the password value needs to change.</span>':
-          'There is NOT any password value.  FTP will not work without a valid password.');
+          '<span style="color:red">' . t('There is a value for the password, but it is not displayed.  
+             Only enter text here if the password value needs to change.') . '</span>':
+          t('There is NOT any password value.  FTP will not work without a valid password.'));
+  $box_alias_default = 'box.com=ftp_access';
   $form = array(
     'incoming_ingest_path' => array(
       '#type' => 'textfield',
-      '#title' => t('Incoming Ingest Path'),
-      '#description' => t('The incoming ingest directory.  In order to be ingested, the folders created here should be named to match the name of the batch.  This path should be configured to a location that has plenty of hard space.'),
+      '#title' => t('Default Incoming Ingest Path'),
+      '#description' => t('The incoming ingest directory.  In order to be ingested, the folders created 
+                           here should be named to match the name of the batch.  This path
+                           should be configured to a location that has plenty of hard space.'),
       '#default_value' => variable_get('upitt_workflow_ingest_path', '/ingest/incoming'),
       '#size' => 100,
+    ),
+    'batch_hosts' => array(
+      '#type' => 'textarea',
+      '#title' => t('Available Host Aliases for Batch ingest'),
+      '#default_value' => variable_get('upitt_workflow_hosts_for_ingest', $box_alias_default),
+      '#description' => t('If the ingestable files are located on a different server, configure an alias
+                           that can direct the batch to use that server.<br>
+                           <ul>
+                             <li>If you do not want to use box.com as a potential source for ingest files, simply remove the entry of <code>' . $box_alias_default . '</code></li>
+                             <li>For any batch that does not specify which host alias to use, the "Default Incoming Ingest Path" above would be used.</li>
+                             <li>Values should each be entered on separate lines in a "name=value" format.  Username, password values are optional.  For example:
+                               <ul>
+                                 <li>The value (part after the "=" character) should not be longer than 255 characters.</li>
+                                 <li><code>ALIAS=username:password@machine_name:/path</code></li>
+                                 <li><code>ALIAS=machine_name:/path</code></li>
+                               </ul>
+                             </li>
+                           </ul>'),
     ),
     'ftp_panel' => array(
       '#type' => 'fieldset',
@@ -73,7 +95,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_set('upitt_workflow_ftp_username', $form_state['values']['ftp_username']);
       variable_set('upitt_workflow_ftp_password', $form_state['values']['ftp_password']);
       variable_set('upitt_workflow_ftp_port', $form_state['values']['ftp_port']);
-
+      variable_set('upitt_workflow_hosts_for_ingest', $form_state['values']['batch_hosts']);
       break;
 
     case 'edit-reset':
@@ -81,6 +103,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_del('upitt_workflow_ftp_username');
       variable_del('upitt_workflow_ftp_password');
       variable_del('upitt_workflow_ftp_port');
+      variable_del('upitt_workflow_hosts_for_ingest');
       break;
   }
 }
