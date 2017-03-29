@@ -12,8 +12,8 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
   // for legacy batches, this array may need to be joined with the legacy collection `c_id` pointers instead of Solr PID values.
   $collections = upitt_workflow_get_solr_options('RELS_EXT_hasModel_uri_ms:info\:fedora\/islandora\:collectionCModel', 'PID', 'fgs_label_s');
   asort($collections);
-
   $batch_id = ((is_numeric($batch)) ? $batch : upitt_workflow_get_batch_id($batch, FALSE));
+
   $fedora_object_mappings = upitt_workflow_get_workflow_to_fedora_object_mappings();
   $default_types_of_resource = array();
   // These values are actually the inverse of the keys/values from the mappings variable.  Flip-flop
@@ -24,15 +24,19 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
 
   $read_only_att = array();
   $nid = '';
+  // Load up a couple variables if there was a batch (id) passed into the form.
   if ($batch_id) {
     $batch = upitt_workflow_batch_load($batch_id);
     if (is_array($batch) && isset($batch['batch_external_id']) && $batch['batch_external_id']) {
       $read_only_att = array('readonly' => 'readonly', 'disabled' => 'disabled');
       $nid = $batch['nid'];
     }
+    $batch_path = upitt_workflow_batch_path($batch);
+    $batch_external_id = (isset($batch['batch_external_id'])) ? $batch['batch_external_id'] : '';
+  } else {
+    $batch_path = rtrim(variable_get('upitt_workflow_ingest_path', '/ingest/incoming'), '/') . '/batch_0_not_named';
+    $batch_external_id = '';
   }
-  $batch_external_id = ($batch && isset($batch['batch_external_id']))? $batch['batch_external_id'] : '';
-  $batch_path = upitt_workflow_batch_path($batch);
 
   // Prepare a couple variables for use with file upload options:
   $upload_size = min((int) ini_get('post_max_size'), (int) ini_get('upload_max_filesize'));
@@ -134,7 +138,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       ),
       '#default_value' => ($batch && isset($batch['batch_default_pub_status']))? $batch['batch_default_pub_status'] : '',
     ),
-    // Default type of resource: textfield -- THIS SHOULD BE A SELECT BOX
+    // Default type of resource: select
     'default_type_of_resource' => array(
       '#type' => 'select',
       '#title' => t('Default Type of Resource'),
@@ -441,7 +445,8 @@ function upitt_workflow_save_batch($values, $collection_options) {
           $value = $dest;
         }
         else {
-          die('move from ' . $tmp_name . ' to ' . $dest . ' failed');
+          drupal_set_message(t('File move operation from "' . $tmp_name . '" to "' . $dest . '" failed'), 'error');
+          return false;
           $value = NULL;
         }
         echo "<h3>".$fieldname."</h3>";

@@ -57,7 +57,11 @@ function upitt_workflow_islandora_ingest($batch_id) {
     $batch_default_depositor = $batch['default_depositor'];
 
 //    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSS960_B015_F070_I001/', $fedora_model_name, $parent, $site, $batch_default_depositor);
-    $markup .= upitt_workflow_csv2mods($batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
+    if ($fedora_model_name == 'bookCModel') {
+      $markup .= upitt_workflow_drush_book($batch_path, $fedora_model_name, $parent, $site, 'pitt:' . $batch['batch_external_id']);
+    } elseif ($fedora_model_name == 'sp_large_image_cmodel') {
+      $markup .= upitt_workflow_csv2mods($batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
+    }
 
     // bgg - skip this - $item_files = upitt_workflow_get_item_files($object_id);
 
@@ -273,7 +277,6 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
                        ' --target=' . $csv_file_source['path'];
       $markup = '<h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
       $retval .= $markup;
-      echo $markup . "<hr>";
 
       $output = $return_var = array();
       exec($drush_command, $output, $return_var);
@@ -283,6 +286,46 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
         $alerted_on_err = TRUE;
       }
     }
+  }
+
+  return $retval;
+}
+
+/**
+ * Helper function to just issue the drush command.
+ */
+function upitt_workflow_drush_book($filepath, $fedora_model_name, $parent, $site, $pid) {
+  global $user;
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  $retval = '';
+  // First step, look for a "*.csv" file in the filepath.
+  // Get the path for the lib folder - a bit of a hack, but it's safe...
+  $module_lib_path =  str_replace('/includes', '/lib', dirname(__FILE__));
+
+  $files = upitt_workflow_file_scan_directory($filepath, 'metadata.csv');
+
+  $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+
+  $alerted_on_err = FALSE;
+  // TODO: make sure this row is not an empty line
+  $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
+                   '--content_models=islandora:' . $fedora_model_name . ' ' .
+                   // assuming that only if the parent is set, than the parent_relationship_pred is needed
+                   (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
+                   '--type=directory --overwrite_existing=1 ' .
+                   '--assign_pid=' . $pid . ' ' .
+                   (($site) ? '--site=' . $site . ' --site_relationship_pred=isMemberOfSite ': '') .
+                   ' --target=' . $filepath;
+  $markup = '<h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
+  $retval .= $markup;
+
+  $output = $return_var = array();
+  exec($drush_command, $output, $return_var);
+
+  if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
+    drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+    $alerted_on_err = TRUE;
   }
 
   return $retval;

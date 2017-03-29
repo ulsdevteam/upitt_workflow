@@ -455,8 +455,8 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
   // Look at the object - and delete the related temporary files that were needed for this object.
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
-  $objects = upitt_workflow_get_objects_from_set($sets);
-  error_log('set = ' .print_r($objects, true));
+//  $objects = upitt_workflow_get_objects_from_set($sets);
+//  error_log('set = ' .print_r($objects, true));
   error_log('in hook upitt_workflow_islandora_batch_process_finished - ready to delete files for object');
 
 /*  $auto_remove = variable_get('islandora_batch_auto_remove_set', FALSE);

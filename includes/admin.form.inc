@@ -87,10 +87,12 @@ function upitt_workflow_admin_form() {
  *   The Drupal form state.
  */
 function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
-  drupal_set_message(t('The settings have been updated!'));
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $id = $form_state['triggering_element']['#id'];
   switch ($id) {
     case 'edit-submit':
+      $batch_hosts_array = explode("\r\n", $form_state['values']['batch_hosts']);
+      upitt_workflow_create_host_paths($batch_hosts_array);
       variable_set('upitt_workflow_ingest_path', $form_state['values']['incoming_ingest_path']);
       variable_set('upitt_workflow_ftp_username', $form_state['values']['ftp_username']);
       variable_set('upitt_workflow_ftp_password', $form_state['values']['ftp_password']);
@@ -106,4 +108,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_del('upitt_workflow_hosts_for_ingest');
       break;
   }
+  // Set this message after the folders may be created in case there are any error messages.
+  drupal_set_message(t('The settings have been updated!'));
 }
+

@@ -21,12 +21,14 @@ function get_config_value($section,$key) {
  * Simple lookup function to provide mapping between the legacy workflow "type_of_resource" to the Islandora fedora model name.
  */
 function upitt_workflow_get_workflow_to_fedora_object_mappings() {
-  return array('still image' => 'sp_large_image_cmodel',
-               'photograph' => 'sp_large_image_cmodel',
-               'manuscript' => 'manuscriptCModel',
-               'text' => 'bookCModel',
-               'cartographic' => 'sp_large_image_cmodel',
-               'newspaper' => 'newspaperCModel',
+  return array(
+               'cartographic (sp_large_image_cmodel)' => 'sp_large_image_cmodel',
+               'finding aid (findingAidCModel)' => 'findingAidCModel',
+               'manuscript (manuscriptCModel)' => 'manuscriptCModel',
+               'newspaper (newspaperCModel)' => 'newspaperCModel',
+               'photograph (sp_large_image_cmodel)' => 'sp_large_image_cmodel',
+               'still image (sp_large_image_cmodel)' => 'sp_large_image_cmodel',
+               'text (bookCModel)' => 'bookCModel',
               );
 }
 
@@ -812,6 +814,7 @@ function upitt_workflow_get_datastreams() {
  * @throws Exception
  */
 function upitt_workflow_csv_file_as_array($csv_file) {
+  $max_csv_rows_for_display = 200;
   $file_rows = $file_header = array();
   if (file_exists($csv_file)) {
     $row = 0;
@@ -819,7 +822,7 @@ function upitt_workflow_csv_file_as_array($csv_file) {
       try {
         while (($data = fgetcsv($handle)) !== FALSE) {
           $row++;
-	  if ($row < 50) {
+	  if ($row < $max_csv_rows_for_display) {
             if ($row > 1) {
               $file_rows[] = $data;
             }
@@ -832,10 +835,10 @@ function upitt_workflow_csv_file_as_array($csv_file) {
             }
           }
         }
-        if ($row > 50) {
-          // Subtract the header row -
+        if ($row > $max_csv_rows_for_display) {
+          // Subtract the header row.
           $data_rows = $row - 1;
-          drupal_set_message('There are ' . number_format($data_rows) . ' rows in the CSV file "' . $csv_file . '".  Only the first 50 rows are displayed.', 'warning');
+          drupal_set_message('There are ' . number_format($data_rows) . ' rows in the CSV file "' . $csv_file . '".  Only the first ' . $max_csv_rows_for_display . ' rows are displayed.', 'warning');
         }
       }
       catch (Exception $e) {
@@ -951,25 +954,27 @@ function upitt_workflow_batch_path($batch_values) {
             'there is no value for the batch "Name" (batch_external_id field) yet.', 'warning');
     return '';
   }
-  $ingest_path = $batch_values['batch_host'];
+  // Harmless hack to make this host be able to run locally in my VM.
+  $ingest_path = str_replace(":8000", "", $batch_values['batch_host']);
 
   if ($ingest_path == 'ftp_access') {
     $ingest_path = variable_get('upitt_workflow_ingest_path', '/ingest/incoming');
   } elseif (strstr($ingest_path, ":")) {
-    @list($ingest_host, $ingest_path) = explode(":", $batch_values['batch_host']);
+    @list($ingest_host, $ingest_path) = explode(":", $ingest_path, 2);
     drupal_set_message('This batch is configured to use files from a different server.  That server needs ' .
             'to be configured as a mounted folder under the /ingest directory and the ' . l('Available Host Alias', '/admin/islandora/workflow/') .
             ' configuration would need to be updated to point to the mounted location.', 'error');
   } else {
-    $ingest_path = $batch_values['batch_host'];
+    $ingest_path = $ingest_path;
   }
   $batch_path = rtrim($ingest_path, '/') . '/batch_' . $batch_values['batch_external_id'];
   if (!file_exists($batch_path)) {
     $call = mkdir($batch_path);
     if (!$call) {
-      drupal_set_message('The batch folder "' . $batch_path . '" could not be created.');
+      drupal_set_message('The batch folder "' . $batch_path . '" could not be created.', 'error');
     }
   }
+
   return (file_exists($batch_path)) ? $batch_path : '';
 }
 
@@ -998,13 +1003,46 @@ function upitt_workflow_batch_export_path($batch_external_id, $dsid = '') {
  * @return array
  */
 function upitt_workflow_get_batch_host_values() {
-  $arr = explode("\r\n", variable_get('upitt_workflow_hosts_for_ingest'));
+  $arr = explode("\r\n", variable_get('upitt_workflow_hosts_for_ingest'), 2);
   $return_array = array(variable_get('upitt_workflow_ingest_path', '/ingest/incoming') => 'Default Incoming Ingest Path');
 
   foreach ($arr as $alias_and_value) {
-    @list($alias, $value) = explode("=", $alias_and_value);
+    @list($alias, $value) = explode("=", $alias_and_value, 2);
     $alias = trim($alias);
     $return_array[$value] = $alias;
   }
   return $return_array;
 }
+
+/**
+ * This will prompt the user to create any paths that can not be found on the hosts that
+ * are configured for the workflow module.
+ *
+ * Values for the batch_hosts_array will have an alias and then one of two kinds of possible values:
+ *   "ftp_access" - currently designates the box.com as an incoming "host"
+ * or
+ *   servername:/folderpath/subfolder1/subfolder2
+ * 
+ * For now, the code will not try to create any folders within the box account.
+ */
+function upitt_workflow_create_host_paths($batch_hosts_array) {
+dpm($batch_hosts_array);
+  foreach ($batch_hosts_array as $alias_host_path) {
+
+    @list($alias, $host_path) = explode("=", $alias_host_path, 2);
+    if ($host_path <> 'ftp_access') {
+      @list($host, $path) = explode(":", $host_path, 2);
+      // if $host is the same as this current server's ID, then we can check the folder just using file_exists()
+      if ($host == $_SERVER['SERVER_NAME']) {
+        if (!file_exists($path)) {
+          drupal_set_message(t('The path "' . $path . '" does not exist on this server "' . $host . '".  It will need to be created before the batch can be ingested'), 'warning');
+        }
+      }
+      else {
+        drupal_set_message(t('The system could not verify whether host "' . $host . '" has a folder named "' . $path . '".'), 'warning');
+      }
+    }
+  }
+  return;
+}
+
