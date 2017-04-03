@@ -58,7 +58,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
 
 //    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSS960_B015_F070_I001/', $fedora_model_name, $parent, $site, $batch_default_depositor);
     if ($fedora_model_name == 'bookCModel') {
-      $markup .= upitt_workflow_drush_book($batch_path, $fedora_model_name, $parent, $site, 'pitt:' . $batch['batch_external_id']);
+      $markup .= upitt_workflow_drush_book($batch_path, $parent, $site, 'pitt:' . $batch['batch_external_id']);
     } elseif ($fedora_model_name == 'sp_large_image_cmodel') {
       $markup .= upitt_workflow_csv2mods($batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
     }
@@ -294,7 +294,7 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
 /**
  * Helper function to just issue the drush command.
  */
-function upitt_workflow_drush_book($filepath, $fedora_model_name, $parent, $site, $pid) {
+function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
   global $user;
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
@@ -309,12 +309,16 @@ function upitt_workflow_drush_book($filepath, $fedora_model_name, $parent, $site
 
   $alerted_on_err = FALSE;
   // TODO: make sure this row is not an empty line
-  $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
-                   '--content_models=islandora:' . $fedora_model_name . ' ' .
+  $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=pitt --uri=' . $this_domain . ' islandora_book_batch_preprocess ' .
+                   '--content_models=islandora:bookCModel ' .+
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
                    (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
-                   '--type=directory --overwrite_existing=1 ' .
+                   '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
+/* THIS parameters is not supported:
+
+                   '--overwrite_existing=1 ' .
+ */
                    (($site) ? '--site=' . $site . ' --site_relationship_pred=isMemberOfSite ': '') .
                    ' --target=' . $filepath;
   $markup = '<h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
