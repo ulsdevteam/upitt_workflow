@@ -432,30 +432,30 @@ function upitt_workflow_save_batch($values, $collection_options) {
   $batch_path = upitt_workflow_batch_path($values);
   // assume all fields need to be escaped and wrapped with '' characters -- EXCEPT for the integer fields.
   foreach ($values as $fieldname => $value) {
-    // If the file is set, the actual file behind this must be moved to the incoming ingest folder and the field value must be set to this path.
-    if ($fieldname == 'file' && isset($_FILES['files']) && is_array($_FILES['files'])) {
-//      $rm_command = 'rm ' . $batch_path;
-//      exec($rm_command);
-      $dest = $batch_path . '/metadata.csv';
-      if ($_FILES['files']['error']['file'] == UPLOAD_ERR_OK) {
-        $tmp_name = $_FILES["files"]["tmp_name"]['file'];
-        // basename() may prevent filesystem traversal attacks;
-        // further validation/sanitation of the filename may be appropriate
-        if (move_uploaded_file($tmp_name, $dest)) {
-          $value = $dest;
+    // If the file is set, the actual file behind this must be moved to the incoming
+    // ingest folder and the field value must be set to this path.
+    if ($fieldname == 'file') {
+      if (isset($_FILES['files']) && isset($_FILES["files"]["tmp_name"]['file'])) {
+        $has_file = FALSE;
+        $dest = $batch_path . '/metadata.csv';
+        if ($_FILES['files']['error']['file'] == UPLOAD_ERR_OK) {
+          $tmp_name = $_FILES["files"]["tmp_name"]['file'];
+          if (move_uploaded_file($tmp_name, $dest)) {
+            $value = $dest;
+            $has_file = TRUE;
+          }
+          else {
+            drupal_set_message(t('File move operation from "' . $tmp_name . '" to "' . $dest . '" failed'), 'error');
+            return false;
+            $value = NULL;
+          }
         }
-        else {
-          drupal_set_message(t('File move operation from "' . $tmp_name . '" to "' . $dest . '" failed'), 'error');
-          return false;
-          $value = NULL;
-        }
-        echo "<h3>".$fieldname."</h3>";
-        echo "<pre>".print_r($_FILES['files'], true). "</pre><hr>";
-      }
-      if (($fieldname == 'file' && $value) || $fieldname <> 'file' || (isset($existing_batch_record['file']))) {
-        $sql_fields[] = $fieldname;
-        if (!$value && isset($existing_batch_record['file']) && $fieldname == 'file') {
-          $value = $existing_batch_record['file'];
+        if (($fieldname == 'file' && $value) || $fieldname <> 'file' || (!empty($existing_batch_record['file']))) {
+          $sql_fields[] = $fieldname;
+          if (!$value && isset($existing_batch_record['file']) && $fieldname == 'file') {
+            $value = $existing_batch_record['file'];
+            $has_file = TRUE;
+          }
         }
       }
     } else {
