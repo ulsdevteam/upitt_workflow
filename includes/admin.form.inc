@@ -31,6 +31,15 @@ function upitt_workflow_admin_form() {
       '#default_value' => variable_get('upitt_workflow_ingest_path', '/ingest/incoming'),
       '#size' => 100,
     ),
+    'incoming_holdings_path' => array(
+      '#type' => 'textfield',
+      '#title' => t('Default Holdings Path'),
+      '#description' => t('The holdings directory.  A batch can be created by pointing to a folder
+                           that is contained with this location.  The batch will convert the files
+                           and the structure of the contents for an Islandora batch.'),
+      '#default_value' => variable_get('upitt_workflow_holdings_path', '/ingest/holding'),
+      '#size' => 100,
+    ),
     'batch_hosts' => array(
       '#type' => 'textarea',
       '#title' => t('Available Host Aliases for Batch ingest'),
@@ -94,6 +103,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       $batch_hosts_array = explode("\r\n", $form_state['values']['batch_hosts']);
       upitt_workflow_create_host_paths($batch_hosts_array);
       variable_set('upitt_workflow_ingest_path', $form_state['values']['incoming_ingest_path']);
+      variable_set('upitt_workflow_holdings_path', $form_state['values']['incoming_holdings_path']);
       variable_set('upitt_workflow_ftp_username', $form_state['values']['ftp_username']);
       variable_set('upitt_workflow_ftp_password', $form_state['values']['ftp_password']);
       variable_set('upitt_workflow_ftp_port', $form_state['values']['ftp_port']);
@@ -102,6 +112,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
 
     case 'edit-reset':
       variable_del('upitt_workflow_ingest_path');
+      variable_del('upitt_workflow_holdings_path');
       variable_del('upitt_workflow_ftp_username');
       variable_del('upitt_workflow_ftp_password');
       variable_del('upitt_workflow_ftp_port');
@@ -111,4 +122,3 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
   // Set this message after the folders may be created in case there are any error messages.
   drupal_set_message(t('The settings have been updated!'));
 }
-

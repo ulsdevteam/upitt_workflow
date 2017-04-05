@@ -9,6 +9,7 @@ function upitt_workflow_objects() {
     $asterisk = "<sup style='color:blue' title='Requires \"Workflow Manage Lookup Tables\" permission'>*</super>";
     $links = array(l('Workflow Admin', '/workflow/admin', $options),
                    l('Create a New Batch', '/workflow/batch/new', $options),
+                   l('Create Batch from holdings folder', '/workflow/batch/newfromfolder', $options),
                    l('Manage Lookup Tables', '/workflow/admin/manage/action', $options));
   }
 

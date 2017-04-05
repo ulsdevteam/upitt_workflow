@@ -137,6 +137,15 @@ function upitt_workflow_menu() {
       'file' => 'includes/batch.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
+    'workflow/batch/newfromfolder' => array(
+      'title' => t('Create Batch from folder'),
+      'description' => t('This will move the files from the legacy naming pattern to the expected Islandora ingest structure.'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_folder_to_batch_form'),
+      'type' => MENU_NORMAL_ITEM,
+      'file' => 'includes/folder_to_batch.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
     'workflow/collection' => array(
       'title' => t('Workflow Collections (legacy)'), 
       'page callback' => array('upitt_workflow_collections_form'),
@@ -245,7 +254,12 @@ function upitt_workflow_theme() {
     'upitt_workflow_collection_page' => array(
       'variables' => array('links' => '', 'breadcrumb' => '', 'table' => NULL, 'count_rows' => 0),
       'template' => 'theme/upitt-workflow-collection-page',
-    )
+    ),
+    'upitt_workflow_batchmove_report' => array(
+      'variables' => array('markup' => '', 'breadcrumb' => ''),
+      'render_element' => 'form',
+      'template' => 'theme/upitt-workflow-batchmove-report',
+    ),
 /*
     'page__workflow_batch' => array(
       'template' => 'theme/page--workflow-batch',
@@ -329,6 +343,9 @@ function upitt_workflow_preprocess_page(&$vars) {
         $vars['theme_hook_suggestions'][] = 'page__'. $vars['node']->type;
         dpm('page__'. $vars['node']->type . ' variables: ');
         dpm($vars);
+      }
+      if ($item['path'] == 'workflow/batch/%') {
+        drupal_add_js($path . '/js/csv_table.js');
       }
     }
     elseif ($item['path'] == 'islandora/object/%/manage/audit_upitt_workflow') {

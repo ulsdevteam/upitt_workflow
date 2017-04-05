@@ -56,7 +56,6 @@ function upitt_workflow_islandora_ingest($batch_id) {
 
     $batch_default_depositor = $batch['default_depositor'];
 
-//    $markup .= upitt_workflow_csv2mods('/ingest/holding/MSS960_B015_F070_I001/', $fedora_model_name, $parent, $site, $batch_default_depositor);
     if ($fedora_model_name == 'bookCModel') {
       $markup .= upitt_workflow_drush_book($batch_path, $parent, $site, 'pitt:' . $batch['batch_external_id']);
     } elseif ($fedora_model_name == 'sp_large_image_cmodel') {
@@ -310,7 +309,7 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
   $alerted_on_err = FALSE;
   // TODO: make sure this row is not an empty line
   $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=pitt --uri=' . $this_domain . ' islandora_book_batch_preprocess ' .
-                   '--content_models=islandora:bookCModel ' .+
+                   '--content_models=islandora:bookCModel ' .
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
                    (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                    '--type=directory ' .

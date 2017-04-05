@@ -1,13 +1,13 @@
 <?php
 
-function upitt_workflow_batch_detail_form($batch) {
+function upitt_workflow_batch_detail_form($batch_id) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
-  $where_batch_clause = ((is_numeric($batch)) ? 'WHERE b.batch_id = \'' . $batch . '\' ' :
-    'WHERE b.batch_external_id = \'' . $batch . '\' ');
+  $where_batch_clause = ((is_numeric($batch_id)) ? 'WHERE b.batch_id = \'' . $batch_id . '\' ' :
+    'WHERE b.batch_external_id = \'' . $batch_id . '\' ');
 
 
   $batch_detail = 'SELECT b.batch_id, b.nid, b.batch_external_id `name`, b.date `date`, b.mapto_collections `collection/s`, ws.name `workflow`, b.file ' .
@@ -75,7 +75,9 @@ function upitt_workflow_batch_detail_form($batch) {
     $arr = upitt_workflow_csv_file_as_array($row['file']);
     $file_header = (isset($arr['header']) ? $arr['header'] : array());
     $file_rows = (isset($arr['rows']) ? $arr['rows'] : array());
-    $details =  theme('table', array('rows' => $file_rows, 'header' => $file_header, 'attributes' => array('class' => array('report_table max_height_500'))));
+    $details = (count($file_rows) < 1) ?
+      '<table><tr><td>There is no CSV file associated with this batch.  ' . l(t('Edit'), '/workflow/batch/edit/' . $batch_id, array('fragment' => 'file_upload')) . ' this batch to upload a CSV file.</td></tr></table>'
+      : theme('table', array('rows' => $file_rows, 'header' => $file_header, 'attributes' => array('class' => array('report_table max_height_500'))));
        // theme('workflow_item_details', array('details' => $row));
   }
 
@@ -103,11 +105,11 @@ function upitt_workflow_batch_detail_form($batch) {
   mysqli_close($link);
 
   $pager = theme('pager', array('quantity',$count_rows));
-  $links = array(l('Edit', '/workflow/batch/edit/' . $batch),
-                 l('Islandora Ingest', '/workflow/batch/' . $batch . '/islandora_ingest'));
+  $links = array(l('Edit', '/workflow/batch/edit/' . $batch_id),
+                 l('Islandora Ingest', '/workflow/batch/' . $batch_id . '/islandora_ingest'));
   // If the islandora_datastreams_io module is installed and the user has permission, create the export link.
   $export_link = ((module_exists('islandora_datastreams_io') && user_access(ISLANDORA_DATASTREAMS_IO)) ?
-    l('Export', '/islandora/datastreams_io/export/batch/' . $batch) : '');
+    l('Export', '/islandora/datastreams_io/export/batch/' . $batch_id) : '');
   if ($export_link) {
     $links[] = $export_link;
   }

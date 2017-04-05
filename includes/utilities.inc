@@ -500,16 +500,16 @@ function upitt_workflow_get_object_fedora_sites($object_id) {
  * Helper function to return a set of filenames from a given path -- with the option to filter ($mask)
  * and an option to recursively ($recurse) search for files under the initial directory path ($dir).
  */
-function upitt_workflow_file_scan_directory($dir, $mask = '', $recurse = FALSE) {
+function upitt_workflow_file_scan_directory($dir, $mask = '', $recurse = FALSE, $returnOnlyFolders = FALSE) {
   $result = array();
 
   $cdir = scandir($dir);
   foreach ($cdir as $key => $value) {
     if (!in_array($value,array(".",".."))) {
       if ($recurse && (is_dir($dir . DIRECTORY_SEPARATOR . $value))) {
-        $result[$value] = upitt_workflow_file_scan_directory($dir . DIRECTORY_SEPARATOR . $value, $mask, $recurse);
+        $result[$value] = upitt_workflow_file_scan_directory($dir . DIRECTORY_SEPARATOR . $value, $mask, $recurse, $returnOnlyFolders);
       }
-      else {
+      elseif (!$recurse || !$returnOnlyFolders) {
         if (!$mask || (strstr($value, $mask))) {
           $result[] = $value;
         }
@@ -1046,3 +1046,164 @@ dpm($batch_hosts_array);
   return;
 }
 
+/**
+ * This will save or update the given batch record.  Special process will potentially need to populate the collection table if the choices are fedora collections.
+ */
+function upitt_workflow_save_batch($values, $collection_options) {
+  global $user;
+  $collections_values = $values['mapto_collections'];
+
+  $batch_id = upitt_workflow_get_batch_id($values['batch_external_id'], TRUE);
+  $existing_batch_record = ($batch_id) ? upitt_workflow_batch_load($batch_id) : array();
+
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+
+  // these form_state values are not needed for the SQL and would cause problems, so removed them here.
+  unset($values['submit']);  unset($values['form_build_id']); unset($values['form_token']); unset($values['form_id']); unset($values['op']);
+  // this includes the TINYINT fields used for the checkboxes
+  $batch_integer_fields = array('use_color_target', 'is_batch_request', 'is_batch_active', 'has_file', 'batch_property_owner_id', 'batch_sequence_id', 'item_count', 'content_type_id');
+
+  $batch_external_id = $values['batch_external_id'];
+
+  if (!$batch_external_id) {
+    drupal_set_message('The batch Name is a required field.  The batch could not be saved.', 'error');
+    return;
+  }
+  $sql_fields = $sql_values = array();
+  if ($batch_id) {
+    $sql_fields[] = 'batch_id';
+    $sql_values[] = $batch_id;
+  }
+  $batch_path = upitt_workflow_batch_path($values);
+  // assume all fields need to be escaped and wrapped with '' characters -- EXCEPT for the integer fields.
+  foreach ($values as $fieldname => $value) {
+    // If the file is set, the actual file behind this must be moved to the incoming
+    // ingest folder and the field value must be set to this path.
+    if ($fieldname == 'file') {
+      if (isset($_FILES['files']) && isset($_FILES["files"]["tmp_name"]['file'])) {
+        $has_file = FALSE;
+        $dest = $batch_path . '/metadata.csv';
+        if ($_FILES['files']['error']['file'] == UPLOAD_ERR_OK) {
+          $tmp_name = $_FILES["files"]["tmp_name"]['file'];
+          if (move_uploaded_file($tmp_name, $dest)) {
+            $value = $dest;
+            $has_file = TRUE;
+          }
+          else {
+            drupal_set_message(t('File move operation from "' . $tmp_name . '" to "' . $dest . '" failed'), 'error');
+            return false;
+            $value = NULL;
+          }
+        }
+        if (($fieldname == 'file' && $value) || $fieldname <> 'file' || (!empty($existing_batch_record['file']))) {
+          $sql_fields[] = $fieldname;
+          if (!$value && isset($existing_batch_record['file']) && $fieldname == 'file') {
+            $value = $existing_batch_record['file'];
+            $has_file = TRUE;
+          }
+        }
+      }
+    } else {
+      $sql_fields[] = $fieldname;
+    }
+
+    if ($fieldname == 'mapto_collections') {
+      upitt_workflow_sync_solr_collections($value, $collection_options);
+    }
+
+    if (!is_null($value)) {
+      if (array_search($fieldname, $batch_integer_fields) === FALSE) {
+        if ($fieldname == 'batch_request_due_date' || $fieldname == 'date') {
+          $value = $value['month'] . '/' . $value['day'] . '/' . $value['year'];
+        } elseif (is_array($value)) {
+          $value = implode(",", $value);
+        }
+        // Don't add any update to file value if it is not set from previous batch editing.
+        if (($fieldname == 'file' && $value) || $fieldname <> 'file') {
+          $sql_values[] = "'" . mysqli_real_escape_string($link, $value) . "'";
+        }
+      } else {
+        $sql_values[] = $value;
+      }
+    }
+  }
+  $sql_fields[] = 'user';
+  $sql_values[] = $user->uid;
+
+  $sql = "REPLACE INTO `batch` (`" . implode("`, `", $sql_fields) . "`) VALUES (" . implode(", ", $sql_values) . ")";
+
+  $result = mysqli_query($link, $sql);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+
+  mysqli_close($link);
+  return $batch_id;
+}
+
+function upitt_workflow_update_batch_nid($batch_id, $node) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $sql = 'UPDATE `batch` SET `nid` = ' . $node->nid . ' WHERE `batch_id` = ' . $batch_id;
+
+  $result = mysqli_query($link, $sql);
+
+  mysqli_close($link);
+}
+
+/**
+ * Helper function that will set the value of a $node body to a block of HTML based on the batch record.
+ * 
+ * @param string $batch_external_id
+ * @param string $batch_id
+ * @param string $batch_description
+ */
+function upitt_workflow_node_body_for_batch($node, $batch_external_id, $batch_id, $batch_description, $extra_markup = '') {
+  // TRUE / FALSE based on whether or not the node's body contained the text "/workflow/".
+  $body_had_contents = ( isset($node->body) ? strstr($node->body['und'][0]['value'], '/workflow/') : FALSE);
+  $body_markup = (($body_had_contents) ? $node->body['und'][0]['value'] :
+      '<p>' .
+          l(t('Edit'), '/workflow/batch/edit/' . $batch_id)) . ', ' .
+          l(t('Ingest (prepare)', '/workflow/batch/' . $batch_id . '/islandora_ingest')) . ', or ' .
+          l(t('Manage'), '/workflow/batch/' . $batch_id) . ' this batch.</p>' .
+      (($batch_description) ? '<p><b>Description</b><br />' . $batch_description . '</p>' : '') .
+      $extra_markup;
+  $node->body['und'][0]['value'] = $body_markup;
+  $node->body['und'][0]['summary'] = text_summary($body_markup);
+  $node->body['und'][0]['format'] = 'full_html';
+}
+
+/**
+ * Helper function that will return a drupal $node object - created from a batch record.
+ * 
+ * @param string $batch_external_id
+ * @param string $batch_id
+ * @param string $batch_description
+ */
+function upitt_workflow_make_node_for_batch($batch_external_id, $batch_id, $batch_description, $extra_markup = '') {
+  global $user;
+  $node = new stdClass();
+  $node->type = 'workflow_batch';
+  $node->language = 'en';
+  node_object_prepare($node);
+
+  $node->title = 'Workflow batch ' . $batch_external_id;
+  upitt_workflow_node_body_for_batch($node, $batch_external_id, $batch_id, $batch_description, $extra_markup);
+  $node->status = 1;   // (1 or 0): published or unpublished
+  $node->promote = 0;  // (1 or 0): promoted to front page or not
+  $node->sticky = 0;  // (1 or 0): sticky at top of lists or not
+  $node->comment = 1;  // 2 = comments open, 1 = comments closed, 0 = comments hidden
+  // Add author of the node
+  $node->uid = $user->uid;
+  // Set created date
+  $current_date = date('H:i:s m/d/Y');
+  $node->date = $current_date;
+  $node->created = strtotime($current_date);
+
+  $path = '/workflow_batch/' . $batch_external_id;
+  $node->path = array('alias' => $path);
+
+  $node = node_submit($node);
+  node_save($node);
+  drupal_set_message(l('Node created', '/node/' . $node->nid) . ' for workflow batch "' . $batch_external_id . '".  ' . l('Manage', '/workflow/batch/' . $batch_id) . ' this batch.');
+  return $node;
+}
