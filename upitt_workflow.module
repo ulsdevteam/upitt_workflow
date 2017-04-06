@@ -1,7 +1,7 @@
 <?php
 
 // Full file path to the current installation's settings.php file
-/// define('SETTINGS_PATH', '/var/www/drupal/sites/default/settings.php');
+//// define('SETTINGS_PATH', '/var/www/drupal/sites/default/settings.php');
 define('SETTINGS_PATH', '/var/www/html/drupal_gamera_sandbox/sites/gamera/settings.php');
 define('WF_OBJECTS_PER_PAGE', 100);
 
@@ -343,9 +343,6 @@ function upitt_workflow_preprocess_page(&$vars) {
         $vars['theme_hook_suggestions'][] = 'page__'. $vars['node']->type;
         dpm('page__'. $vars['node']->type . ' variables: ');
         dpm($vars);
-      }
-      if ($item['path'] == 'workflow/batch/%') {
-        drupal_add_js($path . '/js/csv_table.js');
       }
     }
     elseif ($item['path'] == 'islandora/object/%/manage/audit_upitt_workflow') {

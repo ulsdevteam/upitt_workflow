@@ -1009,7 +1009,9 @@ function upitt_workflow_get_batch_host_values() {
   foreach ($arr as $alias_and_value) {
     @list($alias, $value) = explode("=", $alias_and_value, 2);
     $alias = trim($alias);
-    $return_array[$value] = $alias;
+    if ($alias && $value) {
+      $return_array[$value] = $alias;
+    }
   }
   return $return_array;
 }
@@ -1163,7 +1165,7 @@ function upitt_workflow_node_body_for_batch($node, $batch_external_id, $batch_id
   $body_markup = (($body_had_contents) ? $node->body['und'][0]['value'] :
       '<p>' .
           l(t('Edit'), '/workflow/batch/edit/' . $batch_id)) . ', ' .
-          l(t('Ingest (prepare)', '/workflow/batch/' . $batch_id . '/islandora_ingest')) . ', or ' .
+          l(t('Ingest (prepare)'), '/workflow/batch/' . $batch_id . '/islandora_ingest') . ', or ' .
           l(t('Manage'), '/workflow/batch/' . $batch_id) . ' this batch.</p>' .
       (($batch_description) ? '<p><b>Description</b><br />' . $batch_description . '</p>' : '') .
       $extra_markup;

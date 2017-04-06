@@ -331,7 +331,10 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
       exec($command);
     }
     mkdir($batch_path);
-    mkdir($batch_path . '/book');
+
+    if ($content_model == 'bookCModel') {
+      mkdir($batch_path . '/book');
+    }
     foreach ($move_files as $k => $file) {
       $file_mask_match = '';
       foreach ($model_filemasks as $mask => $model_filemask) {
@@ -341,12 +344,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
           }
         }
       }
-      /*    $filemasks['*.marcxml.xml'] = 'MARC XML';
-            $filemasks['*.mets.xml'] = 'METS XML';
-            $filemasks['*.tif'] = 'Page';
-            $filemasks['*.pdf'] = 'PDF file';
-       *
-       */
+
       switch ($file_mask_match) {
         case '*.tif':
           if ($content_model == 'bookCModel') {
