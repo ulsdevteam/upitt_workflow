@@ -3,7 +3,7 @@
 function upitt_workflow_objects() {
   global $user;
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
-
+  $base_path = conf_path(TRUE);
   if ($user->uid == 1 || user_access(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES, $user)) {
     $options = array('attributes' => array('title' => 'Requires "Workflow Manage Lookup Tables" permission'));
     $asterisk = "<sup style='color:blue' title='Requires \"Workflow Manage Lookup Tables\" permission'>*</super>";

@@ -21,7 +21,11 @@ function get_config_value($section,$key) {
  * Simple lookup function to provide mapping between the legacy workflow "type_of_resource" to the Islandora fedora model name.
  */
 function upitt_workflow_get_workflow_to_fedora_object_mappings() {
-  return array(
+  return array('bookCModel' => 'Book',
+               'sp_large_image_cmodel' => 'Large Images',
+               'newspaperCModel' => 'Newspaper (pending development)',
+               'findingAidCModel' => 'Finding Aids (pending development)',
+      /* LEGACY NAMING...
                'cartographic (sp_large_image_cmodel)' => 'sp_large_image_cmodel',
                'finding aid (findingAidCModel)' => 'findingAidCModel',
                'manuscript (manuscriptCModel)' => 'manuscriptCModel',
@@ -29,6 +33,7 @@ function upitt_workflow_get_workflow_to_fedora_object_mappings() {
                'photograph (sp_large_image_cmodel)' => 'sp_large_image_cmodel',
                'still image (sp_large_image_cmodel)' => 'sp_large_image_cmodel',
                'text (bookCModel)' => 'bookCModel',
+      */
               );
 }
 

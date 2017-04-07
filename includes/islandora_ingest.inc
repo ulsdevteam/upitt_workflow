@@ -30,14 +30,12 @@ function upitt_workflow_islandora_ingest($batch_id) {
 
   if ($batch) {
     $markup .= ', "' . $batch['batch_external_id'] . '"';
-    $workflow_type_to_fedoramodel_mapping = upitt_workflow_get_workflow_to_fedora_object_mappings();
 
-    // translate the batch's object type to a fedora object type for the requirements:
-    $fedora_model_name = $workflow_type_to_fedoramodel_mapping[$batch['default_type_of_resource']];
+    $fedora_model_name = $batch['default_type_of_resource'];
 
     $markup .= ' from batch ' . $batch['batch_external_id'] . '</p>';
 
-    $markup .= '<h3 style="color:green">Batch `default_type_of_resource` = "' . $batch['default_type_of_resource'] . '", yields fedora model: "' . $fedora_model_name . '"</h3><br>';
+    $markup .= '<h3 style="color:green">Batch `Model` (default_type_of_resource) = "' . $batch['default_type_of_resource'] . '", yields fedora model: "' . $fedora_model_name . '"</h3><br>';
 
     /* // bgg - skip this -
     $requirements = upitt_workflow_fedora_object_requirements($fedora_model_name);
@@ -62,94 +60,11 @@ function upitt_workflow_islandora_ingest($batch_id) {
       $markup .= upitt_workflow_csv2mods($batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
     }
 
-    // bgg - skip this - $item_files = upitt_workflow_get_item_files($object_id);
-
-    // NOTE -- the drush command does not yet support multiple parent values.  It will need to be enhanced so that it can
-    //         take a CSV value for our needs.  This will also need to be extened to set our IsMemberOfSite value.
-    /* // bgg - skip this - $drush_command = 'drush -v -u 1 --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
-                     '--content_models=islandora:' . $fedora_model_name . ' ' .
-                     // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                     (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
-                     '--type=directory ' .
-                     '--assign_pid=' . $use_pid . ' ' .
-                     (($site) ? '--site=' . $site . ' --site_relationship_pred=isMemberOfSite ': '') .
-                     ' --target=' . $item_path;
-    $markup .= '<h3>Drush call</h3><h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
-    */
     $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
     $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest<br>' .
                '<i># or if only one set to be processed, supply the ingest_set option</i><br>' .
                'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=82</code>';
 
-    /* // bgg - skip this -
-    $item_files = upitt_workflow_get_item_files($object_id);
-    if ($item_files) {
-      $markup  .= '<h3>Item Files for "' . $object_id . '"</h3>';
-      foreach ($item_files as $item_file) {
-        $exists_color = (file_exists($item_file['path']) ? 'green' : 'red');
-        // Is this file one of the required files?  That could potentially be batched out ez...
-
-        $markup .= '<pre style="color:' . $exists_color . '">' .
-          '<b>id</b>: ' . $item_file['id'] . '<br>' .
-          '<b>item_id</b>: ' . $item_file['item_id'] . '<br>' .
-          '<b>name</b>: ' . $item_file['name'] . '<br>' .
-          '<b>path</b>: ' . $item_file['path'] . '<br>' .
-          '<b>host</b>: ' . $item_file['host'] . '<br>' .
-          '<b>size_bytes</b>: ' . $item_file['size_bytes'] . '<br>' .
-          '<b>mime_type</b>: ' . $item_file['mime_type'] . '<br>' .
-          '<b>use</b>: ' . $item_file['use'] . '<br>' .
-          '<b>timestamp</b>: ' . $item_file['timestamp'] . '<br></pre>';
-      }
-      $islandora_object = islandora_object_load($use_pid);
-      if (is_object($islandora_object)) {
-        drupal_set_message(t('This object already exists.  The create job function has not been called.'), 'warning');
-      }
-      else {
-        // create object job call
-        $function_name = 'upitt_workflow_' . $fedora_model_name . '_create_object';
-        $markup .= "<hr>Create object function call: <code>" . $function_name . "(\$pid = '" . $use_pid . "');</code> (" . ((function_exists($function_name)) ? 'exists' : 'no function') . ')';
-        if (function_exists($function_name)) {
-          $function_name($use_pid);
-        }
-      }
-
-      // make derivatives job calls
-      $function_name = 'upitt_workflow_' . $fedora_model_name . '_make_derivative';
-      foreach ($requirements['islandora_create_derivatives'] as $derivative_requirement) {
-        $markup .= "<hr>Create derivatives function call: <code>" . $function_name . "(\$pid = '" . $use_pid . "', \$dsid = '" . $derivative_requirement . "');</code> " .
-                   "(" . ((function_exists($function_name)) ? 'exists' : 'no function') . ')';
-        if (function_exists($function_name)) {
-          $function_name($use_pid, $derivative_requirement);
-        }
-      }
-
-      // passthrough datastream job calls
-      $function_name = 'upitt_workflow_' . $fedora_model_name . '_add_datastream';
-      foreach ($requirements['passthrough_datastreams'] as $passthrough_datastream_requirement) {
-        $keys = array_keys($passthrough_datastream_requirement);
-        $source_key = array_shift($keys);
-        $passthrough_source = upitt_workflow_get_item_file_for_specific_use($source_key, $item_files);
-        if ($passthrough_source) {
-          $datastream_target = $passthrough_source['path'];
-          $markup .= "<hr>Passthrough derivative function call: <code>" . $function_name . "(\$pid = '" . $use_pid . "', " .
-                     "\$dsid = '" . $passthrough_datastream_requirement . "', \$datastream_source = '" . $datastream_source . "');</code> (" . ((function_exists($function_name)) ? 'exists' : 'no function') . ')';
-          if (function_exists($function_name)) {
-            $function_name($use_pid, $passthrough_datastream_requirement, $datastream_source);
-          }
-        }
-        else {
-          drupal_set_message(t('The passthrough datastream for ' . $source_key . ' could not be found in this object\'s records'), 'warning');
-        }
-      }
-    }
-    */
-    /* // bgg - skip this -
-    if (upitt_workflow_validate_ingest_for_object($item_files, $requirements)) {
-      $markup .= '<h3 style="color: green">Requirements all satisfied</h3>';
-    } else {
-      $markup .= '<h3 style="color: red">Requirements not satisfied</h3>';
-    }
-    */
     $markup .= '<h3>Batch values</h3>';
     $markup .= theme('workflow_item_details', array('details' => $batch));
   } else {
@@ -272,7 +187,7 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
                        (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                        '--type=directory --overwrite_existing=1 ' .
                        '--assign_pid=' . $csv_file_source['identifier'] . ' ' .
-                       (($site) ? '--site=' . $site . ' --site_relationship_pred=isMemberOfSite ': '') .
+                       (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace:http://digital.library.pitt.edu/ontology/relations# ': '') .
                        ' --target=' . $csv_file_source['path'];
       $markup = '<h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
       $retval .= $markup;
@@ -314,11 +229,8 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
                    (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                    '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
-/* THIS parameters is not supported:
-
                    '--overwrite_existing=1 ' .
- */
-                   (($site) ? '--site=' . $site . ' --site_relationship_pred=isMemberOfSite ': '') .
+                   (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace:http://digital.library.pitt.edu/ontology/relations# ': '') .
                    ' --target=' . $filepath;
   $markup = '<h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
   $retval .= $markup;

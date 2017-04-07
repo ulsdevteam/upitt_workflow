@@ -15,12 +15,6 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
   $batch_id = ((is_numeric($batch)) ? $batch : upitt_workflow_get_batch_id($batch, FALSE));
 
   $fedora_object_mappings = upitt_workflow_get_workflow_to_fedora_object_mappings();
-  $default_types_of_resource = array();
-  // These values are actually the inverse of the keys/values from the mappings variable.  Flip-flop
-  // them for the options parameter needed for the default_type_of_resource prompt.
-  foreach ($fedora_object_mappings as $k => $v) {
-    $default_types_of_resource[$k] = $k;
-  }
 
   $read_only_att = array();
   $nid = '';
@@ -33,9 +27,21 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     }
     $batch_path = upitt_workflow_batch_path($batch);
     $batch_external_id = (isset($batch['batch_external_id'])) ? $batch['batch_external_id'] : '';
+
+    // Check to see if the batch folder has already created by an earlier batch or
+    // by an earlier edit of this batch.  If so, warn the user.
+    $existing_batch_files = upitt_workflow_file_scan_directory($batch_path, '', TRUE, FALSE);
   } else {
     $batch_path = rtrim(variable_get('upitt_workflow_ingest_path', '/ingest/incoming'), '/') . '/batch_0_not_named';
     $batch_external_id = '';
+    $existing_batch_files = array();
+  }
+
+  $holdings_filepath = rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/');
+  $tmp_holdings_folders = upitt_workflow_file_scan_directory($holdings_filepath, '', FALSE, TRUE);
+  // need the key to be the value as well
+  foreach ($tmp_holdings_folders as $k => $holdings_folder) {
+    $holdings_folders[$holdings_folder] = $holdings_folder;
   }
 
   // Prepare a couple variables for use with file upload options:
@@ -58,6 +64,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
   }
 
   $batch_hosts = upitt_workflow_get_batch_host_values();
+  $count_existing_batch_files = upitt_workflow_array_flat_count_values($existing_batch_files);
 
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
@@ -67,18 +74,33 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     ),
     // Name: textfield
     'batch_external_id' => array(
-      '#type' => 'textfield',
+     '#type' => 'textfield',
       '#title' => t('Name'),
       '#attributes' => $read_only_att,
       '#description' => t('Legacy batch name, `batch_external_id`'),
       '#default_value' => $batch_external_id,
+      '#suffix' => (($count_existing_batch_files > 0) ? '<em style="color:red">' . t('There are already ' . $count_existing_batch_files . ' files / folders in the batch folder.') . '</em>' . '<pre>' . print_r($existing_batch_files, true) . '</pre>' : ''),
     ),
     // Default type of resource: select
     'default_type_of_resource' => array(
       '#type' => 'select',
-      '#title' => t('Default Type of Resource'),
-      '#options' => $default_types_of_resource,
+      '#title' => t('Model'),
+      '#options' => $fedora_object_mappings,
       '#default_value' => ($batch && isset($batch['default_type_of_resource']))? $batch['default_type_of_resource'] : '',
+    ),
+    'source_holdings_folder' => array(
+      '#type' => 'select',
+      '#description' => 'Select the holdings folder that this batch should convert to an Islandora batch.',
+      '#title' => t('Holdings folder'),
+      '#options' => $holdings_folders,
+      '#default_value' => '',
+      '#size' => 10,
+    ),
+    'do_copy' => array(
+      '#type' => 'checkbox',
+      '#title' => t('Copy the files?'),
+      '#description' => t('YES = copy the files, NO = inspect the files, but do not copy'),
+      '#default_value' => '0',
     ),
     // Collection: select box
     //   THIS SELECTBOX WILL BE A PROBLEM SINCE WE MAP TO MORE THAN ONE COLLECTION
@@ -360,8 +382,27 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
 
   $collection_options = $form_state['complete form']['mapto_collections']['#options'];
 
-  $batch_id = upitt_workflow_save_batch($form_state['values'], $collection_options);
+  $holdings_folder = $form_state['values']['source_holdings_folder'];
+  $do_copy = isset($form_state['values']['do_copy']) ? $form_state['values']['do_copy'] : FALSE;
+  $content_model = isset($form_state['values']['default_type_of_resource']) ? $form_state['values']['default_type_of_resource'] : 'sp_large_image_cmodel';
   $batch_external_id = $form_state['values']['batch_external_id'];
+
+  if (!$holdings_folder || !$batch_external_id) {
+    drupal_set_message('The batch name and a holdings folder must be set in order to save this batch', 'error');
+    return;
+  }
+
+  // Now it is safe to make the full path to the specific holdings subfolder that has been selected.
+  $holdings_folder = rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/') . '/' . $holdings_folder;
+  $batch_path = rtrim(variable_get('upitt_workflow_ingest_path', '/ingest/incoming'), '/') . '/batch_' . $batch_external_id;
+
+  $markup = upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy);
+
+  // If these values are still set in the form_state, the save_batch code will not know what to do with them.
+  unset($form_state['values']['source_holdings_folder']);
+  unset($form_state['values']['do_copy']);
+  $batch_id = upitt_workflow_save_batch($form_state['values'], $collection_options);
+
   drupal_set_message('Updated "' . $batch_external_id . '".');
 
   // ONLY create a new drupal node if this record does not yet have a nid value.
@@ -374,8 +415,234 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   else {
     $node = upitt_workflow_make_node_for_batch($batch_external_id, $batch_id, $form_state['values']['batch_description']);
     upitt_workflow_update_batch_nid($batch_id, $node);
+    drupal_set_message('New node created ' . $node->nid);
   }
 
-  dpm($node);
   $form_state['redirect'] = '/workflow/batch/' . $batch_id;
+}
+
+/**
+ * This function will take the contents of a folder that is in the holdings location
+ * and make the files/folder structure that Islandora batch expects.
+ *
+ * @param string $holdings_folder - holdings folder, the "from" folder here
+ * @param string $batch_path - the batch destination folder, the "to" folder here.
+ * @param string $content_model represents which fedora model the batch folder represents
+ * @param bool $do_copy - if FALSE, provides a report on the file size for the move,
+ *          else, it copies the files as expected for an islandora batch.
+ */
+function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy = FALSE) {
+  // with the folder of files, get the PID value from the {PID}.marcxml.xml file.
+  $model_filemasks = upitt_workflow_content_model_filemask($content_model);
+
+  // FOR sp_large_image_cmodel:
+  //
+  // 1) make a new folder under variable_get('upitt_workflow_ingest_path', '/ingest/incoming')
+  //    named "batch_{PID}"
+  //
+  // 2) copy all relevant *.xml files and rename them to the assumed names (MODS.xml,
+  //     --METADATA--.xml, METS.xml (?) (for marcxml))
+
+
+  // FOR bookCModel:
+  //
+  // 1) make a new folder under variable_get('upitt_workflow_ingest_path', '/ingest/incoming')
+  //    named "batch_{PID}"
+  //
+  // 2) copy all relevant *.xml files and rename them to the assumed names (MODS.xml,
+  //     --METADATA--.xml, METS.xml (?) (for marcxml))
+  //
+  // 3) make a subfolder for each page and copy the {page#}.tif to the folder as : {page#}/OBJ.tif
+
+  $tmp_files = upitt_workflow_file_scan_directory($holdings_folder, '', TRUE, FALSE);
+  $files = array();
+  // FLATTEN this result
+  foreach ($tmp_files as $key => $file) {
+    if (is_array($file)) {
+      foreach ($file as $subfile) {
+        $files[] = $key . '/' . $subfile;
+      }
+    }
+    else {
+      $files[] = $file;
+    }
+  }
+
+  $move_files = array();
+  $size = $filemove_size = 0;
+  foreach ($files as $i => $file) {
+    $this_size = filesize($holdings_folder . '/' . $file);
+    $size += $this_size;
+    $keep_file = FALSE;
+    // If the file has a subfolder reference, skip it
+    if (strstr($file, '/')) {
+      // SKIP
+    }
+    else {
+      foreach ($model_filemasks as $mask => $model_filemask) {
+        $keep_file |= upitt_workflow_filemask_comparison($file, $mask);
+      }
+      if ($keep_file) {
+        $filemove_size += $this_size;
+        $move_files[] = $file;
+      }
+    }
+  }
+
+  if (!$do_copy) {
+    $markup = "<h3>Report of copying files from '" . $holdings_folder . "' to '" . $batch_path . "'</h3>";
+
+    $markup .= "<div><div style='float:left;width:48%'>";
+    $markup .= "<h4>Size of all files in holding folder</h4>";
+    $markup .= '<pre>' . number_format($size) . " bytes</pre>";
+    $markup .= "  <pre>" . print_r($files, true) . "</pre>";
+    $markup .= "</div>";
+
+    $markup .= "<div style='float:left;width:48%'>";
+    $markup .= "<h4>Size of all files to be moved</h4>";
+    $markup .= '<pre>' . number_format($filemove_size) . " bytes</pre>";
+    $markup .= "  <pre>" . print_r($move_files, true) . "</pre>";
+    $markup .= "</div></div><br style='clear:both'>";
+  }
+  else {
+    $markup = "<h3>Moving files from '" . $holdings_folder . "' to '" . $batch_path . "'</h3>";
+    $markup .= "<pre>";
+
+    if (file_exists($batch_path)) {
+      $command = 'rm -rf ' . $batch_path;
+      exec($command);
+    }
+    mkdir($batch_path);
+
+    if ($content_model == 'bookCModel') {
+      mkdir($batch_path . '/book');
+    }
+    foreach ($move_files as $k => $file) {
+      $file_mask_match = '';
+      foreach ($model_filemasks as $mask => $model_filemask) {
+        if (!$file_mask_match) {
+          if (upitt_workflow_filemask_comparison($file, $mask)) {
+            $file_mask_match = $mask;
+          }
+        }
+      }
+
+      switch ($file_mask_match) {
+        case '*.tif':
+          if ($content_model == 'bookCModel') {
+            // for Book, make directory, move file into that directory, rename OBJ.tif
+            $file_baseName = str_replace(".tif", "", $file);
+            mkdir($batch_path . '/book/' . $file_baseName);
+            copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $file_baseName . '/' . $file);
+            rename($batch_path . '/book/' . $file_baseName . '/' . $file, $batch_path . '/book/' . $file_baseName . '/OBJ.tif');
+            $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/" . $file_baseName . "/OBJ.tif'<br>";
+          }
+          else {
+            // for large image, simply move file to root of batch_path
+            copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
+            $markup .= "Moved '$file' to '" . $batch_path . "/" . $file . "'<br>";
+          }
+          break;
+        case '*.marcxml.xml':
+          if ($content_model == 'bookCModel') {
+            copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $file);
+            rename($batch_path . '/book/' . $file, $batch_path . '/book/--METADATA--.xml');
+            $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/--METADATA--.xml'<br>";
+          }
+          else {
+            copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
+            rename($batch_path . '/' . $file, $batch_path . '/--METADATA--.xml');
+            $markup .= "Moved and renamed '$file' to '" . $batch_path . "/--METADATA--.xml'<br>";
+          }
+          break;
+        case '*.mets.xml':
+          if ($content_model == 'bookCModel') {
+            copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $file);
+            rename($batch_path . '/book/' . $file, $batch_path .  '/book/METS.xml');
+            $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/METS.xml'<br>";
+          }
+          else {
+            copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
+            rename($batch_path . '/' . $file, $batch_path .  '/METS.xml');
+            $markup .= "Moved and renamed '$file' to '" . $batch_path . "/METS.xml'<br>";
+          }
+          break;
+        default:
+          break;
+      }
+    }
+    $markup .= "</pre>";
+  }
+  return $markup;
+}
+
+/**
+ * This will return an array of filemasks that should be kept / copied from the holding
+ * folder based upon content_model.
+ *
+ * @param type $content_model
+ */
+function upitt_workflow_content_model_filemask($content_model) {
+  $filemasks = array();
+  switch ($content_model) {
+    case 'sp_large_image_cmodel':
+      // the MODS is created via CSV
+      // $filemask['*.mods.xml'] = 'MODS XML';
+      $filemasks['*.tif'] = 'Image';
+      break;
+
+    case 'bookCModel':
+      $filemasks['*.marcxml.xml'] = 'MARC XML';
+      $filemasks['*.mets.xml'] = 'METS XML';
+      $filemasks['*.tif'] = 'Page';
+      $filemasks['*.pdf'] = 'PDF file';
+      break;
+
+    default:
+      break;
+
+  }
+  return $filemasks;
+}
+
+/**
+ * This will return TRUE if the file should be kept based upon the filemask.
+ *
+ * @param string $file
+ * @param string $filemask
+ */
+function upitt_workflow_filemask_comparison($file, $filemask) {
+  $filemask_without_wildcards = str_replace("*", "", $filemask);
+  $starts_with_wildcard = ($filemask[0] == '*');
+  $ends_with_wildcard = ($filemask[strlen($filemask) - 1] == '*');
+
+  if ($starts_with_wildcard && $ends_with_wildcard) {
+    return (strstr($file, $filemask));
+  }
+  elseif ($starts_with_wildcard && !$ends_with_wildcard) {
+    // the last few characters are the same as the mask, but not anything before the
+    // wildcard, but MUST compare to the $filemask_without_wildcards
+    return (substr($file, -strlen($filemask_without_wildcards)) == $filemask_without_wildcards);
+  }
+  elseif (!$starts_with_wildcard && $ends_with_wildcard) {
+    // the first few characters are the same as the mask, but not anything after the
+    // wildcard, but MUST compare to the $filemask_without_wildcards
+    return (substr($file, 1, strlen($filemask_without_wildcards)) == $filemask_without_wildcards);
+  }
+  else {
+    return ($file == $filemask);
+  }
+}
+
+function upitt_workflow_array_flat_count_values($array) {
+  $count = 0;
+  foreach ($array as $array_item) {
+    if (is_array($array_item)) {
+      $count += upitt_workflow_array_flat_count_values($array_item);
+    }
+    else {
+      $count++;
+    }
+  }
+  return $count;
 }
