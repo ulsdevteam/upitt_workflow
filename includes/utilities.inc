@@ -722,8 +722,6 @@ function upitt_workflow_get_objects_from_set($sid) {
 }
 
 function upitt_workflow_get_batch_id($batch_external_id, $create_if_not_exists = FALSE) {
-  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
-
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $sql = 'SELECT `batch_id` FROM `batch` WHERE `batch_external_id` = "' . mysqli_real_escape_string($link, $batch_external_id) . '"';
 
@@ -750,8 +748,6 @@ function upitt_workflow_get_batch_id($batch_external_id, $create_if_not_exists =
 }
 
 function upitt_workflow_batch_load($batch_id) {
-  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
-
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
   $batch_detail = 'SELECT * ' .
@@ -959,8 +955,7 @@ function upitt_workflow_batch_path($batch_values) {
             'there is no value for the batch "Name" (batch_external_id field) yet.', 'warning');
     return '';
   }
-  // Harmless hack to make this host be able to run locally in my VM.
-  $ingest_path = str_replace(":8000", "", $batch_values['batch_host']);
+  $ingest_path = $batch_values['batch_host'];
 
   if ($ingest_path == 'ftp_access') {
     $ingest_path = variable_get('upitt_workflow_ingest_path', '/ingest/incoming');

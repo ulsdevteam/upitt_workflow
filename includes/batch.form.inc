@@ -592,6 +592,7 @@ function upitt_workflow_content_model_filemask($content_model) {
       break;
 
     case 'bookCModel':
+      $filemask['*.mods.xml'] = 'MODS XML';
       $filemasks['*.marcxml.xml'] = 'MARC XML';
       $filemasks['*.mets.xml'] = 'METS XML';
       $filemasks['*.tif'] = 'Page';

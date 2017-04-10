@@ -17,7 +17,7 @@ define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup t
  * Implements hook_menu().
  */
 function upitt_workflow_menu() {
-  return array(
+  $menu = array(
     'admin/islandora/workflow' => array(
       'title' => 'University of Pittsburgh Workflow',
       'description' => 'Change the settings for workflow folders, etc.',
@@ -202,6 +202,20 @@ function upitt_workflow_menu() {
       'access callback' => 'upitt_workflow_workflowadmin_manage_access_callback',
     ),
   );
+
+  // special router to post values to the datastreams_io module
+  if (module_exists('islandora_datastreams_io')) {
+    $menu['workflow/datastreams_io/export/batch/%'] = array(
+      'title' => t('Status Change Form'),
+      'page callback' => 'upitt_workflow_datastreams_io_export',
+      'page arguments' => array(4),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/datastreams_export.inc',
+      'access arguments' => user_access(ISLANDORA_DATASTREAMS_IO),
+    );
+  }
+
+  return $menu;
 }
 
 /**
