@@ -2,6 +2,7 @@
 
 function upitt_workflow_datastreams_io_export($batch_id) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+  module_load_include('module', 'islandora_datastreams_io');
 
   $pids = array();
   if ($batch_id) {
@@ -12,7 +13,7 @@ function upitt_workflow_datastreams_io_export($batch_id) {
       $pids[] = $p;
     }
   }
-  $_SESSION['pids'] = json_encode($pids);
 
-  drupal_goto('/islandora/datastreams_io/export');
+  // Calling this will populate the PIDS for and redirect to the export form.
+  islandora_datastreams_io_pids_to_export_form($pids, ISLANDORA_DATASTREAMS_IO_FETCH_LISTPIDS);
 }
