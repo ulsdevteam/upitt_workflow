@@ -187,7 +187,7 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
                        (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                        '--type=directory --overwrite_existing=1 ' .
                        '--assign_pid=' . $csv_file_source['identifier'] . ' ' .
-                       (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace:http://digital.library.pitt.edu/ontology/relations# ': '') .
+                       (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                        ' --target=' . $csv_file_source['path'];
       $markup = '<h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
       $retval .= $markup;
@@ -230,7 +230,7 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
                    '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
                    '--overwrite_existing=1 ' .
-                   (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace:http://digital.library.pitt.edu/ontology/relations# ': '') .
+                   (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                    ' --target=' . $filepath;
   $markup = '<h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
   $retval .= $markup;

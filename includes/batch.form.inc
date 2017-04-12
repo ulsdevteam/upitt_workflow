@@ -63,6 +63,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     }
   }
 
+  
   $batch_hosts = upitt_workflow_get_batch_host_values();
   $count_existing_batch_files = upitt_workflow_array_flat_count_values($existing_batch_files);
 
@@ -79,7 +80,10 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#attributes' => $read_only_att,
       '#description' => t('Legacy batch name, `batch_external_id`'),
       '#default_value' => $batch_external_id,
-      '#suffix' => (($count_existing_batch_files > 0) ? '<em style="color:red">' . t('There are already ' . $count_existing_batch_files . ' files / folders in the batch folder.') . '</em>' . '<pre>' . print_r($existing_batch_files, true) . '</pre>' : ''),
+      '#suffix' => (($count_existing_batch_files > 0) ?
+        '<em style="color:red">' .
+        t('There are already ' . $count_existing_batch_files . ' files / folders in the batch folder.') . '</em>' .
+        '<pre class="report_table_wrapper">' . print_r($existing_batch_files, true) . '</pre>' : ''),
     ),
     // Default type of resource: select
     'default_type_of_resource' => array(
