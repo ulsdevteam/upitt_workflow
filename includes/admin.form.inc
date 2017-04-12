@@ -22,6 +22,14 @@ function upitt_workflow_admin_form() {
           t('There is NOT any password value.  FTP will not work without a valid password.'));
   $box_alias_default = 'box.com=ftp_access';
   $form = array(
+    'ingest_namespace' => array(
+      '#type' => 'textfield',
+      '#size' => 20,
+      '#title' => t('Ingest Namespace'),
+      '#description' => t('The namespace to use for ingesting all objects.'),
+      '#default_value' => variable_get('upitt_workflow_ingest_namespace', 'pitt:'),
+      '#size' => 100,
+    ),
     'incoming_ingest_path' => array(
       '#type' => 'textfield',
       '#title' => t('Default Incoming Ingest Path'),
@@ -102,6 +110,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
     case 'edit-submit':
       $batch_hosts_array = explode("\r\n", $form_state['values']['batch_hosts']);
       upitt_workflow_create_host_paths($batch_hosts_array);
+      variable_set('upitt_workflow_ingest_namespace', $form_state['values']['ingest_namespace']);
       variable_set('upitt_workflow_ingest_path', $form_state['values']['incoming_ingest_path']);
       variable_set('upitt_workflow_holdings_path', $form_state['values']['incoming_holdings_path']);
       variable_set('upitt_workflow_ftp_username', $form_state['values']['ftp_username']);
@@ -111,6 +120,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       break;
 
     case 'edit-reset':
+      variable_del('upitt_workflow_ingest_namespace');
       variable_del('upitt_workflow_ingest_path');
       variable_del('upitt_workflow_holdings_path');
       variable_del('upitt_workflow_ftp_username');

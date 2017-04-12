@@ -86,13 +86,14 @@ function upitt_workflow_batch_detail_form($batch_id) {
     upitt_workflow_sql_error_die($link, $batch_items);
   }
 
+  $ingest_namespace = variable_get('upitt_workflow_ingest_namespace', 'pitt:');
   $batch_item_headings = $batch_rows = array();
   while ($row = mysqli_fetch_assoc($result)) {
     if (count($batch_item_headings) < 1) {
       $batch_item_headings = array_keys($row);
     }
     if (array_key_exists('do_id', $row)) {
-      $pid = 'pitt:' . $row['do_id'];
+      $pid = $ingest_namespace . $row['do_id'];
       if ($obj = islandora_object_load($pid)) {
         $row['ingested?'] = l($row['do_id'], '/islandora/object/' . $pid, array('attributes' => array('target' => '_blank')));
       } else {

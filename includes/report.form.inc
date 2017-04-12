@@ -66,12 +66,13 @@ function upitt_workflow_objects() {
   $count_rows_markup = number_format($count_rows) . " workflow objects " . (($ob1_page <> 0) ? " (page " . $ob1_page . " of " . round($count_rows / WF_OBJECTS_PER_PAGE + 0.9999) . ")" : "");
   $headings = $rows = array();
 
+  $ingest_namespace = variable_get('upitt_workflow_ingest_namespace', 'pitt:');
   while ($row = mysqli_fetch_assoc($result)) {
     if (count($headings) < 1) {
       $headings = array_keys($row);
     }
     if (array_key_exists('do_id', $row)) {
-      $pid = 'pitt:' . $row['do_id'];
+      $pid = $ingest_namespace . $row['do_id'];
       if ($obj = islandora_object_load($pid)) {
         $row['ingested?'] = l($row['do_id'], '/islandora/object/' . $pid, array('attributes' => array('target' => '_blank')));
       } else {
@@ -117,7 +118,9 @@ function upitt_workflow_objectreport_form($do_id) {
   }
   $collections = upitt_workflow_lookup_collection_names();
 
-  $pid = 'pitt:' . $do_id;
+  $ingest_namespace = variable_get('upitt_workflow_ingest_namespace', 'pitt:');
+
+  $pid = $ingest_namespace . $do_id;
   $islandora_object = islandora_object_load($pid);
   
   $object_title = (is_object($islandora_object) ? $islandora_object->label : $do_id);
@@ -178,7 +181,7 @@ function upitt_workflow_objectreport_form($do_id) {
       $files_headings = array_keys($row);
     }
     if (array_key_exists('do_id', $row)) {
-      $pid = 'pitt:' . $row['do_id'];
+      $pid = $ingest_namespace . $row['do_id'];
       if ($obj = islandora_object_load($pid)) {
         $row['do_id'] = l($row['do_id'], '/islandora/object/' . $pid, array('attributes' => array('target' => '_blank')));
       } else {

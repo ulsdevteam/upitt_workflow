@@ -830,7 +830,7 @@ function upitt_workflow_csv_file_as_array($csv_file) {
             else {
               $tmp_data = $data;
               foreach ($tmp_data as $i => $val) {
-                $tmp_data[$i] = str_replace(" ", "_", strtolower($val));
+                $tmp_data[$i] = str_replace(" ", "_", trim(strtolower($val)));
               }
               $file_header = $tmp_data;
             }
@@ -859,12 +859,13 @@ function upitt_workflow_csv_file_as_array($csv_file) {
  * @param array $csv_arr  ('header' => $file_header, 'rows' => $file_rows)
  */
 function upitt_workflow_csv_extract_identifiers($csv_arr) {
+  $ingest_namespace = variable_get('upitt_workflow_ingest_namespace', 'pitt:');
   $identifier_key = array_search('identifier', $csv_arr['header']);
   $ns_prefix = '';
   $ret_arr = array();
   if (!$identifier_key === FALSE) {
     foreach ($csv_arr['rows'] as $row) {
-      $ret_arr[] = ((strstr($row[$identifier_key], 'pitt:') == '') ? 'pitt:' : '') . $row[$identifier_key];
+      $ret_arr[] = ((strstr($row[$identifier_key], $ingest_namespace) == '') ? $ingest_namespace : '') . $row[$identifier_key];
     }
   }
   return $ret_arr;
@@ -1088,6 +1089,7 @@ function upitt_workflow_save_batch($values, $collection_options) {
         if ($_FILES['files']['error']['file'] == UPLOAD_ERR_OK) {
           $tmp_name = $_FILES["files"]["tmp_name"]['file'];
           if (move_uploaded_file($tmp_name, $dest)) {
+            upitt_workflow_validate_csv($dest);
             $value = $dest;
             $has_file = TRUE;
           }
@@ -1208,4 +1210,9 @@ function upitt_workflow_make_node_for_batch($batch_external_id, $batch_id, $batc
   node_save($node);
   drupal_set_message(l('Node created', '/node/' . $node->nid) . ' for workflow batch "' . $batch_external_id . '".  ' . l('Manage', '/workflow/batch/' . $batch_id) . ' this batch.');
   return $node;
+}
+
+function upitt_workflow_validate_csv($csv_filename) {
+  // upitt_workflow_csv_file_as_array
+  // upitt_workflow_make_custom_csv_dates
 }

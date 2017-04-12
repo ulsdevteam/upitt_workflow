@@ -44,7 +44,6 @@ function upitt_workflow_islandora_ingest($batch_id) {
     } */
 
     $batch_path = upitt_workflow_batch_path($batch);
-//    $use_pid = 'pitt:' . $object_id;
 
     // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.
 //    $parent = upitt_workflow_get_object_fedora_collections($object_id);
@@ -54,8 +53,9 @@ function upitt_workflow_islandora_ingest($batch_id) {
 
     $batch_default_depositor = $batch['default_depositor'];
 
+    $ingest_namespace = variable_get('upitt_workflow_ingest_namespace', 'pitt:');
     if ($fedora_model_name == 'bookCModel') {
-      $markup .= upitt_workflow_drush_book($batch_path, $parent, $site, 'pitt:' . $batch['batch_external_id']);
+      $markup .= upitt_workflow_drush_book($batch_path, $parent, $site, $ingest_namespace . $batch['batch_external_id']);
     } elseif ($fedora_model_name == 'sp_large_image_cmodel') {
       $markup .= upitt_workflow_csv2mods($batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
     }
@@ -276,6 +276,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
   $csv_header_xpath_mappings = upitt_workflow_get_csv_header_xpath_mappings();
   $mods_created = $files_copied = $bytes_written = 0;
 
+  $ingest_namespace = variable_get('upitt_workflow_ingest_namespace', 'pitt:');
   $identifiers_and_filepaths = array();
   // Loop through each row creating a <row> node with the correct data
   while (($row = fgetcsv($inputFile)) !== FALSE) {
@@ -381,7 +382,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
     echo "<p>created MODS from spreadsheet row = <b>" . $filename . "</b></p>";
     $path_parts = pathinfo($filename);
 
-    $identifiers_and_filepaths[] = array('path' => $path_parts['dirname'], 'identifier' => 'pitt:' . $row_mods_id);
+    $identifiers_and_filepaths[] = array('path' => $path_parts['dirname'], 'identifier' => $ingest_namespace . $row_mods_id);
     $row_counter++;
   }
   echo "<p>" . number_format($files_copied) . " files copied to holding directory <b>" . $working_directory . "</b></p>";
