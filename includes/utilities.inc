@@ -187,7 +187,6 @@ function upitt_workflow_sync_solr_collections($pids, $collection_options) {
     if (!$result) {
       upitt_workflow_sql_error_die($link, $sql);
     }
-    drupal_set_message('Replaced collection workflow record reference for "' . $name . '"');
   }
   mysqli_close($link);
 }
@@ -579,7 +578,7 @@ function upitt_workflow_runXslTransform($info) {
  * 	1945-03-05/1955-04-23	March 5, 1945- April 23, 1955		1945-03-05T00:00:00-05:00
  * a	1945-03-05/1955-04-23 	ca. March 5, 1945- April 23, 1955	1945-03-05T00:00:00-05:00
  */
-function upitt_workflow_make_custom_csv_dates($short_date) {
+function upitt_workflow_make_custom_csv_dates($short_date, $suppress_display_messages = FALSE) {
   $short_date = trim($short_date);
   $short_date_length = strlen($short_date);
   $h_format = 'F j, Y';
@@ -616,7 +615,10 @@ function upitt_workflow_make_custom_csv_dates($short_date) {
     }
     elseif ($short_date_length <> 8 && !$from_date) {
       if ($short_date <> '') {
-        die('bad date format for date value of "' . $short_date . '".');
+        if (!$suppress_display_messages) {
+          drupal_set_message('bad date format for date value of "' . $short_date . '".', 'error');
+        }
+        return '';
       }
       else {
         return '';
@@ -629,7 +631,10 @@ function upitt_workflow_make_custom_csv_dates($short_date) {
       $h_format = 'F Y';
     }
     elseif ($short_date_length <> 10 && !$from_date) {
-      die('bad date format for date value of "' . $short_date . '".');
+      if (!$suppress_display_messages) {
+        drupal_set_message('bad date format for date value of "' . $short_date . '".', 'error');
+      }
+      return '';
     }
   }
   $timestamp = strtotime($short_date);
@@ -1077,6 +1082,8 @@ function upitt_workflow_save_batch($values, $collection_options) {
     $sql_fields[] = 'batch_id';
     $sql_values[] = $batch_id;
   }
+  $valid_upload = NULL;
+  $model = NULL;
   $batch_path = upitt_workflow_batch_path($values);
   // assume all fields need to be escaped and wrapped with '' characters -- EXCEPT for the integer fields.
   foreach ($values as $fieldname => $value) {
@@ -1089,7 +1096,7 @@ function upitt_workflow_save_batch($values, $collection_options) {
         if ($_FILES['files']['error']['file'] == UPLOAD_ERR_OK) {
           $tmp_name = $_FILES["files"]["tmp_name"]['file'];
           if (move_uploaded_file($tmp_name, $dest)) {
-            upitt_workflow_validate_csv($dest);
+            $valid_upload = upitt_workflow_validate_csv($dest, $batch_path);
             $value = $dest;
             $has_file = TRUE;
           }
@@ -1104,11 +1111,17 @@ function upitt_workflow_save_batch($values, $collection_options) {
           if (!$value && isset($existing_batch_record['file']) && $fieldname == 'file') {
             $value = $existing_batch_record['file'];
             $has_file = TRUE;
+            $valid_upload = upitt_workflow_validate_csv($existing_batch_record['file'], $batch_path);
           }
         }
       }
     } else {
       $sql_fields[] = $fieldname;
+    }
+
+    // Store this for final validation check on the CSV that depends on the batch's model.
+    if ($fieldname == 'default_type_of_resource') {
+      $model = $value;
     }
 
     if ($fieldname == 'mapto_collections') {
@@ -1142,6 +1155,9 @@ function upitt_workflow_save_batch($values, $collection_options) {
   }
 
   mysqli_close($link);
+  if (is_null($valid_upload) && upitt_workflow_model_uses_csv_to_make_mods($model)) {
+    drupal_set_message('There was no CSV file uploaded for this batch.', 'warning');
+  }
   return $batch_id;
 }
 
@@ -1212,7 +1228,57 @@ function upitt_workflow_make_node_for_batch($batch_external_id, $batch_id, $batc
   return $node;
 }
 
-function upitt_workflow_validate_csv($csv_filename) {
-  // upitt_workflow_csv_file_as_array
-  // upitt_workflow_make_custom_csv_dates
+function upitt_workflow_validate_csv($csv_filename, $batch_path) {
+  $validation_success = TRUE;
+  $csv_file_arr = upitt_workflow_csv_file_as_array($csv_filename);
+  $file_header = (isset($csv_file_arr['header']) ? $csv_file_arr['header'] : array());
+  $file_rows = (isset($csv_file_arr['rows']) ? $csv_file_arr['rows'] : array());
+
+  // Get the normalized_date column index.
+  $date_index = array_search('normalized_date', $file_header);
+
+  // Get the filename column index.
+  $filename_index = array_search('file_name', $file_header);
+  // If no 'file_name' is not found, check the other field name 'filename'.
+  if ($filename_index === FALSE) {
+    $filename_index = array_search('filename', $file_header);
+  }
+
+  foreach ($file_rows as $k => $row) {
+    // If there is a filename_index, check that the file exists.
+    if (!$filename_index === FALSE) {
+      $row_filename = $batch_path . '/' . $row[$filename_index];
+      if (!file_exists($row_filename)) {
+        $validation_success = FALSE;
+        drupal_set_message(t('There is a filename referenced that does not exist on ' .
+          'the file system.  "' . $row[$filename_index] . '" on row #' . $k . 
+          '.  The file must be stored at "' . $batch_path . '/".  Please upload ' .
+          'fix this issue to be able to ingest this batch.'), 'error');
+      }
+    }
+
+    // If there is a normalized_date in the header, check this row's date value
+    if (!($date_index === FALSE)) {
+      $normalized_date = $row[$date_index];
+      $check = upitt_workflow_make_custom_csv_dates($row[$date_index], TRUE);
+      if ($check == '') {
+        $validation_success = FALSE;
+        drupal_set_message(t('There is a bad date value for "normalized_date" = "' .
+          $row[$date_index] . '" on row #' . $k . '.  Please upload the CSV after ' .
+          'fixing this value.'), 'error');
+      }
+    }
+  }
+
+  return $validation_success;
+}
+
+/**
+ * Given a model name, returns whether or not a CSV file is needed to make the MODS
+ * for a batch record.  Currently, this is only true for the image batches.
+ *
+ * @param string $model
+ */
+function upitt_workflow_model_uses_csv_to_make_mods($model) {
+  return ($model == 'sp_large_image_cmodel');
 }

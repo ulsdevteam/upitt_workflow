@@ -305,7 +305,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
             $outputFilename = str_replace(array('.tiff', '.tif'), '.xml', $row[$i]);
           }
           elseif ($header == 'normalized_date' && array_key_exists($i, $row)) {
-            list($sort_date, $date) = upitt_workflow_make_custom_csv_dates($row[$i]);
+            list($sort_date, $date) = upitt_workflow_make_custom_csv_dates($row[$i], FALSE);
             // Add the sort_date field and solr 'date' field
             if ((array_key_exists('sort_date', $headers) === FALSE)) {
               $headers[] = 'sort_date';

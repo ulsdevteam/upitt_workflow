@@ -30,7 +30,7 @@
 <?php include_once('upitt-workflow-findobject-form.tpl.php'); ?>
 <?php print $details; ?>
 <h5><?php print $count_rows; ?></h5>
-<div id="container"></div>
+
 <form action="<?php print $post_to; ?>" method="GET" id="upitt-workflow-objectreport-form">
   <fieldset>
     <legend><span class="fieldset-legend">Filters</span></legend>

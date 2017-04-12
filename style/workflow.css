@@ -35,3 +35,9 @@ h5 {
 	font-size: 0.825em;
 	font-family: Andale Mono, monospace;
 }
+
+.report_table_wrapper {
+        max-height: 330px;
+        height: 330px;
+        overflow: scroll;
+}

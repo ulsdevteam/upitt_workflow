@@ -215,8 +215,8 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
         'file_validate_size' => array($upload_size * 1024 * 1024),
       ),
       '#prefix' => "<a id='file_upload'> </a>",
-      '#suffix' => theme('table', array('rows' => $file_rows, 'header' => $file_header, 'attributes' => array('class' => array('report_table')))) .
-        '<div id="container"></div>',
+      '#suffix' => '<div class="report_table_wrapper">' . theme('table', array('rows' => $file_rows, 'header' => $file_header, 'attributes' => array('class' => array('report_table')))) .
+        '</div>',
     ),
 
 /*
@@ -403,7 +403,7 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   unset($form_state['values']['do_copy']);
   $batch_id = upitt_workflow_save_batch($form_state['values'], $collection_options);
 
-  drupal_set_message('Updated "' . $batch_external_id . '".');
+  drupal_set_message('Updated "' . $batch_external_id . '" batch record.');
 
   // ONLY create a new drupal node if this record does not yet have a nid value.
   if (isset($form_state['values']['nid']) && $form_state['values']['nid'] > 0) {
