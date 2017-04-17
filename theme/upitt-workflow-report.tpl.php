@@ -29,49 +29,6 @@
 <?php include_once('upitt-workflow-breadcrumb.tpl.php'); ?>
 <?php include_once('upitt-workflow-findobject-form.tpl.php'); ?>
 <?php print $details; ?>
-<h5><?php print $count_rows; ?></h5>
-
-<form action="<?php print $post_to; ?>" method="GET" id="upitt-workflow-objectreport-form">
-  <fieldset>
-    <legend><span class="fieldset-legend">Filters</span></legend>
-    <div class="left_floater">
-      <span>Title</span>
-      <div class="fieldset-wrapper">
-        <input type="text" value="<?php print (isset($_GET['batch_external_id_filter']) ? trim($_GET['batch_external_id_filter']) : '') ?>" name="batch_external_id_filter"> <br>
-      </div>
-    </div>
-<!--
-    <div class="left_floater">
-      <span>Username</span>
-      <div class="fieldset-wrapper">
-        <input type="text" value="<?php print (isset($_GET['username_filter']) ? trim($_GET['username_filter']) : '') ?>" name="username_filter"> <br>
-      </div>
-    </div>
--->
-    <div class="left_floater">
-      <span>Type</span>
-      <div class="fieldset-wrapper">
-        <select name="type_filter">
-        <?php foreach ($file_type_choices as $key=>$val) { ?>
-          <option value="<?php print $key ?>"<?php print (($type_filter == $key) ? ' selected' : '') ?>><?php print $val ?></option>
-        <?php } ?>
-        </select>
-      </div>
-    </div>
-    <div class="left_floater">
-      <span>Collection</span>
-      <div class="fieldset-wrapper">
-        <select name="collection_filter">
-        <?php foreach ($collection_filter_choices as $key=>$val) { ?>
-          <option value="<?php print $key ?>"<?php print (($collection_filter == $key) ? ' selected' : '') ?>><?php print $val ?></option>
-        <?php } ?>
-        </select>
-      </div>
-    </div>
-    <br class="clearfix"/>
-    <input type="submit">
-  </fieldset>
-</form>
 
 <div style="overflow-x:auto">
   <?php print $table; ?>

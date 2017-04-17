@@ -118,7 +118,6 @@ function upitt_workflow_batch_detail_form($batch_id) {
       array('table' => $details, //$pager . theme('table', array('rows'=>$batch_rows,'header'=>$batch_item_headings,'attributes' =>array('class'=>array('report_table')))) . $pager,
             'count_rows' => $count_rows_markup,
             'links' => $links,
-            'post_to' => '/workflow',
             'collection_filter_choices' => upitt_workflow_get_collection_choices(),
             'details' => '', // $details
            )

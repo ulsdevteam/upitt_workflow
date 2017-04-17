@@ -77,7 +77,6 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
             'links' => $links,
             'breadcrumb' => upitt_workflow_get_breadcrumb_path(),
             'count_rows' => $count_rows_markup,
-            'post_to' => '/workflow',
            )
     );
   $form['table_markup'] = array('#markup' => $table_markup);

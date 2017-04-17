@@ -93,8 +93,9 @@ function upitt_workflow_collections_get_c_id_table($c_id) {
                         'JOIN batch b ON (bc.batch_id = b.batch_id) ' .
                         'JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
                         'JOIN item i ON (i.id = bi.item_id) ' .
-                        'JOIN item_file itf ON (itf.item_id = bi.item_id AND itf.`use` = \'MODS\') ' . 
+                        'JOIN item_file itf ON (itf.item_id = bi.item_id) ' . 
                         'WHERE c.c_id = \'' . mysqli_real_escape_string($link, $c_id) . '\' ' .
+                        'GROUP BY itf.item_id ' .
                         'ORDER BY itf.timestamp ' .
                         'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
 
