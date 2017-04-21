@@ -4,6 +4,7 @@ function upitt_workflow_object_manage_audit($islandora_object) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
 
+  $workflow_page_record_exists = FALSE;
   if (is_object($islandora_object)) {
     $is_paged = upitt_workflow_is_paged_object($islandora_object);
 
@@ -11,41 +12,27 @@ function upitt_workflow_object_manage_audit($islandora_object) {
     $solr_record = upitt_workflow_get_solr_record($islandora_object->id);    
     $solr_record_analysis_table_markup = upitt_workflow_analyze_solr_record($solr_record, $islandora_object->id);
 
-    // check against the "all_ingests.txt" file
-    $all_ingests_file = file(drupal_get_path('module', 'upitt_workflow') . '/includes/all_ingests.txt');
     @list($namespace, $id_no_namespace) = explode(":", $islandora_object->id);
+
+    // check against the "all_ingests.txt" file
+    $found = upitt_workflow_check_for_object_in_all_ingests($id_no_namespace);
 
     // For a paged object, just look for the pid value ($id_no_namespace) in the all_intests file, but for a 
     // page or manuscript page the parent object should be on the all_ingests list.
-    if (!$is_paged) { 
-      @list($id_no_namespace, $page_number) = explode("-", $id_no_namespace);
-      // look for a matching record in the workflow database
-      $workflow_object_file_records = upitt_workflow_get_item_files($id_no_namespace);
-      $workflow_page_record_exists = FALSE;
-      $record_name = $page_number . '.tif';
-      foreach ($workflow_object_file_records as $workflow_object_file) {
-        if ($workflow_object_file['use'] == 'MASTER') {          
-          $workflow_page_record_exists |= ($workflow_object_file['name'] == $record_name);
-        }
-      }
+    if (!$is_paged) {
+      $workflow_page_record_exists = upitt_workflow_does_workflow_page_record_exist($id_no_namespace);
     }
 
-    $found = FALSE;
-    foreach ($all_ingests_file as $l) {
-      if (!$found) {
-        $found |= (trim($l) == $id_no_namespace);
-      }
-    }
-
-    $markup = '<h3>Object Audit</h3> ' .
-              '<b>Islandora Object PID:</b> ' . $islandora_object->id . '<br>' . 
-              '<b>Model:</b>' . implode(', ', $islandora_object->models) . '<br>';              
+    $markup = '<h3>Object Audit' .
+              ((module_exists('upitt_islandora_inventory_audit')) ? ' ' . l('Details', 'islandora/object/'.$islandora_object->id.'/manage/audit_upitt_workflow/inventory_audit') : '') .
+              '</h3> ' .
+              '<b>Islandora Object PID:</b> ' . $islandora_object->id . '<br>';              
     $markup .= '<h4>Object "' . $id_no_namespace . '" ingested upstairs?</h4>' .
-              '<p>' . l($id_no_namespace, '/workflow/object/' . $id_no_namespace) . ' is ' . ($found ? '' : 'not') . ' in the "all_ingests.txt" file. ' . 
+              '<p>' . l($id_no_namespace, '/workflow/object/' . $islandora_object->id) . ' is ' . ($found ? '' : 'not') . ' in the "all_ingests.txt" file. ' .
               (($is_paged) ? '' : 'This page object (' . $islandora_object->id . ') ' . (($workflow_page_record_exists) ? 'has' : 'DOES NOT HAVE') . ' a matching record in the workflow database') . 
               '</p>';
     if (isset($audit_record['markup']) && $audit_record['batch_item_count'] > 0) {
-      $markup .= '<h4>Workflow Values for "' . $islandora_object->id . '"</h4>' .
+      $markup .= '<h4>Workflow Values for "' . $islandora_object->id . '" / batch item_id = "' . $audit_record['item.do_id'] . '".</h4>' .
                  $audit_record['markup'] . '<hr>' .
                  '<p>Based on the records for this object in the Workflow system, there should be the following number of objects.</p>' .
                  '<div style="color:#934">' . l(number_format($audit_record['batch_item_count']) . ' total objects in this batch', '/workflow/batch/' . $audit_record['batch_id']) . '</div>' .
@@ -72,51 +59,16 @@ function upitt_workflow_object_manage_audit($islandora_object) {
   }
 }
 
-/**
- * This will look at the values in the Solr record for purposes of displaying a table of the datatream updates.
- */
-function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
-  // get all version, mimetype, filesize values for each datastream $dsid like fedora_datastream_version_MODS_CREATED_ms
-  $rows = $headings = array();
-  $datastreams = $solrRecord['fedora_datastreams_ms'];
-  $headings = array('ID', 'version ID', 'LABEL', 'CREATED', 'MIMETYPE', 'SIZE', 'Operations');
-  
-  $messages = array();
-  foreach ($datastreams as $dsid) {
-    $solrfield_ID = 'fedora_datastream_version_' . $dsid . '_ID_ms';
-    $solrfield_LABEL = 'fedora_datastream_version_' . $dsid . '_LABEL_ms';
-    $solrfield_CREATED = 'fedora_datastream_version_' . $dsid . '_CREATED_ms';
-    $solrfield_MIMETYPE = 'fedora_datastream_version_' . $dsid . '_MIMETYPE_ms';
-    $solrfield_SIZE = 'fedora_datastream_version_' . $dsid . '_SIZE_ms';
-    if (isset($solrRecord[$solrfield_ID]) && isset($solrRecord[$solrfield_LABEL]) && isset($solrRecord[$solrfield_CREATED]) && isset($solrRecord[$solrfield_MIMETYPE]) && isset($solrRecord[$solrfield_SIZE])) {
-      foreach ($solrRecord[$solrfield_CREATED] as $key => $CREATED) {
-        $pre = ((1+$key) == count($solrRecord[$solrfield_CREATED])) ? '<b title="current version">' : '';
-        $post = ((1+$key) == count($solrRecord[$solrfield_CREATED])) ? '</b>' : '';
-        $rows[$CREATED] = array('ID' => ($pre) ? $pre . $dsid . $post : '',
-          'version ID' => $pre . $solrRecord[$solrfield_ID][$key] . $post,
-          'LABEL' => $pre . $solrRecord[$solrfield_LABEL][$key] . $post,
-          'CREATED' => $pre . $solrRecord[$solrfield_CREATED][$key] . $post,
-          'MIMETYPE' => $pre . $solrRecord[$solrfield_MIMETYPE][$key] . $post,
-          'SIZE' => array('data' => $pre . number_format($solrRecord[$solrfield_SIZE][$key]) . $post, 'class' => array('numeric')),
-          'Operations' => $pre . l('view', '/islandora/object/' . urlencode($pid) . '/datastream/' . $dsid . '/version/' . $key . '/view') . ' &nbsp; &nbsp; ' . l('revert', '/islandora/object/' . urlencode($pid) . '/datastream/' . $dsid . '/version/' . $key . '/revert') . $post,
-        );
-      }
-    }
-    else {
-      $messages[] = '<div class="messages warning">One of the Solr fields is not set for datatream ' . $dsid . '.  ' . l(t('Manage datastreams'), '/islandora/object/' . urlencode($pid) . '/manage/datastreams'). '.</div>';
-    }
-  }
-
-  ksort($rows);
-  return implode($messages) . theme('table', array('rows'=>$rows,'header'=>$headings));
-}
-
 function upitt_workflow_lookup_audit_record($PID) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $tmp_parts = explode(":", $PID);
   $record_str = '';
+  // Set up this value in case the record does not exist.  This will likely be
+  // updated below before the value is passed back to the item.form code
+  $item_id = 'no record exists in {islandora_workflow.batch} table for this item.';
+  $object_item_count = $batch_item_count = $batch_pkey_id = 0;
   if (count($tmp_parts) > 0) {
     $barcode = str_replace($tmp_parts[0] . ':', '', $PID);
 
@@ -157,7 +109,11 @@ function upitt_workflow_lookup_audit_record($PID) {
     }
     mysqli_close($link);
   }
-  return array('batch_id' => $batch_pkey_id, 'batch_item_count' => $batch_item_count, 'object_item_count' => $object_item_count, 'item.do_id' => $item_id, 'markup' => $record_str);
+  return array('batch_id' => $batch_pkey_id, 
+               'batch_item_count' => $batch_item_count,
+               'object_item_count' => $object_item_count,
+               'item.do_id' => $item_id,
+               'markup' => $record_str);
 }
 
 function upitt_workflow_lookup_object_items($batch_id, $item_do_id) {

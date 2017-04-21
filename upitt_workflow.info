@@ -4,5 +4,5 @@ description = To prepare folders of objects for ingest into Islandora.
 version = 7.x
 core = 7.x
 dependencies[] = islandora
-dependencies[] = islandora_datastream_crud
+dependencies[] = islandora_datastreams_io
 configure = admin/islandora/workflow

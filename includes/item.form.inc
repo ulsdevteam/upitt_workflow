@@ -70,7 +70,7 @@ function upitt_workflow_item_edit(array $form, array &$form_state, $do_id = NULL
     ),
     'submit' => array(
       '#type' => 'submit',
-      '#value' => t('Save batch'),
+      '#value' => t('Save item'),
     ),
   );  
   return $form;

@@ -1282,3 +1282,88 @@ function upitt_workflow_validate_csv($csv_filename, $batch_path) {
 function upitt_workflow_model_uses_csv_to_make_mods($model) {
   return ($model == 'sp_large_image_cmodel');
 }
+
+/**
+ * Will check the all_ingests.txt file as to whether or not the object identifer (barcode)
+ * is in that file.
+ *
+ * @param string $id_no_namespace
+ * @return Boolean
+ */
+function upitt_workflow_check_for_object_in_all_ingests($id_no_namespace) {
+  // check against the "all_ingests.txt" file
+  $all_ingests_file = file(drupal_get_path('module', 'upitt_workflow') . '/includes/all_ingests.txt');
+
+  $found = FALSE;
+  foreach ($all_ingests_file as $l) {
+    if (!$found) {
+      $found |= (trim($l) == $id_no_namespace);
+    }
+  }
+  return $found;
+}
+
+/**
+ * For the Audit object form - determines whether or not the page record object
+ * exists in the islandora_workflow database.
+ *
+ * @param string $id_no_namespace
+ * @return Boolean
+ */
+function upitt_workflow_does_workflow_page_record_exist($id_no_namespace) {
+  @list($id_no_namespace, $page_number) = explode("-", $id_no_namespace);
+  // look for a matching record in the workflow database
+  $workflow_object_file_records = upitt_workflow_get_item_files($id_no_namespace);
+  $workflow_page_record_exists = FALSE;
+  $record_name = $page_number . '.tif';
+  foreach ($workflow_object_file_records as $workflow_object_file) {
+    if ($workflow_object_file['use'] == 'MASTER') {
+      $workflow_page_record_exists |= ($workflow_object_file['name'] == $record_name);
+    }
+  }
+  return $workflow_page_record_exists;
+}
+
+/**
+ * This will look at the values in the Solr record for purposes of displaying a table of the datatream updates.
+ *
+ * @param array $solrRecord
+ * @param string $pid
+ * @return HTML markup.
+ */
+function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
+  // get all version, mimetype, filesize values for each datastream $dsid like fedora_datastream_version_MODS_CREATED_ms
+  $rows = $headings = array();
+  $datastreams = $solrRecord['fedora_datastreams_ms'];
+  $headings = array('ID', 'version ID', 'LABEL', 'CREATED', 'MIMETYPE', 'SIZE', 'Operations');
+
+  $messages = array();
+  foreach ($datastreams as $dsid) {
+    $solrfield_ID = 'fedora_datastream_version_' . $dsid . '_ID_ms';
+    $solrfield_LABEL = 'fedora_datastream_version_' . $dsid . '_LABEL_ms';
+    $solrfield_CREATED = 'fedora_datastream_version_' . $dsid . '_CREATED_ms';
+    $solrfield_MIMETYPE = 'fedora_datastream_version_' . $dsid . '_MIMETYPE_ms';
+    $solrfield_SIZE = 'fedora_datastream_version_' . $dsid . '_SIZE_ms';
+    if (isset($solrRecord[$solrfield_ID]) && isset($solrRecord[$solrfield_LABEL]) && isset($solrRecord[$solrfield_CREATED]) && isset($solrRecord[$solrfield_MIMETYPE]) && isset($solrRecord[$solrfield_SIZE])) {
+      foreach ($solrRecord[$solrfield_CREATED] as $key => $CREATED) {
+        $pre = ((1+$key) == count($solrRecord[$solrfield_CREATED])) ? '<b title="current version">' : '';
+        $post = ((1+$key) == count($solrRecord[$solrfield_CREATED])) ? '</b>' : '';
+        $rows[$CREATED] = array('ID' => ($pre) ? $pre . $dsid . $post : '',
+          'version ID' => $pre . $solrRecord[$solrfield_ID][$key] . $post,
+          'LABEL' => $pre . $solrRecord[$solrfield_LABEL][$key] . $post,
+          'CREATED' => $pre . $solrRecord[$solrfield_CREATED][$key] . $post,
+          'MIMETYPE' => $pre . $solrRecord[$solrfield_MIMETYPE][$key] . $post,
+          'SIZE' => array('data' => $pre . number_format($solrRecord[$solrfield_SIZE][$key]) . $post, 'class' => array('numeric')),
+          'Operations' => $pre . l('view', '/islandora/object/' . urlencode($pid) . '/datastream/' . $dsid . '/version/' . $key . '/view') . ' &nbsp; &nbsp; ' . l('revert', '/islandora/object/' . urlencode($pid) . '/datastream/' . $dsid . '/version/' . $key . '/revert') . $post,
+        );
+      }
+    }
+    else {
+      $messages[] = '<div class="messages warning">One of the Solr fields is not set for datatream ' . $dsid . '.  ' . l(t('Manage datastreams'), '/islandora/object/' . urlencode($pid) . '/manage/datastreams'). '.</div>';
+    }
+  }
+
+  ksort($rows);
+  return implode($messages) . theme('table', array('rows'=>$rows,'header'=>$headings));
+}
+
