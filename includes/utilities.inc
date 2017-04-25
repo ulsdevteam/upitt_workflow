@@ -784,9 +784,13 @@ function upitt_workflow_batch_load($batch_id) {
  *
  * @return string
  */
-function upitt_workflow_get_datastreams() {
+function upitt_workflow_get_datastreams($pid = '') {
   $query_processor = new IslandoraSolrQueryProcessor();
-  $query_processor->solrQuery = '*:*';
+  if ($pid) {
+    $query_processor->solrQuery = 'PID:' . str_replace(array("/", ":", "-", "+"), array("\/", "\:", "\-", "\+"), $pid);
+  } else {
+    $query_processor->solrQuery = '*:*';
+  }
   $query_processor->solrStart = 0;
   $query_processor->solrLimit = 0;
   $query_processor->solrParams = array('facet' => 'true',
@@ -1367,3 +1371,64 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
   return implode($messages) . theme('table', array('rows'=>$rows,'header'=>$headings));
 }
 
+function upitt_workflow_get_datastreams_sizes($pid) {
+  $solr_datastream_fields = array();
+  $datastreams = upitt_workflow_get_datastreams($pid);
+  foreach ($datastreams as $dsid => $datastream) {
+    if (strstr($datastream, '(0)') == '') {
+      $dsid =  strtoupper($dsid);
+      $solr_datastream_fields[] = 'fedora_datastream_version_' . $dsid . '_SIZE_ms';
+    }
+  }
+
+  module_load_include('inc', 'islandora_solr', 'includes/utilities');
+  $query_processor = new IslandoraSolrQueryProcessor();
+
+  $ret_arr = array();
+  // run two queries --
+  // 1) to get the datastreams available on this object
+  $query_processor->solrQuery = 'PID:' . str_replace(array("/", ":", "-", "+"), array("\/", "\:", "\-", "\+"), $pid);
+  $query_processor->solrStart = 0;
+  $query_processor->solrLimit = 1;
+  $query_processor->solrParams = array('fl' => implode(",", $solr_datastream_fields));
+
+  $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
+  $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
+  $solr->setCreateDocuments(FALSE);
+  try {
+    $search_results = $solr->search($query_processor->solrQuery, $query_processor->solrStart, $query_processor->solrLimit, $query_processor->solrParams, 'GET');
+    $tmp = json_decode($search_results->getRawResponse(), TRUE);
+
+    $results = array();
+    $numFound = $tmp['response']['numFound'];
+    // repeatedly call this to process this many records each time:
+    //   UPITT_ISLANDORA_INVENTORY_SOLR_CHUNKSIZE
+    foreach ($tmp['response']['docs'] as $k=>$rec) {
+      $ret_arr = $rec;
+    }
+  }
+  catch (Exception $e) {
+    error_log('EXCEPTION in _save_solr_search_session : called from ' . $_SERVER['SERVER_NAME'] .
+' - ' . $_SERVER['REQUEST_URI'] . '
+' . print_r($e, true));
+  }
+  return $ret_arr;
+
+  drupal_set_message('exiting upitt_islandora_inventory_audit_populate_islandora_pid');
+}
+
+function upitt_workflow_sum_datastream_sizes($datastream_sizes) {
+  $latest = $total = 0;
+  foreach ($datastream_sizes as $dsid => $datastream_sizes) {
+    $i = 0;
+    foreach ($datastream_sizes as $datastream_size) {
+      if ($i < 1) {
+        $latest = $latest + $datastream_size;
+      }
+      $i++;
+      $total = $total + $datastream_size;
+    }
+  }
+  return array('datastreams_latestsize' => $latest,
+               'datastreams_totalsize' => $total);
+}

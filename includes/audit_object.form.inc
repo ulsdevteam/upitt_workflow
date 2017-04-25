@@ -1,6 +1,8 @@
 <?php
 
 function upitt_workflow_object_manage_audit($islandora_object) { 
+  module_load_include('inc', 'islandora', 'includes/utilities');
+
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
 
@@ -9,6 +11,16 @@ function upitt_workflow_object_manage_audit($islandora_object) {
     $is_paged = upitt_workflow_is_paged_object($islandora_object);
 
     $audit_record = upitt_workflow_lookup_audit_record($islandora_object->id);
+    $datastream_sizes = upitt_workflow_get_datastreams_sizes($islandora_object->id);
+    $dsid_sizes = array();
+    foreach ($datastream_sizes as $solr_fieldname => $datastream_sizes) {
+      $dsid = str_replace(array('fedora_datastream_version_','_SIZE_ms'), "", $solr_fieldname);
+      $dsid_sizes[$dsid] = 0;
+      foreach ($datastream_sizes as $datastream_size) {
+        $dsid_sizes[$dsid] += $datastream_size;
+      }
+    }
+
     $solr_record = upitt_workflow_get_solr_record($islandora_object->id);    
     $solr_record_analysis_table_markup = upitt_workflow_analyze_solr_record($solr_record, $islandora_object->id);
 
@@ -54,6 +66,17 @@ function upitt_workflow_object_manage_audit($islandora_object) {
     else {
       $markup .= '<h1>No Workflow records for "' . $islandora_object->id . '"' . '</h4>';
     }
+
+    if (count($dsid_sizes) > 0) {
+      $markup .= '<h4>Datastream File Size Report</h4><p>This is the total size for all datastreams on this object -- including all versions for each datastream.</p>';
+      $grand_total_datastreams_size = 0;
+      foreach ($dsid_sizes as $dsid => $total_size) {
+        $grand_total_datastreams_size += $total_size;
+        $markup .= '<p><b>' . $dsid . '</b> size: ' . islandora_convert_bytes_to_human_readable($total_size) . '</p>';
+      }
+      $markup .= '<hr><p><b>Grand TOTAL size</b>: ' . islandora_convert_bytes_to_human_readable($grand_total_datastreams_size) . '</p>';
+    }
+
     $markup .= ($solr_record_analysis_table_markup) ? '<hr><h4>Datastream history</h4>' . $solr_record_analysis_table_markup : '';
     return $markup;
   }
