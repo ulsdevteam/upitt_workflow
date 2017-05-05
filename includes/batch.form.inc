@@ -97,7 +97,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#description' => 'Select the holdings folder that this batch should convert to an Islandora batch.',
       '#title' => t('Holdings folder'),
       '#options' => $holdings_folders,
-      '#default_value' => '',
+      '#default_value' => $batch_external_id,
       '#size' => 10,
     ),
     'do_copy' => array(
@@ -577,6 +577,21 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
     }
     $markup .= "</pre>";
   }
+
+  // In either case, if the object is a book, and the --METADATA--.xml does not exist in the batch path, download the XML from voystaff
+  if ($content_model == 'bookCModel') {
+    $marc_filename = $batch_path . '/book/--METADATA--.xml';
+    if (!file_exists($marc_filename)) {
+      // download the MARC file and save it... display / log the results.
+      $markup .= '--METADATA--.xml did not exist<br>';
+      $barcode = str_replace(rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/') . '/', '', $holdings_folder);
+      $voystaff_uri = 'http://voystaff.library.pitt.edu/cgi-bin/barcode2marcxml.php?barcode=' . $barcode;
+      $xml = file_get_contents($voystaff_uri);
+      $markup .= '<pre>' . htmlspecialchars(print_r($xml, true)) . '</pre>';
+      $bytes_written = file_put_contents($marc_filename, $xml);
+    }    
+  }
+
   return $markup;
 }
 
