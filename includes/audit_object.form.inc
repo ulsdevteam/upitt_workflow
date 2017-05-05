@@ -11,7 +11,7 @@ function upitt_workflow_object_manage_audit($islandora_object) {
     $is_paged = upitt_workflow_is_paged_object($islandora_object);
 
     $audit_record = upitt_workflow_lookup_audit_record($islandora_object->id);
-    $datastream_sizes = upitt_workflow_get_datastreams_sizes($islandora_object->id);
+    $datastream_sizes = upitt_workflow_get_depositor_model_and_datastreams_sizes($islandora_object->id);
     $dsid_sizes = array();
     foreach ($datastream_sizes as $solr_fieldname => $datastream_sizes) {
       $dsid = str_replace(array('fedora_datastream_version_','_SIZE_ms'), "", $solr_fieldname);

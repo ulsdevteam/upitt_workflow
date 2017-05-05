@@ -1371,16 +1371,20 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
   return implode($messages) . theme('table', array('rows'=>$rows,'header'=>$headings));
 }
 
-function upitt_workflow_get_datastreams_sizes($pid) {
-  $solr_datastream_fields = array();
+function upitt_workflow_get_depositor_model_and_datastreams_sizes($pid) {
+  $fields = array();
   $datastreams = upitt_workflow_get_datastreams($pid);
   foreach ($datastreams as $dsid => $datastream) {
     if (strstr($datastream, '(0)') == '') {
       $dsid =  strtoupper($dsid);
-      $solr_datastream_fields[] = 'fedora_datastream_version_' . $dsid . '_SIZE_ms';
+      $fields[] = 'fedora_datastream_version_' . $dsid . '_SIZE_ms';
     }
   }
 
+  // Add the depositor and hasModel fields to the fields array
+  $fields[] = 'mods_name_depositor_namePart_s';
+  $fields[] = 'RELS_EXT_hasModel_uri_s';
+  
   module_load_include('inc', 'islandora_solr', 'includes/utilities');
   $query_processor = new IslandoraSolrQueryProcessor();
 
@@ -1390,7 +1394,7 @@ function upitt_workflow_get_datastreams_sizes($pid) {
   $query_processor->solrQuery = 'PID:' . str_replace(array("/", ":", "-", "+"), array("\/", "\:", "\-", "\+"), $pid);
   $query_processor->solrStart = 0;
   $query_processor->solrLimit = 1;
-  $query_processor->solrParams = array('fl' => implode(",", $solr_datastream_fields));
+  $query_processor->solrParams = array('fl' => implode(",", $fields));
 
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
   $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
@@ -1421,12 +1425,14 @@ function upitt_workflow_sum_datastream_sizes($datastream_sizes) {
   $latest = $total = 0;
   foreach ($datastream_sizes as $dsid => $datastream_sizes) {
     $i = 0;
-    foreach ($datastream_sizes as $datastream_size) {
-      if ($i < 1) {
-        $latest = $latest + $datastream_size;
+    if (is_array($datastream_sizes)) {
+      foreach ($datastream_sizes as $datastream_size) {
+        if ($i < 1) {
+          $latest = $latest + $datastream_size;
+        }
+        $i++;
+        $total = $total + $datastream_size;
       }
-      $i++;
-      $total = $total + $datastream_size;
     }
   }
   return array('datastreams_latestsize' => $latest,
