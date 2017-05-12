@@ -103,15 +103,6 @@ function upitt_workflow_get_solr_options($solr_query, $key_field, $value_field, 
   return $results;
 }
 
-function upitt_workflow_get_models() {
-  form_load_include($form_state, 'inc', 'islandora', 'includes/content_model.autocomplete');
-
-  // Retrieve all content models and unset those currently in use in this
-  // configuration and any others from other configurations.
-  $add_options = islandora_get_content_model_names();
-  return $add_options;
-}
-
 /**
  * Helper function to look up the names of the collections based on a possible comma-separated list
  */
@@ -876,68 +867,6 @@ function upitt_workflow_csv_extract_identifiers($csv_arr) {
     foreach ($csv_arr['rows'] as $row) {
       $ret_arr[] = ((strstr($row[$identifier_key], $ingest_namespace) == '') ? $ingest_namespace : '') . $row[$identifier_key];
     }
-  }
-  return $ret_arr;
-}
-
-function upitt_workflow_get_pids_solr_query($solr_query) {
-  return implode('
-', upitt_workflow_get_pids($solr_query));
-}
-
-function upitt_workflow_get_pids_collection($collection) {
-  $query = format_string('!field:!value', array(
-    '!field' => 'RELS_EXT_isMemberOfCollection_uri_ms',
-    '!value' => str_replace(array("/", ":", "-", "+"), array("\/", "\:", "\-", "\+"), $collection),
-   ));
-  return implode('
-', upitt_workflow_get_pids($query));
-}
-
-function upitt_workflow_get_pids_model($model) {
-  $query = format_string('!field:!value', array(
-    '!field' => 'RELS_EXT_hasModel_uri_ms',
-    '!value' => str_replace(array("/", ":", "-", "+"), array("\/", "\:", "\-", "\+"), $model),
-   ));
-  return implode('
-', upitt_workflow_get_pids($query));
-}
-
-function upitt_workflow_get_pids($query) {
-  module_load_include('inc', 'islandora_solr_search', 'includes/utilities');
-  $query_processor = new IslandoraSolrQueryProcessor();
-
-  $ret_arr = array();
-  // run two queries --
-  // 1) to get the datastreams available on this object
-  $query_processor->solrQuery = $query;
-  $query_processor->solrStart = 0;
-  $query_processor->solrLimit = UPITT_WORKFLOW_SOLR_LIMIT;
-  $query_processor->solrParams = array('fl' => 'PID');
-
-  $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
-  $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
-  $solr->setCreateDocuments(FALSE);
-  try {
-    $search_results = $solr->search($query_processor->solrQuery, $query_processor->solrStart, $query_processor->solrLimit, $query_processor->solrParams, 'GET');
-    $tmp = json_decode($search_results->getRawResponse(), TRUE);
-
-    $results = array();
-    $numFound = $tmp['response']['numFound'];
-    if ($numFound == UPITT_WORKFLOW_SOLR_LIMIT) {
-      drupal_set_message(t('The number of objects returned is the same as the maximum limit.  It is likely that there are more objects than ' . UPITT_WORKFLOW_SOLR_LIMIT));
-    }
-    
-    if ($tmp['response']['numFound'] > 0) {
-      foreach ($tmp['response']['docs'] as $k=>$rec) {
-        $ret_arr[] = $rec['PID'];
-      }
-    }
-  }
-  catch (Exception $e) {
-    error_log('EXCEPTION in _save_solr_search_session : called from ' . $_SERVER['SERVER_NAME'] .
-' - ' . $_SERVER['REQUEST_URI'] . '
-' . print_r($e, true));
   }
   return $ret_arr;
 }

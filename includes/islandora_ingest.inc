@@ -222,7 +222,9 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
   $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 
   $alerted_on_err = FALSE;
-  // TODO: make sure this row is not an empty line
+
+  // Pending development in the islandora_book_ingest code, this will need to change to
+  // pass parameter to aggregate OCR / PDF during ingetst
   $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=pitt --uri=' . $this_domain . ' islandora_book_batch_preprocess ' .
                    '--content_models=islandora:bookCModel ' .
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
@@ -238,6 +240,15 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
   $output = $return_var = array();
   exec($drush_command, $output, $return_var);
 
+  // We need the OCR, HOCR, and PDF datastreams aggregated back to the book level
+  // until this function is provided in the islandora_book_batch code, it will have to be
+  // a subsequent drush call.
+    /*
+     * islandora_paged_content_aggregate_pdf_derivative($object, $force);
+     * islandora_paged_content_aggregate_ocr_derivative($object, $force);
+     *
+     */
+  
   if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
     drupal_set_message('There was an error calling the drush command : ' . $drush_command);
     $alerted_on_err = TRUE;
