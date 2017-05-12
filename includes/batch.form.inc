@@ -62,7 +62,6 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       }
     }
   }
-
   
   $batch_hosts = upitt_workflow_get_batch_host_values();
   $count_existing_batch_files = upitt_workflow_array_flat_count_values($existing_batch_files);
@@ -171,6 +170,8 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       ),
       '#default_value' => ($batch && isset($batch['batch_default_pub_status']))? $batch['batch_default_pub_status'] : '',
     ),
+ */
+
     // Is a request? checkbox
     'batch_request' => array(
       '#title' => 'Batch Request?',
@@ -197,7 +198,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
         '#title' => t('Request Due Date'),
       ),
     ),
-*/
+
     // Requestor: textfield
     'batch_host' => array(
       '#type' => 'select',

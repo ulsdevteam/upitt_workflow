@@ -60,13 +60,34 @@ function upitt_workflow_islandora_ingest($batch_id) {
       $markup .= upitt_workflow_csv2mods($batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
     }
 
-    $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
-    $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest<br>' .
-               '<i># or if only one set to be processed, supply the ingest_set option</i><br>' .
-               'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=82</code>';
+    $set = upitt_workflow_get_set($batch['batch_external_id']);
 
-    $markup .= '<h3>Batch values</h3>';
-    $markup .= theme('workflow_item_details', array('details' => $batch));
+    $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+    $ingest_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest';
+    $ingest_set_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=' . $set;
+
+    // If this is a batch request, and the date is before the current date, this can ingest immediately.
+    if ($batch['is_batch_request'] == 1 && strtotime($batch['batch_request_due_date']) < strtotime(date('Y-m-d'))) {
+      // Ingest this NOW... 
+      $output = $return_var = array();
+      exec($ingest_drush_command, $output, $return_var);
+
+      if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
+        drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+        $alerted_on_err = TRUE;
+        $markup .= '<h3 style="color:red">Error calling ingest_batch command</h3>';
+      } else {
+        $markup .= '<p>Since the batch was set with a batch request due date before now, ' .
+                   'the subsequent call to ingest the queued object/s has been executed.</p><code>' . $ingest_set_drush_command . '</code>';
+      }
+    } else {
+      $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>' . $ingest_drush_command . '<br>' .
+                 '<i># or if only one set to be processed, supply the ingest_set option</i><br>' . $ingest_set_drush_command .
+                 '</code>';
+
+      $markup .= '<h3>Batch values</h3>';
+      $markup .= theme('workflow_item_details', array('details' => $batch));
+    }
   } else {
     $markup .= ', but the batch record could not be found in the workflow for this object.</p>';
   }
@@ -217,8 +238,6 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
   // Get the path for the lib folder - a bit of a hack, but it's safe...
   $module_lib_path =  str_replace('/includes', '/lib', dirname(__FILE__));
 
-  $files = upitt_workflow_file_scan_directory($filepath, 'metadata.csv');
-
   $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 
   $alerted_on_err = FALSE;
@@ -239,15 +258,6 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
 
   $output = $return_var = array();
   exec($drush_command, $output, $return_var);
-
-  // We need the OCR, HOCR, and PDF datastreams aggregated back to the book level
-  // until this function is provided in the islandora_book_batch code, it will have to be
-  // a subsequent drush call.
-    /*
-     * islandora_paged_content_aggregate_pdf_derivative($object, $force);
-     * islandora_paged_content_aggregate_ocr_derivative($object, $force);
-     *
-     */
   
   if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
     drupal_set_message('There was an error calling the drush command : ' . $drush_command);

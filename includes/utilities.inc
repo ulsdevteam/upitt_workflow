@@ -497,7 +497,9 @@ function upitt_workflow_get_object_fedora_sites($object_id) {
  */
 function upitt_workflow_file_scan_directory($dir, $mask = '', $recurse = FALSE, $returnOnlyFolders = FALSE) {
   $result = array();
-
+  if (!is_dir($dir)) {
+    return $result;
+  }
   $cdir = scandir($dir);
   foreach ($cdir as $key => $value) {
     if (!in_array($value,array(".",".."))) {
@@ -967,7 +969,6 @@ function upitt_workflow_get_batch_host_values() {
  * For now, the code will not try to create any folders within the box account.
  */
 function upitt_workflow_create_host_paths($batch_hosts_array) {
-dpm($batch_hosts_array);
   foreach ($batch_hosts_array as $alias_host_path) {
 
     @list($alias, $host_path) = explode("=", $alias_host_path, 2);
@@ -1064,7 +1065,7 @@ function upitt_workflow_save_batch($values, $collection_options) {
     if (!is_null($value)) {
       if (array_search($fieldname, $batch_integer_fields) === FALSE) {
         if ($fieldname == 'batch_request_due_date' || $fieldname == 'date') {
-          $value = $value['month'] . '/' . $value['day'] . '/' . $value['year'];
+          $value = $value['year'] . '/' . $value['month'] . '/' . $value['day'];
         } elseif (is_array($value)) {
           $value = implode(",", $value);
         }
@@ -1081,7 +1082,6 @@ function upitt_workflow_save_batch($values, $collection_options) {
   $sql_values[] = $user->uid;
 
   $sql = "REPLACE INTO `batch` (`" . implode("`, `", $sql_fields) . "`) VALUES (" . implode(", ", $sql_values) . ")";
-
   $result = mysqli_query($link, $sql);
   if (!$result) {
     upitt_workflow_sql_error_die($link, $sql);
@@ -1366,4 +1366,25 @@ function upitt_workflow_sum_datastream_sizes($datastream_sizes) {
   }
   return array('datastreams_latestsize' => $latest,
                'datastreams_totalsize' => $total);
+}
+
+/**
+ * Will look up the batch set for the given batch_external_id ... will match an
+ * islandora PID value when prefixed with the ingest namespace variable.
+ *
+ * @param type $batch_external_id
+ * @return integer - value of the set
+ */
+function upitt_workflow_get_set($batch_external_id) {
+  $result = 0;
+  $results = array();
+  $q = db_select('islandora_batch_queue', 'q');
+  $items = $q->fields('q', array('sid'))
+    ->condition('q.id', variable_get('upitt_workflow_ingest_namespace', 'pitt:') . $batch_external_id)
+    ->execute();
+  while ($item = $items->fetchAssoc()) {
+    $result = $item['sid'];
+  }
+  
+  return $result;
 }
