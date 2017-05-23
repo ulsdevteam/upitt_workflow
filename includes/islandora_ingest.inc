@@ -242,8 +242,6 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
 
   $alerted_on_err = FALSE;
 
-  // Pending development in the islandora_book_ingest code, this will need to change to
-  // pass parameter to aggregate OCR / PDF during ingetst
   $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=pitt --uri=' . $this_domain . ' islandora_book_batch_preprocess ' .
                    '--content_models=islandora:bookCModel ' .
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
@@ -315,7 +313,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
         if (array_key_exists($i, $row)) {
           // ALL LOWERCASE, replace spaces with "_"
           if ($header == 'identifier') {
-            $row_mods_id = $row[$i];
+            $row_mods_id = trim($row[$i]);
             $mods_directory_path = $working_directory . '/' . $row_mods_id;
             if (!file_exists($mods_directory_path)) {
               mkdir($mods_directory_path);
