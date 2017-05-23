@@ -11,13 +11,15 @@ function upitt_workflow_object_manage_audit($islandora_object) {
     $is_paged = upitt_workflow_is_paged_object($islandora_object);
 
     $audit_record = upitt_workflow_lookup_audit_record($islandora_object->id);
-    $datastream_sizes = upitt_workflow_get_depositor_model_and_datastreams_sizes($islandora_object->id);
+    $datastream_sizes_objs = upitt_workflow_get_depositor_model_and_datastreams_sizes($islandora_object->id);
     $dsid_sizes = array();
-    foreach ($datastream_sizes as $solr_fieldname => $datastream_sizes) {
+    foreach ($datastream_sizes_objs as $solr_fieldname => $datastream_sizes) {
       $dsid = str_replace(array('fedora_datastream_version_','_SIZE_ms'), "", $solr_fieldname);
       $dsid_sizes[$dsid] = 0;
-      foreach ($datastream_sizes as $datastream_size) {
-        $dsid_sizes[$dsid] += $datastream_size;
+      if (is_array($datastream_sizes)) {
+        foreach ($datastream_sizes as $datastream_size) {
+          $dsid_sizes[$dsid] += $datastream_size;
+        }
       }
     }
 
@@ -71,8 +73,10 @@ function upitt_workflow_object_manage_audit($islandora_object) {
       $markup .= '<h4>Datastream File Size Report</h4><p>This is the total size for all datastreams on this object -- including all versions for each datastream.</p>';
       $grand_total_datastreams_size = 0;
       foreach ($dsid_sizes as $dsid => $total_size) {
-        $grand_total_datastreams_size += $total_size;
-        $markup .= '<p><b>' . $dsid . '</b> size: ' . islandora_convert_bytes_to_human_readable($total_size) . '</p>';
+        if ($dsid <> 'RELS_EXT_hasModel_uri_s') {
+          $grand_total_datastreams_size += $total_size;
+          $markup .= '<p><b>' . $dsid . '</b> size: ' . islandora_convert_bytes_to_human_readable($total_size) . '</p>';
+        }
       }
       $markup .= '<hr><p><b>Grand TOTAL size</b>: ' . islandora_convert_bytes_to_human_readable($grand_total_datastreams_size) . '</p>';
     }

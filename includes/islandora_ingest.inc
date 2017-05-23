@@ -24,6 +24,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
   global $user;
 
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   $batch = upitt_workflow_batch_load($batch_id);
 
   $markup = '<p>Attempt to ingest batch #' . $batch_id;
@@ -33,7 +34,9 @@ function upitt_workflow_islandora_ingest($batch_id) {
 
     $fedora_model_name = $batch['default_type_of_resource'];
 
-    $markup .= ' from batch <a href="/islandora/object/pitt:' . $batch['batch_external_id'] . '/manage">' . $batch['batch_external_id'] . '</a></p>';
+    $ingest_namespace = upitt_workflow_get_ingest_namespace();
+
+    $markup .= ' from batch <a href="/islandora/object/' . $ingest_namespace . $batch['batch_external_id'] . '/manage">' . $batch['batch_external_id'] . '</a></p>';
 
     $markup .= '<h3 style="color:green">Batch `Model` (default_type_of_resource) = "' . $batch['default_type_of_resource'] . '", yields fedora model: "' . $fedora_model_name . '"</h3><br>';
 
@@ -53,7 +56,6 @@ function upitt_workflow_islandora_ingest($batch_id) {
 
     $batch_default_depositor = $batch['default_depositor'];
 
-    $ingest_namespace = variable_get('upitt_workflow_ingest_namespace', 'pitt:');
     if ($fedora_model_name == 'bookCModel') {
       $markup .= upitt_workflow_drush_book($batch_path, $parent, $site, $ingest_namespace . $batch['batch_external_id']);
     } elseif ($fedora_model_name == 'sp_large_image_cmodel') {
@@ -77,11 +79,11 @@ function upitt_workflow_islandora_ingest($batch_id) {
         $alerted_on_err = TRUE;
         $markup .= '<h3 style="color:red">Error calling ingest_batch command</h3>';
       } else {
-        $markup .= '<p>Since the batch was set with a batch request due date before now, ' .
-                   'the subsequent call to ingest the queued object/s has been executed.</p><code>' . $ingest_set_drush_command . '</code>';
+        $markup .= '<h4>Since the batch was set with a batch request due date before now, ' .
+                   'the subsequent call to ingest the queued object/s has been executed.</h4><code>' . $ingest_set_drush_command . '</code>';
       }
     } else {
-      $markup .= '<p>Subsequent call to actually ingest the queued object/s.</p><code>' . $ingest_drush_command . '<br>' .
+      $markup .= '<h4>Subsequent call to actually ingest the queued object/s.</h4><code>' . $ingest_drush_command . '<br>' .
                  '<i># or if only one set to be processed, supply the ingest_set option</i><br>' . $ingest_set_drush_command .
                  '</code>';
 
@@ -210,7 +212,7 @@ function upitt_workflow_csv2mods($filepath, $fedora_model_name, $parent, $site, 
                        '--assign_pid=' . $csv_file_source['identifier'] . ' ' .
                        (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                        ' --target=' . $csv_file_source['path'];
-      $markup = '<h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
+      $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
       $retval .= $markup;
 
       $output = $return_var = array();
@@ -241,8 +243,10 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
   $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 
   $alerted_on_err = FALSE;
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  $ingest_namespace_nocolon = rtrim($ingest_namespace, ":");
 
-  $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=pitt --uri=' . $this_domain . ' islandora_book_batch_preprocess ' .
+  $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=' . $ingest_namespace_nocolon . ' --uri=' . $this_domain . ' islandora_book_batch_preprocess ' .
                    '--content_models=islandora:bookCModel ' .
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
                    (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
@@ -251,7 +255,7 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
                    '--overwrite_existing=1 ' .
                    (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                    ' --target=' . $filepath;
-  $markup = '<h4>To call islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
+  $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
   $retval .= $markup;
 
   $output = $return_var = array();
@@ -295,7 +299,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
   $csv_header_xpath_mappings = upitt_workflow_get_csv_header_xpath_mappings();
   $mods_created = $files_copied = $bytes_written = 0;
 
-  $ingest_namespace = variable_get('upitt_workflow_ingest_namespace', 'pitt:');
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
   $identifiers_and_filepaths = array();
   // Loop through each row creating a <row> node with the correct data
   while (($row = fgetcsv($inputFile)) !== FALSE) {

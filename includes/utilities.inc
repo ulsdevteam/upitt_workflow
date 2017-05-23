@@ -854,6 +854,13 @@ function upitt_workflow_csv_file_as_array($csv_file) {
 }
 
 /**
+ * Helper function to return the value of the upitt_workflow_ingest_namespace - with the right trailing colon
+ */
+function upitt_workflow_get_ingest_namespace() {
+  return rtrim(variable_get('upitt_workflow_ingest_namespace', 'pitt:'), ':') . ':';
+}
+
+/**
  * Helper function that will return the pid values from a spreadsheet.  This will
  * need to inspect the header column to find out which index represents the
  * identifier field - and then return that column of data from the rows.
@@ -861,7 +868,7 @@ function upitt_workflow_csv_file_as_array($csv_file) {
  * @param array $csv_arr  ('header' => $file_header, 'rows' => $file_rows)
  */
 function upitt_workflow_csv_extract_identifiers($csv_arr) {
-  $ingest_namespace = variable_get('upitt_workflow_ingest_namespace', 'pitt:');
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
   $identifier_key = array_search('identifier', $csv_arr['header']);
   $ns_prefix = '';
   $ret_arr = array();
@@ -1281,7 +1288,7 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
       foreach ($solrRecord[$solrfield_CREATED] as $key => $CREATED) {
         $pre = ((1+$key) == count($solrRecord[$solrfield_CREATED])) ? '<b title="current version">' : '';
         $post = ((1+$key) == count($solrRecord[$solrfield_CREATED])) ? '</b>' : '';
-        $rows[$CREATED] = array('ID' => ($pre) ? $pre . $dsid . $post : '',
+        $rows[$dsid] = array('ID' => ($pre) ? $pre . $dsid . $post : '',
           'version ID' => $pre . $solrRecord[$solrfield_ID][$key] . $post,
           'LABEL' => $pre . $solrRecord[$solrfield_LABEL][$key] . $post,
           'CREATED' => $pre . $solrRecord[$solrfield_CREATED][$key] . $post,
@@ -1380,11 +1387,93 @@ function upitt_workflow_get_set($batch_external_id) {
   $results = array();
   $q = db_select('islandora_batch_queue', 'q');
   $items = $q->fields('q', array('sid'))
-    ->condition('q.id', variable_get('upitt_workflow_ingest_namespace', 'pitt:') . $batch_external_id)
+    ->condition('q.id', upitt_workflow_get_ingest_namespace() . $batch_external_id)
     ->execute();
   while ($item = $items->fetchAssoc()) {
     $result = $item['sid'];
   }
   
   return $result;
+}
+
+/**
+ * Update the batch status record for the matching batch record for this set's $ingested_pid.  This will 
+ * create an item record if it does not exist already.
+ *
+ * @param object $ingested_object
+ * @param integer $transaction_action_id
+ */
+function upitt_workflow_set_status_for_pid($ingested_object, $transaction_action_id) {
+  global $user;
+  // Take the namespace off of the pid to get the "batch_external_id" a.k.a. the "barcode" -- for finding the record in the workflow's item table.
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  $batch_external_id = str_replace($ingest_namespace, "", $ingested_object->id);
+
+  my_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id);
+  // error_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id . "\n", 3, '/tmp/log');
+
+  // will need the batch record for this object.
+  $batch_id = upitt_workflow_get_batch_id($batch_external_id, FALSE);
+  if ($batch_id) {
+    $batch = upitt_workflow_batch_load($batch_id);
+  }
+  else {
+    $batch = array('type_id' => 0, 'batch_property_owner_id' => 0);
+  }
+
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  // Get matching item record if there is one -- 
+  $item_query = 'SELECT id FROM item i WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $batch_external_id) . '"';
+  $result = mysqli_query($link, $item_query);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $item_query);
+  }
+  my_log('search for batch item');
+  // error_log('search for batch\'s item' . "\n", 3, '/tmp/log');
+
+  $row = mysqli_fetch_assoc($result);
+  if (!isset($row['id'])) {
+    my_log('item record did not exist');
+    //  error_log('item record did not exist' . "\n", 3, '/tmp/log');
+    // Need to insert the item record.
+    $insert_item = 'INSERT INTO item (do_id, name, type_id, property_owner_id) ' . 
+                   'VALUES ("' . upitt_workflow_safe_qstring($batch_external_id) . '",' .
+                   ' "' . upitt_workflow_safe_qstring($ingested_object->label) . '", ' . $batch['type_id'] . ', ' . $batch['batch_property_owner_id'] . ')';
+    mysqli_query($link, $insert_item);
+
+    // Use the same query as before to get the item_id of the new record created above.
+    $result = mysqli_query($link, $item_query);
+    $row = mysqli_fetch_assoc($result);
+  }
+  
+  // at this point, the $row['id'] better be set, but still need to check before inserting the transaction record.
+  if (isset($row['id'])) {
+    $item_id = $row['id'];
+    my_log('item id = ' . $item_id);
+    // error_log('item id = ' . $item_id . "\n", 3, '/tmp/log');
+    
+    // Two records for the transaction ... insert the transaction record -- and update the item_current_status table with a pointer to this transaction
+    $transaction_insert = 'INSERT INTO `transaction` (`item_id`, `user_id`, `transaction_action_id`, `timestamp`) ' . 
+                          'VALUES (' . $item_id . ', ' . $user->uid . ', ' . $transaction_action_id . ', now())';
+    $result = mysqli_query($link, $transaction_insert);
+    $row = mysqli_fetch_assoc($result);
+    
+    $transaction_query = 'SELECT id FROM `transaction` WHERE `item_id` = ' . $item_id . ' ORDER BY id DESC LIMIT 1';
+    $result = mysqli_query($link, $transaction_query);
+    $row = mysqli_fetch_assoc($result);
+    if (isset($row['id'])) {
+      $transaction_id = $row['id'];
+      my_log('transaction_id = ' . $transaction_id);
+      // error_log('transaction_id = ' . $transaction_id . "\n", 3, '/tmp/log');
+
+      // FINALLY, put the transaction_id into the item_current_status table.
+      $trans_acts_insert = 'INSERT INTO `item_current_status` (`item_id`, `last_transaction_id`) VALUES (' . $item_id . ', ' . $transaction_id . ')';
+      $result = mysqli_query($link, $trans_acts_insert);
+    }
+  }
+  else {
+    my_log('item_id not found for ' . $item_query);
+//    error_log('item_id not found for ' . $item_query . "\n", 3, '/tmp/log');
+  }
+  mysqli_close($link);      
 }

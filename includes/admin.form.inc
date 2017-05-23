@@ -16,6 +16,9 @@
  *   The Drupal form definition.
  */
 function upitt_workflow_admin_form() {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+
   $password_field_description = (variable_get('upitt_workflow_ftp_password') ?
           '<span style="color:red">' . t('There is a value for the password, but it is not displayed.  
              Only enter text here if the password value needs to change.') . '</span>':
@@ -27,7 +30,7 @@ function upitt_workflow_admin_form() {
       '#size' => 20,
       '#title' => t('Ingest Namespace'),
       '#description' => t('The namespace to use for ingesting all objects.'),
-      '#default_value' => variable_get('upitt_workflow_ingest_namespace', 'pitt:'),
+      '#default_value' => $ingest_namespace, 
       '#size' => 100,
     ),
     'incoming_ingest_path' => array(

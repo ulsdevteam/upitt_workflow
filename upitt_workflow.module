@@ -1,8 +1,8 @@
 <?php
 
+define('SETTINGS_FILE', '/var/www/html/drupal_gamera_sandbox/sites/gamera.library.pitt.edu/settings.php');
+
 // Full file path to the current installation's settings.php file
-$script_base = str_replace('/index.php', '', $_SERVER['SCRIPT_FILENAME']);
-define('SETTINGS_PATH', $script_base . '/' . conf_path(TRUE) . '/settings.php');
 define('WF_OBJECTS_PER_PAGE', 100);
 
 // Maximum number of objects returned for a Solr lookup.
@@ -11,6 +11,9 @@ define('UPITT_WORKFLOW_SOLR_LIMIT', 10000);
 // Permissions.
 define('ISLANDORA_WORKFLOW_MANAGE', 'manage upitt workflow');
 define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup tables');
+
+// Constants for various workflow actions (transactions)
+define('UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY', 3); // ingest completed
 
 
 /**
@@ -293,12 +296,14 @@ function upitt_workflow_theme() {
 function upitt_workflow_get_databaselink($db_section = 'mysql') {
   global $databases;
   // Use the settings.php file for this install.
-  require_once(SETTINGS_PATH);
+//  $script_base = str_replace('/index.php', '', $_SERVER['SCRIPT_FILENAME']);
+//  require_once($script_base . '/' . conf_path(TRUE) . '/settings.php');
+  require_once(SETTINGS_FILE);
 
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   if (count($databases) < 1 || !array_key_exists($db_section, $databases['default'])) {
-    die('Database settings not found at ' . SETTINGS_PATH);
+    die('Database settings not found ' . $script_base . '/' . conf_path(TRUE) . '/settings.php');
   }
 
   $db_host = $databases['default'][$db_section]['host'];
@@ -477,9 +482,8 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
   module_load_include('inc', 'islandora_paged_content', 'includes/derivatives');
   module_load_include('inc', 'islandora_batch', 'includes/db');
 
-//  $objects = upitt_workflow_get_objects_from_set($sets);
-//  error_log('set = ' .print_r($objects, true));
-  error_log('in hook upitt_workflow_islandora_batch_process_finished - ready to delete files for object' . "\n", 3, '/tmp/log');
+  my_log('in hook upitt_workflow_islandora_batch_process_finished - ready to delete files for object');
+  //error_log('in hook upitt_workflow_islandora_batch_process_finished - ready to delete files for object' . "\n", 3, '/tmp/log');
 
   if (!empty($sets)) {
     module_load_include('inc', 'islandora_batch', 'includes/db');
@@ -488,7 +492,9 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
       $queued_items = islandora_batch_get_queued_items_for_set($set);
       foreach ($queued_items as $ingested_pid) {
         $ingested_object = islandora_object_load($ingested_pid);
-        error_log('object label = ' . $ingested_object->label . ' with PID ' . $ingested_object->id . "\n", 3, '/tmp/log');
+
+        my_log('object label = ' . $ingested_object->label . ' with PID ' . $ingested_object->id); 
+        // error_log('object label = ' . $ingested_object->label . ' with PID ' . $ingested_object->id . "\n", 3, '/tmp/log');
 
         // See whether or not this is a paged-content object in order to call the
         // "aggregate PDF" and "aggregate OCR/HOCR" batch commands on it now.
@@ -496,6 +502,9 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
           upitt_workflow_aggregate_pdf_derivative($ingested_object);
           upitt_workflow_aggregate_ocr_derivative($ingested_object);
         }
+
+        // Update the batch status record for the matching batch record for this set's $ingested_pid
+        upitt_workflow_set_status_for_pid($ingested_object, UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY);
       }
     }
   }
@@ -511,7 +520,8 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
 function upitt_workflow_aggregate_pdf_derivative($islandora_object) {
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
   module_load_include('inc', 'islandora_paged_content', 'includes/batch');
-  error_log('in upitt_workflow_aggregate_pdf_derivative' . "\n", 3, '/tmp/log');
+  my_log('in upitt_workflow_aggregate_pdf_derivative');
+  // error_log('in upitt_workflow_aggregate_pdf_derivative' . "\n", 3, '/tmp/log');
 
   if (islandora_paged_content_can_combine_pdf()) {
     $pages = islandora_paged_content_get_pages_ri($islandora_object);
@@ -524,7 +534,8 @@ function upitt_workflow_aggregate_pdf_derivative($islandora_object) {
 
     @unlink($consolidated_pdf_temp_file);
     foreach ($pdf_files as $file) {
-      error_log('delete temp file for pages PDF file "' . $file . '"' . "\n", 3, '/tmp/log');
+      my_log('delete temp file for pages PDF file "' . $file . '"');
+      //  error_log('delete temp file for pages PDF file "' . $file . '"' . "\n", 3, '/tmp/log');
       @unlink($file);
     }
     upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 'PDF');
@@ -533,22 +544,26 @@ function upitt_workflow_aggregate_pdf_derivative($islandora_object) {
 
 function upitt_workflow_aggregate_ocr_derivative($islandora_object) {
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
-  error_log('in upitt_workflow_aggregate_ocr_derivative' . "\n", 3, '/tmp/log');
+  my_log('in upitt_workflow_aggregate_ocr_derivative');
+  // error_log('in upitt_workflow_aggregate_ocr_derivative' . "\n", 3, '/tmp/log');
 
   $pages = islandora_paged_content_get_pages_ri($islandora_object);
   $ocr_files = upitt_workflow_pages_ocr_temp_files($pages);
-  error_log('pages\' ocr files temp filenames ' . print_r($ocr_files, true) . "\n", 3, '/tmp/log');
+  my_log('pages\' ocr files temp filenames ' . print_r($ocr_files, true));
+  // error_log('pages\' ocr files temp filenames ' . print_r($ocr_files, true) . "\n", 3, '/tmp/log');
   $consolidated_ocr_temp_file = drupal_tempnam("temporary://", "OCR_" . $islandora_object->id . ".txt");
   islandora_paged_content_ocr_combine($ocr_files, $consolidated_ocr_temp_file);
   $f = file($consolidated_ocr_temp_file);
-  error_log(implode("\n", $f) . "\n", 3, '/tmp/log');
+  my_log(implode("\n", $f));
+  //  error_log(implode("\n", $f) . "\n", 3, '/tmp/log');
 
   module_load_include('inc', 'islandora_paged_content', 'includes/derivatives');
   islandora_paged_content_update_datastream($islandora_object, $consolidated_ocr_temp_file, 'OCR', 'Consolidated OCR', 'text/plain');
 
   @unlink($consolidated_ocr_temp_file);
   foreach ($ocr_files as $file) {
-    error_log('delete temp file for pages ocr file "' . $file . '"' . "\n", 3, '/tmp/log');
+    my_log('delete temp file for pages ocr file "' . $file . '"');
+    // error_log('delete temp file for pages ocr file "' . $file . '"' . "\n", 3, '/tmp/log');
     @unlink($file);
   }
   upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 'OCR');
@@ -599,7 +614,8 @@ function upitt_workflow_pages_pdf_temp_files($pages) {
 function upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, $dsid) {
   // Remove the PDF datastreams for all child pages if the PDF has been aggregated
   if (isset($islandora_object[$dsid])) {
-    error_log('in upitt_workflow_purge_childpages_datastreams for ' . $dsid . ' on ' . $islandora_object->id . "\n", 3, '/tmp/log');
+     my_log('in upitt_workflow_purge_childpages_datastreams for ' . $dsid . ' on ' . $islandora_object->id);
+     // error_log('in upitt_workflow_purge_childpages_datastreams for ' . $dsid . ' on ' . $islandora_object->id . "\n", 3, '/tmp/log');
 
     foreach ($pages as $page) {
       $page_object = islandora_object_load($page['pid']);
@@ -609,4 +625,9 @@ function upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 
       }
     }
   }
+}
+
+function my_log($string) {
+  $date = date('H:i:s');
+  error_log($date . ' ' . $string . "\n", 3, '/tmp/log');
 }

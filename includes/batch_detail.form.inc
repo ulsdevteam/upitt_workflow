@@ -86,7 +86,7 @@ function upitt_workflow_batch_detail_form($batch_id) {
     upitt_workflow_sql_error_die($link, $batch_items);
   }
 
-  $ingest_namespace = variable_get('upitt_workflow_ingest_namespace', 'pitt:');
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
   $batch_item_headings = $batch_rows = array();
   while ($row = mysqli_fetch_assoc($result)) {
     if (count($batch_item_headings) < 1) {
