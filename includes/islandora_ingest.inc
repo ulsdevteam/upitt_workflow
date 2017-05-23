@@ -33,7 +33,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
 
     $fedora_model_name = $batch['default_type_of_resource'];
 
-    $markup .= ' from batch ' . $batch['batch_external_id'] . '</p>';
+    $markup .= ' from batch <a href="/islandora/object/pitt:' . $batch['batch_external_id'] . '/manage">' . $batch['batch_external_id'] . '</a></p>';
 
     $markup .= '<h3 style="color:green">Batch `Model` (default_type_of_resource) = "' . $batch['default_type_of_resource'] . '", yields fedora model: "' . $fedora_model_name . '"</h3><br>';
 

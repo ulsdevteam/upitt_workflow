@@ -497,50 +497,38 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
           upitt_workflow_aggregate_ocr_derivative($ingested_object);
         }
       }
-      /*
-      islandora_batch_delete_set($set);
-      // Set a message that the batch set was removed.
-      drupal_set_message(t('The batch set (@set_id) has been processed successfully and has been automatically removed from the queue.', array(
-        '@set_id' => $set,
-      )));
-      */
     }
   }
-
-
-
-/*  $auto_remove = variable_get('islandora_batch_auto_remove_set', FALSE);
-  if ($auto_remove) {
-    if (!empty($sets)) {
-      module_load_include('inc', 'islandora_batch', 'includes/db');
-      foreach ($sets as $set) {
-        // Delete set and associated queued items.
-        islandora_batch_delete_set($set);
-        // Set a message that the batch set was removed.
-        drupal_set_message(t('The batch set (@set_id) has been processed successfully and has been automatically removed from the queue.', array(
-          '@set_id' => $set,
-        )));
-      }
-    }
-  }
-*/
 }
 
+/**
+ * This function will aggregate the page's PDF files into a single PDF at the
+ * book level.  Also, the page's PDF will be purged upon aggregation completion.
+ *
+ * This must use standard tempnam() function because GhostScript shell command
+ * does not interpret the //temporary: path from drupal's drupal_tempnam().
+ */
 function upitt_workflow_aggregate_pdf_derivative($islandora_object) {
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
   module_load_include('inc', 'islandora_paged_content', 'includes/batch');
   error_log('in upitt_workflow_aggregate_pdf_derivative' . "\n", 3, '/tmp/log');
 
-  $pages_objects = islandora_paged_content_get_pages($islandora_object);
-  $pages = array_keys($pages_objects);
-  $options = array(
-    '-density' => 300,
-    '-compress' => 'LZW',
-  );
-  $batch = islandora_paged_content_create_pdf_batch($islandora_object, $pages, $options);
-  batch_set($batch);
+  if (islandora_paged_content_can_combine_pdf()) {
+    $pages = islandora_paged_content_get_pages_ri($islandora_object);
+    $pdf_files = upitt_workflow_pages_pdf_temp_files($pages);
+    $consolidated_pdf_temp_file = tempnam("/tmp", "PDF_" . $islandora_object->id . ".txt");
+    islandora_paged_content_pdf_combine($pdf_files, $consolidated_pdf_temp_file);
 
-  upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 'PDF');
+    module_load_include('inc', 'islandora_paged_content', 'includes/derivatives');
+    islandora_paged_content_update_datastream($islandora_object, $consolidated_pdf_temp_file, 'PDF', 'PDF', 'application/pdf');
+
+    @unlink($consolidated_pdf_temp_file);
+    foreach ($pdf_files as $file) {
+      error_log('delete temp file for pages PDF file "' . $file . '"' . "\n", 3, '/tmp/log');
+      @unlink($file);
+    }
+    upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 'PDF');
+  }
 }
 
 function upitt_workflow_aggregate_ocr_derivative($islandora_object) {
@@ -548,10 +536,10 @@ function upitt_workflow_aggregate_ocr_derivative($islandora_object) {
   error_log('in upitt_workflow_aggregate_ocr_derivative' . "\n", 3, '/tmp/log');
 
   $pages = islandora_paged_content_get_pages_ri($islandora_object);
-  $pages_files = upitt_workflow_pages_ocr_temp_files($pages);
-  error_log('pages\' ocr files temp filenames ' . print_r($pages_files, true) . "\n", 3, '/tmp/log');
+  $ocr_files = upitt_workflow_pages_ocr_temp_files($pages);
+  error_log('pages\' ocr files temp filenames ' . print_r($ocr_files, true) . "\n", 3, '/tmp/log');
   $consolidated_ocr_temp_file = drupal_tempnam("temporary://", "OCR_" . $islandora_object->id . ".txt");
-  islandora_paged_content_ocr_combine($pages_files, $consolidated_ocr_temp_file);
+  islandora_paged_content_ocr_combine($ocr_files, $consolidated_ocr_temp_file);
   $f = file($consolidated_ocr_temp_file);
   error_log(implode("\n", $f) . "\n", 3, '/tmp/log');
 
@@ -559,7 +547,7 @@ function upitt_workflow_aggregate_ocr_derivative($islandora_object) {
   islandora_paged_content_update_datastream($islandora_object, $consolidated_ocr_temp_file, 'OCR', 'Consolidated OCR', 'text/plain');
 
   @unlink($consolidated_ocr_temp_file);
-  foreach ($pages_files as $file) {
+  foreach ($ocr_files as $file) {
     error_log('delete temp file for pages ocr file "' . $file . '"' . "\n", 3, '/tmp/log');
     @unlink($file);
   }
@@ -592,7 +580,7 @@ function upitt_workflow_pages_pdf_temp_files($pages) {
   $files = array();
   $page_pids = array_keys($pages);
   foreach ($page_pids as $page_pid) {
-    $temp_name = drupal_tempnam("temporary://", "PDF_" . $page_pid . ".txt");
+    $temp_name = tempnam("/tmp", "PDF_" . $page_pid . ".txt");
     $page_pdf = islandora_datastream_load('PDF', $page_pid);
     if (!is_null($page_pdf)) {
       file_put_contents($temp_name, $page_pdf->content, FILE_APPEND);
