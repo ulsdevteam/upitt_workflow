@@ -1,6 +1,7 @@
 <?php
 
-define('SETTINGS_FILE', '/var/www/drupal/sites/default/settings.php');
+// define('SETTINGS_FILE', '/var/www/drupal/sites/default/settings.php');
+define('SETTINGS_FILE', '/var/www/html/drupal7/sites/gamera.library.pitt.edu/settings.php');
 // define('SETTINGS_FILE', '/var/www/html/drupal_gamera_sandbox/sites/gamera.library.pitt.edu/settings.php');
 
 // Full file path to the current installation's settings.php file
