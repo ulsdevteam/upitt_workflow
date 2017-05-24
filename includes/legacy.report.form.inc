@@ -68,7 +68,7 @@ function upitt_workflow_legacy_objects() {
   $count_rows_markup = number_format($count_rows) . " workflow objects " . (($ob1_page <> 0) ? " (page " . $ob1_page . " of " . round($count_rows / WF_OBJECTS_PER_PAGE + 0.9999) . ")" : "");
   $headings = $rows = array();
 
-  $ingest_namespace = variable_get('upitt_workflow_ingest_namespace', 'pitt:');
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
   while ($row = mysqli_fetch_assoc($result)) {
     if (count($headings) < 1) {
       $headings = array_keys($row);
@@ -120,7 +120,7 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
   }
   $collections = upitt_workflow_lookup_collection_names();
 
-  $ingest_namespace = variable_get('upitt_workflow_ingest_namespace', 'pitt:');
+  $ingest_namespace = upitt_workflow_get_ingest_namespace(); 
 
   $pid = $ingest_namespace . $do_id;
   $islandora_object = islandora_object_load($pid);
@@ -255,7 +255,9 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
     $status_rows[] = array('description' => '<span style="color:red">' . str_replace(" not completed", "", $problem) . '</span>', 'time' => '', 'when' => '');
   }
 
-  $links[] = l('Edit METS', '/workflow/object/' . $do_id . '/METS/edit');
+  if (module_exists('islandora_mets_editor')) {
+    $links[] = l('Edit METS', 'islandora/object/' . $ingest_namespace . $do_id . '/manage/mets_editor');
+  }
   $links[] = l('Islandora Ingest', '/workflow/object/' . $do_id . '/islandora_ingest');
 
   $table_markup = theme('upitt_workflow_report_with_detail_table',
