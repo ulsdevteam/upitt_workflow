@@ -520,6 +520,9 @@ function upitt_workflow_file_scan_directory($dir, $mask = '', $recurse = FALSE, 
  * This will run XML to MODS transformation and save resultant MODS
  * over the original file.
  *
+ * This same effect could be achieved using a template system because xslt is
+ * relatively slow.  For now, the xslt transform method is used.
+ *
  * Returns the filename for the new MODS file.
  */
 function upitt_workflow_XMLtoMODS($xml_filename) {
@@ -1276,14 +1279,17 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
   $rows = $headings = array();
   $datastreams = $solrRecord['fedora_datastreams_ms'];
   $headings = array('ID', 'version ID', 'LABEL', 'CREATED', 'MIMETYPE', 'SIZE', 'Operations');
-
   $messages = array();
   foreach ($datastreams as $dsid) {
+    // the Size field may be an integer if the field has been added, or multistring by default.  We want to use
+    // the integer field if it exists.
+    $size_field_type = (isset($solrRecord['fedora_datastream_version_' . $dsid . '_SIZE_i']) ? '_i' : '_ms');
+
     $solrfield_ID = 'fedora_datastream_version_' . $dsid . '_ID_ms';
     $solrfield_LABEL = 'fedora_datastream_version_' . $dsid . '_LABEL_ms';
     $solrfield_CREATED = 'fedora_datastream_version_' . $dsid . '_CREATED_ms';
     $solrfield_MIMETYPE = 'fedora_datastream_version_' . $dsid . '_MIMETYPE_ms';
-    $solrfield_SIZE = 'fedora_datastream_version_' . $dsid . '_SIZE_ms';
+    $solrfield_SIZE = 'fedora_datastream_version_' . $dsid . '_SIZE' . $size_field_type;
     if (isset($solrRecord[$solrfield_ID]) && isset($solrRecord[$solrfield_LABEL]) && isset($solrRecord[$solrfield_CREATED]) && isset($solrRecord[$solrfield_MIMETYPE]) && isset($solrRecord[$solrfield_SIZE])) {
       foreach ($solrRecord[$solrfield_CREATED] as $key => $CREATED) {
         $pre = ((1+$key) == count($solrRecord[$solrfield_CREATED])) ? '<b title="current version">' : '';
@@ -1296,6 +1302,10 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
           'SIZE' => array('data' => $pre . number_format($solrRecord[$solrfield_SIZE][$key]) . $post, 'class' => array('numeric')),
           'Operations' => $pre . l('view', '/islandora/object/' . urlencode($pid) . '/datastream/' . $dsid . '/version/' . $key . '/view') . ' &nbsp; &nbsp; ' . l('revert', '/islandora/object/' . urlencode($pid) . '/datastream/' . $dsid . '/version/' . $key . '/revert') . $post,
         );
+      }
+      // If the SIZE field is not an array, update the value here
+      if (!(is_array($solrRecord[$solrfield_SIZE]))) {
+        $rows[$dsid]['SIZE'] = array('data' => $pre . number_format($solrRecord[$solrfield_SIZE]) . $post, 'class' => array('numeric'));
       }
     }
     else {
@@ -1310,10 +1320,14 @@ function upitt_workflow_analyze_solr_record($solrRecord, $pid) {
 function upitt_workflow_get_depositor_model_and_datastreams_sizes($pid) {
   $fields = array();
   $datastreams = upitt_workflow_get_datastreams($pid);
+  $size_field_multistring = $size_field_integer = '';
   foreach ($datastreams as $dsid => $datastream) {
     if (strstr($datastream, '(0)') == '') {
       $dsid =  strtoupper($dsid);
-      $fields[] = 'fedora_datastream_version_' . $dsid . '_SIZE_ms';
+      $size_fields[] = 'fedora_datastream_version_' . $dsid . '_SIZE_i';
+      $size_fields[] = 'fedora_datastream_version_' . $dsid . '_SIZE_ms';
+      $size_field_multistring = ($size_field_multistring) ? $size_field_multistring : 'fedora_datastream_version_' . $dsid . '_SIZE_ms';
+      $size_field_integer = ($size_field_integer) ? $size_field_integer : 'fedora_datastream_version_' . $dsid . '_SIZE_ms';
     }
   }
 
@@ -1330,7 +1344,7 @@ function upitt_workflow_get_depositor_model_and_datastreams_sizes($pid) {
   $query_processor->solrQuery = 'PID:' . str_replace(array("/", ":", "-", "+"), array("\/", "\:", "\-", "\+"), $pid);
   $query_processor->solrStart = 0;
   $query_processor->solrLimit = 1;
-  $query_processor->solrParams = array('fl' => implode(",", $fields));
+  $query_processor->solrParams = array('fl' => implode(",", array_merge($size_fields, $fields)));
 
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
   $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
@@ -1344,6 +1358,13 @@ function upitt_workflow_get_depositor_model_and_datastreams_sizes($pid) {
     // repeatedly call this to process this many records each time:
     //   UPITT_ISLANDORA_INVENTORY_SOLR_CHUNKSIZE
     foreach ($tmp['response']['docs'] as $k=>$rec) {
+      if (isset($rec[$size_field_integer]) && isset($rec[$size_field_multistring])) {
+        foreach ($size_fields as $size_field) {
+          if (strstr($size_field, '_ms')) {
+            unset($rec[$size_field]);
+          }
+        }
+      }
       $ret_arr = $rec;
     }
   }

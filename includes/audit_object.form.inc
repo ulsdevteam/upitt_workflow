@@ -14,12 +14,17 @@ function upitt_workflow_object_manage_audit($islandora_object) {
     $datastream_sizes_objs = upitt_workflow_get_depositor_model_and_datastreams_sizes($islandora_object->id);
     $dsid_sizes = array();
     foreach ($datastream_sizes_objs as $solr_fieldname => $datastream_sizes) {
-      $dsid = str_replace(array('fedora_datastream_version_','_SIZE_ms'), "", $solr_fieldname);
+      $dsid = str_replace(array('fedora_datastream_version_', '_SIZE_ms', '_SIZE_i'), "", $solr_fieldname);
       $dsid_sizes[$dsid] = 0;
       if (is_array($datastream_sizes)) {
+        // Multistring SIZE field
         foreach ($datastream_sizes as $datastream_size) {
           $dsid_sizes[$dsid] += $datastream_size;
         }
+      }
+      else {
+        // Integer SIZE field
+        $dsid_sizes[$dsid] += $datastream_sizes;
       }
     }
 

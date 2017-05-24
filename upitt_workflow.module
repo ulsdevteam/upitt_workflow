@@ -1,6 +1,7 @@
 <?php
 
-define('SETTINGS_FILE', '/var/www/html/drupal_gamera_sandbox/sites/gamera.library.pitt.edu/settings.php');
+define('SETTINGS_FILE', '/var/www/drupal/sites/default/settings.php');
+// define('SETTINGS_FILE', '/var/www/html/drupal_gamera_sandbox/sites/gamera.library.pitt.edu/settings.php');
 
 // Full file path to the current installation's settings.php file
 define('WF_OBJECTS_PER_PAGE', 100);
@@ -513,6 +514,12 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
 /**
  * This function will aggregate the page's PDF files into a single PDF at the
  * book level.  Also, the page's PDF will be purged upon aggregation completion.
+ *
+ * This function will call a paged_content function to get the pages of a paged_content
+ * object -- (in the order that they are arranged using the page sequenceNumber value.
+ * These pages are then exported to files - and the filenames are passed on to
+ * GhostScript in the order that they were sorted to generate the multi-paged
+ * PDF file, and the pages IN THE ORDER that they are configured in the book.
  *
  * This must use standard tempnam() function because GhostScript shell command
  * does not interpret the //temporary: path from drupal's drupal_tempnam().
