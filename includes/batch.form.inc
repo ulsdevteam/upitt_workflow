@@ -403,6 +403,8 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
 
   $markup = upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy);
 
+  upitt_workflow_set_status_for_batch($batch_external_id, UPITT_WORKFLOW_ACTION_HOLDING_FILES_MOVED);
+
   // If these values are still set in the form_state, the save_batch code will not know what to do with them.
   unset($form_state['values']['source_holdings_folder']);
   unset($form_state['values']['do_copy']);

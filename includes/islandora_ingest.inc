@@ -62,6 +62,9 @@ function upitt_workflow_islandora_ingest($batch_id) {
       $markup .= upitt_workflow_csv2mods($batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
     }
 
+    // Update the batch status record for the matching batch record for this batch_external_id
+    upitt_workflow_set_status_for_batch($batch['batch_external_id'], UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_STARTED);
+
     $set = upitt_workflow_get_set($batch['batch_external_id']);
 
     $this_domain = 'http://' . $_SERVER['HTTP_HOST'];

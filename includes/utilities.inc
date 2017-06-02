@@ -1440,7 +1440,7 @@ function upitt_workflow_get_set($batch_external_id) {
 }
 
 /**
- * Update the batch status record for the matching batch record for this set's $ingested_pid.  This will 
+ * Update the batch status record for the matching a given $ingested_object.  This will 
  * create an item record if it does not exist already.
  *
  * @param object $ingested_object
@@ -1451,7 +1451,17 @@ function upitt_workflow_set_status_for_pid($ingested_object, $transaction_action
   // Take the namespace off of the pid to get the "batch_external_id" a.k.a. the "barcode" -- for finding the record in the workflow's item table.
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   $batch_external_id = str_replace($ingest_namespace, "", $ingested_object->id);
+  return upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id);
+}
 
+/**
+ * Update the batch status record for the matching batch record for this set's $ingested_pid.  This will
+ * create an item record if it does not exist already.
+ *
+ * @param object $batch_external_id
+ * @param integer $transaction_action_id
+ */
+function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id) {
   my_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id);
   // error_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id . "\n", 3, '/tmp/log');
 

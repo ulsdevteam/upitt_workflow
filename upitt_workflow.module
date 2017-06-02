@@ -1,8 +1,13 @@
 <?php
 
 // define('SETTINGS_FILE', '/var/www/drupal/sites/default/settings.php');
+<<<<<<< Updated upstream
 define('SETTINGS_FILE', '/var/www/html/drupal_gamera_sandbox/sites/gamera.library.pitt.edu/settings.php');
 // define('SETTINGS_FILE', '/var/www/html/drupal7/sites/gamera.library.pitt.edu/settings.php');
+=======
+// define('SETTINGS_FILE', '/var/www/html/drupal7/sites/gamera.library.pitt.edu/settings.php');
+define('SETTINGS_FILE', '/var/www/html/drupal_gamera_sandbox/sites/gamera.library.pitt.edu/settings.php');
+>>>>>>> Stashed changes
 
 // Full file path to the current installation's settings.php file
 define('WF_OBJECTS_PER_PAGE', 100);
@@ -16,6 +21,8 @@ define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup t
 
 // Constants for various workflow actions (transactions)
 define('UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY', 3); // ingest completed
+define('UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_STARTED', 145);
+define('UPITT_WORKFLOW_ACTION_HOLDING_FILES_MOVED', 146);
 
 
 /**
