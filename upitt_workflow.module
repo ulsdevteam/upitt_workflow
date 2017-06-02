@@ -1,7 +1,8 @@
 <?php
 
-define('SETTINGS_FILE', '/var/www/drupal/sites/default/settings.php');
-// define('SETTINGS_FILE', '/var/www/html/drupal_gamera_sandbox/sites/gamera.library.pitt.edu/settings.php');
+// define('SETTINGS_FILE', '/var/www/drupal/sites/default/settings.php');
+define('SETTINGS_FILE', '/var/www/html/drupal_gamera_sandbox/sites/gamera.library.pitt.edu/settings.php');
+// define('SETTINGS_FILE', '/var/www/html/drupal7/sites/gamera.library.pitt.edu/settings.php');
 
 // Full file path to the current installation's settings.php file
 define('WF_OBJECTS_PER_PAGE', 100);
@@ -166,7 +167,16 @@ function upitt_workflow_menu() {
       'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE),
     ),
 
-    // ADMIN functions 
+    // ADMIN functions
+    'workflow/admin/makebatch_from_workflow' => array(
+      'title' => ('Edit Lookup Tables'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_make_batchrecords_form'),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/make_batchrecords_from_workflow.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+      'access callback' => 'upitt_workflow_workflowadmin_manage_access_callback',
+    ),
     'workflow/workflowadmin' => array(
       'title' => t('Workflow Admin'),
       'page callback' => 'upitt_workflow_workflowadmin',
@@ -249,6 +259,9 @@ function upitt_workflow_permission() {
 
 function upitt_workflow_theme() {
   return array(
+    'upitt_simple_markup' => array(
+      'variables' => array('markup' => ''),
+      'template' => 'theme/upitt-workflow-markup'),
     'upitt_workflow_report' => array(
       'variables' => array('table' => NULL, 'count_rows' => '', 'links' => '', 'collection_filter_choices' => '', 'details' => ''),
       'template' => 'theme/upitt-workflow-report',

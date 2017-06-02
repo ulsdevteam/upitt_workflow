@@ -38,6 +38,28 @@ function upitt_workflow_get_workflow_to_fedora_object_mappings() {
 }
 
 /**
+ * This will return the fedora model name (without the "info:fedora/islandora:" prefix)
+ * that matches the item_type.name values.
+ *
+ * @param string $type
+ * @return string
+ */
+function upitt_workflow_wf_type_to_fedora_model($type) {
+  $mapping = array('manuscript' => 'manuscriptCModel',
+      'image' => 'sp_large_image_cmodel',
+      'text - cataloged' => 'bookCModel',
+      'text - uncataloged' => 'bookCModel',
+      'map' => 'sp_large_image_cmodel',
+      'pdf' => 'sp_pdf',
+      'georeferenced map' => 'sp_large_image_cmodel',
+      'newspaper - cataloged' => 'bookCModel');
+  // The newspaper objects will be ingested to islandora as books, but a later
+  // process will need to create Newspaper objects and the "books" objects would
+  // be converted to Newspaper Issue objects.
+  return isset($mapping[$type]) ? $mapping[$type] : '';
+}
+
+/**
  * Helper function to create the search form filter choices for collections in workflow_django
  */
 function upitt_workflow_get_collection_choices() {
