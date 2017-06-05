@@ -25,6 +25,16 @@ function upitt_workflow_admin_form() {
           t('There is NOT any password value.  FTP will not work without a valid password.'));
   $box_alias_default = 'box.com=ftp_access';
   $form = array(
+    'settings_file' => array(
+      '#type' => 'textfield',
+      '#size' => 20,
+      '#title' => t('settings.php File'),
+      '#description' => t('Full path to the site\'s settings.php file.  Usually this would ' .
+        'be located under the /var/www/drupal7/sites/default/settings.php, but for a site ' .
+        'that has a specific "sites" folder, that must be provided here.'),
+      '#default_value' => variable_get('upitt_workflow_settings_file', ''),
+      '#size' => 100,
+    ),
     'ingest_namespace' => array(
       '#type' => 'textfield',
       '#size' => 20,
@@ -113,6 +123,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
     case 'edit-submit':
       $batch_hosts_array = explode("\r\n", $form_state['values']['batch_hosts']);
       upitt_workflow_create_host_paths($batch_hosts_array);
+      variable_set('upitt_workflow_settings_file', $form_state['values']['settings_file']);
       variable_set('upitt_workflow_ingest_namespace', $form_state['values']['ingest_namespace']);
       variable_set('upitt_workflow_ingest_path', $form_state['values']['incoming_ingest_path']);
       variable_set('upitt_workflow_holdings_path', $form_state['values']['incoming_holdings_path']);
@@ -123,6 +134,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       break;
 
     case 'edit-reset':
+      variable_del('upitt_workflow_settings_file');
       variable_del('upitt_workflow_ingest_namespace');
       variable_del('upitt_workflow_ingest_path');
       variable_del('upitt_workflow_holdings_path');

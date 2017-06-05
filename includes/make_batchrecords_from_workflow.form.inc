@@ -146,6 +146,7 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $toggle = FALSE;
   $sqls = array();
+  $overwrite_if_exists = (($mode == 'updateforce') ? 1 : 0);
   foreach ($use_pids as $barcode => $pid) {
     $toggle = !$toggle;
     $markup .= "<div style='border-bottom: 1px solid black; padding-bottom: 8px; background-color:#" . ($toggle ? 'FFF' : 'F3F3F3') . "'>";
@@ -162,20 +163,25 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
     $markup .= 'sites = <b>' . $sites . "</b><br>";
     $markup .= "</div>";
 
-    $sqls[$barcode] = "REPLACE INTO `batch` (batch_external_id, " .
-                      "mapto_collections, " .
-                      "batch_description, " .
-                      "default_type_of_resource, " .
-                      "mapto_site_id_values, " .
-                      "batch_host, " .
-                      "user) VALUES (" .
-                      "'" . mysqli_real_escape_string($link, $barcode) . "', " .
-                      "'" . mysqli_real_escape_string($link, $collections) . "', " .
-                      "'" . mysqli_real_escape_string($link, $description) . "', " .
-                      "'" . mysqli_real_escape_string($link, $model) . "', " .
-                      "'" . mysqli_real_escape_string($link, $sites) . "', " .
-                      "'/ingest/testing'," .
-                      $user->uid . ");";
+
+    $sql = "REPLACE INTO `batch` (batch_external_id, " .
+           "mapto_collections, " .
+           "batch_description, " .
+           "default_type_of_resource, " .
+           "mapto_site_id_values, " .
+           "overwrite_if_exists, " .
+           "batch_host, " .
+           "user) VALUES (" .
+           "'" . mysqli_real_escape_string($link, $barcode) . "', " .
+           "'" . mysqli_real_escape_string($link, $collections) . "', " .
+           "'" . mysqli_real_escape_string($link, $description) . "', " .
+           "'" . mysqli_real_escape_string($link, $model) . "', " .
+           "'" . mysqli_real_escape_string($link, $sites) . "', " .
+           $overwrite_if_exists . ", " .
+           "'/ingest/testing'," .
+           $user->uid . ");";
+    mysqli_query($link, $sql);
+    $sqls[$barcode] = $sql;
   }
 
   $markup .= "<hr>" . implode("<br>", $sqls);

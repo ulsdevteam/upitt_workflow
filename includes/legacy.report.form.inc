@@ -5,9 +5,10 @@ function upitt_workflow_legacy_objects() {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $base_path = conf_path(TRUE);
   if ($user->uid == 1 || user_access(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES, $user)) {
-    $options = array('attributes' => array('title' => 'Requires "Workflow Manage Lookup Tables" permission'));
+    $options = array(); // 'attributes' => array('title' => 'Requires "Workflow Manage Lookup Tables" permission'));
     $asterisk = "<sup style='color:blue' title='Requires \"Workflow Manage Lookup Tables\" permission'>*</super>";
-    $links = array(l('Workflow Admin', '/workflow/admin', $options),
+    $links = array(l('Make batch records from Workflow items', '/workflow/admin/makebatch_from_workflow', $options),
+                   l('Workflow Admin', '/workflow/admin', $options),
                    l('Create a New Batch', '/workflow/batch/new', $options),
                    l('Manage Lookup Tables', '/workflow/admin/manage/action', $options),
                    l('Workflow', '/workflow', $options),
@@ -80,7 +81,7 @@ function upitt_workflow_legacy_objects() {
       } else {
         $row['ingested?'] = '';
       }
-      $row['do_id'] = l($row['do_id'], '/workflow_legacy/object/' . $row['do_id']);
+      $row['do_id'] = l($row['do_id'], '/workflow/object/' . $row['do_id']);
     }
     $rows[] = $row;
   }
@@ -93,7 +94,7 @@ function upitt_workflow_legacy_objects() {
             'count_rows' => $count_rows_markup,
             'links' => $links,
             'breadcrumb' => '',
-            'post_to' => '/workflow_legacy',
+            'post_to' => '/workflow',
             'collection_filter_choices' => upitt_workflow_get_collection_choices(),
            )
     );
@@ -269,7 +270,7 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
             'title' => $title,
             'breadcrumb' => upitt_workflow_get_breadcrumb_path(),
             'links' => $links,
-            'post_to' => '/workflow_legacy/object/' . $do_id,
+            'post_to' => '/workflow/object/' . $do_id,
            )
     );
 

@@ -1,9 +1,5 @@
 <?php
 
-// define('SETTINGS_FILE', '/var/www/drupal/sites/default/settings.php');
-define('SETTINGS_FILE', '/var/www/html/drupal_gamera_sandbox/sites/gamera.library.pitt.edu/settings.php');
-// define('SETTINGS_FILE', '/var/www/html/drupal7/sites/gamera.library.pitt.edu/settings.php');
-
 // Full file path to the current installation's settings.php file
 define('WF_OBJECTS_PER_PAGE', 100);
 
@@ -16,8 +12,6 @@ define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup t
 
 // Constants for various workflow actions (transactions)
 define('UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY', 3); // ingest completed
-define('UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_STARTED', 145);
-define('UPITT_WORKFLOW_ACTION_HOLDING_FILES_MOVED', 146);
 
 
 /**
@@ -42,36 +36,36 @@ function upitt_workflow_menu() {
     ),
     'workflow' => array(
       'title' => t('Workflow'),
-      'page callback' => array('upitt_workflow_objects'),
+      'page callback' => array('upitt_workflow_legacy_objects'), // upitt_workflow_objects'),
       'type' => MENU_CALLBACK,
-      'file' => 'includes/report.form.inc',
+      'file' => 'includes/legacy.report.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     'workflow/object/%' => array(
       'title' => t('Workflow Report | Status and Files'),
-      'page callback' => array('upitt_workflow_objectreport_form'),
+      'page callback' => array('upitt_workflow_legacy_objectreport_form'), // upitt_workflow_objectreport_form'),
       'page arguments' => array(2),
       'type' => MENU_CALLBACK,
       'file' => 'includes/report.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     // depricated instance of workflow page
-    'workflow_legacy' => array(
+/*    'workflow_legacy' => array(
       'title' => t('Workflow (legacy)'),
       'page callback' => array('upitt_workflow_legacy_objects'),
       'type' => MENU_CALLBACK,
       'file' => 'includes/legacy.report.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
-    ),
+    ), */
     // depricated instance of specific object report form
-    'workflow_legacy/object/%' => array(
+/*    'workflow_legacy/object/%' => array(
       'title' => t('Workflow Report | Status and Files'),
       'page callback' => array('upitt_workflow_legacy_objectreport_form'),
       'page arguments' => array(2),
       'type' => MENU_CALLBACK,
       'file' => 'includes/legacy.report.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
-    ),
+    ), */
 
     'workflow/object/%/edit' => array(
       'title' => t('Edit Item'),
@@ -314,7 +308,14 @@ function upitt_workflow_get_databaselink($db_section = 'mysql') {
   // Use the settings.php file for this install.
 //  $script_base = str_replace('/index.php', '', $_SERVER['SCRIPT_FILENAME']);
 //  require_once($script_base . '/' . conf_path(TRUE) . '/settings.php');
-  require_once(SETTINGS_FILE);
+  $settings_file = variable_get('upitt_workflow_settings_file', '');
+  if (!$settings_file) {
+    drupal_set_message('The settings file value has not been set.  It is needed in order ' .
+      'to be able to run the drush commands with the appropriate include path. ' .
+      l('Configure Workflow here', 'admin/islandora/workflow') . '.');
+    return NULL;
+  }
+  require_once($settings_file);
 
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
