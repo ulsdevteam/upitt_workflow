@@ -165,7 +165,7 @@ function upitt_workflow_menu() {
 
     // ADMIN functions
     'workflow/workflowadmin/makebatch_from_workflow' => array(
-      'title' => ('Edit Lookup Tables'),
+      'title' => ('Create Batch Records From Barcodes'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('upitt_workflow_make_batchrecords_form'),
       'type' => MENU_CALLBACK,
