@@ -9,6 +9,7 @@ function upitt_workflow_workflowadmin() {
   $page = array();
 
   $task_links[] = l(t('Create Islandora Collection'), '/islandora/object/pitt%3Aroot/manage/overview/ingest');
+  $task_links[] = l(t('Make batch records from Workflow items'), '/workflow/workflowadmin/makebatch_from_workflow');
   $task_links[] = l(t('Create New Batch'), '/workflow/batch/new');
   $task_links[] = l(t('[online] Collection Building'), '/workflow/collection_building');
   $task_links[] = l(t('Quick Status Change'), '/workflow/status/change');

@@ -164,7 +164,7 @@ function upitt_workflow_menu() {
     ),
 
     // ADMIN functions
-    'workflow/admin/makebatch_from_workflow' => array(
+    'workflow/workflowadmin/makebatch_from_workflow' => array(
       'title' => ('Edit Lookup Tables'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('upitt_workflow_make_batchrecords_form'),
@@ -440,7 +440,7 @@ function upitt_workflow_get_listname_manage_links($listname) {
       $links[] = '[' . $a_listname . ']';
     }
     else {
-      $links[] = l($a_listname, '/workflow/admin/manage/' . $a_listname);
+      $links[] = l($a_listname, '/workflow/workflowadmin/manage/' . $a_listname);
     }
   }
   return $links;
@@ -460,10 +460,10 @@ function upitt_workflow_get_breadcrumb_path() {
     if (substr($item['path'], 0, 16) == 'legacy_workflow/') {
       $links[] = l(t('Workflow (legacy)'), '/legacy_workflow');
     }
-    if ($item['path'] == 'workflow/admin/manage/%' || 
+    if ($item['path'] == 'workflow/workflowadmin/manage/%' ||
       $item['path'] == 'workflow/batch/new' || $item['path'] == 'workflow/batch/edit/%'
       ) {
-      $links[] = l(t('Workflow Admin'), '/workflow/admin');
+      $links[] = l(t('Workflow Admin'), '/workflow/workflowadmin');
     }
     if ($item['path'] == 'workflow/collection/%') {
       $links[] = l(t('Workflow Collections'), '/workflow/collection');

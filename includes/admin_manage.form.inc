@@ -38,7 +38,7 @@ function upitt_workflow_get_table_record($listname, $primary_key_field, $primary
 }
 
 /**
- * Controller function for /workflow/admin/manage/%listname%
+ * Controller function for /workflow/workflowadmin/manage/%listname%
  *
  *  The access callback should be allowing only specific listnames through including: 'collection', 'content_types', 'item_type', 'property_owner', 'workflow_sequence', 'workflow_sequence_actions'
  *
@@ -149,8 +149,8 @@ function upitt_workflow_admin_manage($listname = '') {
   // Add a column for the operations on this row - using the primary key field.
   foreach ($rows as $key => $row) {
     $suffix = $rows[$key][$primary_key_field]['data'];
-    $new_row = array('operations' => l('E', '/workflow/admin/manage/' . $listname . '/edit/' . $suffix, array('attributes' => array('title' => 'Edit'))) . ' | ' .
-                                     l('X', '/workflow/admin/manage/' . $listname . '/delete/' . $suffix, array('attributes' => array('title' => 'Delete')) ));
+    $new_row = array('operations' => l('E', '/workflow/workflowadmin/manage/' . $listname . '/edit/' . $suffix, array('attributes' => array('title' => 'Edit'))) . ' | ' .
+                                     l('X', '/workflow/workflowadmin/manage/' . $listname . '/delete/' . $suffix, array('attributes' => array('title' => 'Delete')) ));
     foreach ($row as $f => $v) {
       $new_row[$f] = $v;
     }
@@ -267,7 +267,7 @@ function upitt_workflow_admin_manage_edit_submit($form, &$form_state) {
       break;
 
     case 'edit-cancel':
-      drupal_goto('/workflow/admin/manage/' . $table_listname);
+      drupal_goto('/workflow/workflowadmin/manage/' . $table_listname);
       break;
   }
 }
