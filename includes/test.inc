@@ -2,43 +2,63 @@
 
 
 function upitt_workflow_test_ftp() {
-
-  $ctx = stream_context_create(array('ssl' => array(
-//    'verify_peer' => true,
-    'verify_peer' => false,
-    'cafile' => '/tmp/box_ssl_cert.pem',
-    'CN_match' => 'ftp.box.com'
-  )));
-
   $ftp_user = variable_get('upitt_workflow_ftp_username');
   $ftp_pass = variable_get('upitt_workflow_ftp_password');
-  $ftp_port = variable_get('upitt_workflow_ftp_port', 990);
-  $ftp_server = "ftp.box.com";
+  $ftp_port = ""; // variable_get('upitt_workflow_ftp_port', 990);
+  $ftp_server = "ftp.box.com" . ($ftp_port ? ':' . $ftp_port : '');
 
-  $ftpPath = 'ftps://' . $ftp_user . ':' . $ftp_pass . '@' . $ftp_server;
-
-  $dirHandle = opendir($ftpPath, $ctx);
-  while (($file = readdir($dirHandle)) !== false) {
-    echo "filename: $file\n";
+  $conn_id = ftp_ssl_connect($ftp_server) or die("Couldn't connect to $ftp_server");
+  if (!@ftp_login($conn_id, $ftp_user, $ftp_pass)) {
+    die("not logged in to $ftp_server [" . $ftp_user . "] [" . $ftp_pass . "] <br>");
   }
-  closedir($dirHandle);
-die();
+  
+  // specify port or enter passive mode
+  ftp_pasv($conn_id, true);
+
+  ftp_chdir($conn_id, "Digital Collections Contributors");
+  $ftp_root_folder = ftp_pwd($conn_id) . '/';
+
+  $contents = ftp_nlist($conn_id, ".");
+  echo "<pre>" . print_r($contents, true);
+
+//  $contents = ftp_rawlist($conn_id, "Digital Collections Contributors", true);
+//  echo "<pre>" . print_r($contents, true);
+
+  $files = $folders = array();
+echo "<pre style='color:#4b3'>";
+  foreach ($contents as $ftp_file_or_folder) {
+    //  Digital Collections Contributors
+    if ($ftp_file_or_folder <> '.' && $ftp_file_or_folder <> '..') {
+      $full_path_file_or_folder = $ftp_root_folder . $ftp_file_or_folder;
+      echo 'chdir ' . $full_path_file_or_folder . "<br>";
+      if (ftp_chdir($conn_id, $full_path_file_or_folder)) {
+        $folders[$full_path_file_or_folder] = $ftp_file_or_folder;
+      }
+      else {
+        $files[$full_path_file_or_folder] = $ftp_file_or_folder;
+      }
+    }
+  }
+echo "</pre>";
+  echo "<h3>Folders:</h3><pre>" . print_r($folders, true). "</pre>";
+  echo "<h3>Files:</h3><pre>" . print_r($files, true). "</pre>";
 
 
-//  $ftp_conn = ftp_connect($ftp_server, $ftp_port, 5) or die("Could not connect to $ftp_server");
-  $ftp_conn = ftp_ssl_connect($ftp_server, 21, 5) or die("Could not connect to $ftp_server");
-  $login = ftp_login($ftp_conn, $ftp_user, $ftp_pass);
+  $command = 'LIST Digital Collections Contributors/HeinzHistoryCenter'; // yields "450 Non-existing file"
+//  $command = "LIST README\ -\ Contributor\ Setup.boxnote";
+  if ($results = ftp_raw($conn_id, $command)) {
+    echo "<pre>" . print_r($results, true)."</pre>";
+  }
 
-echo ($login ? 'Login success!' : 'could not login!') . "<br>";
-
-  $local_file = "/tmp/test.txt";
+die('<hr>done');
+  // $local_file = "/tmp/test.txt";
 /* May need to change to directory several times to get to the correct folder.
 
    Digital Collections Contributors
    + HeinzHistoryCenter
      + Lenox-2017.03.21
  */
-  $server_file = "ftp_test.txt"; // "Bryce_Lenox_MSS_800_Image_Metadata.xlsx";
+/*  $server_file = "ftp_test.txt"; // "Bryce_Lenox_MSS_800_Image_Metadata.xlsx";
 //   $server_file = "Digital Collections Contributors/HeinzHistoryCenter/Lenox-2017.03.21/Bryce_Lenox_MSS_800_Image_Metadata.xlsx";
 echo "a<br>";
 $list = ftp_nlist($ftp_conn, 'Digital Collections Contributors');
@@ -81,4 +101,6 @@ return 'done';
 
   // close connection
   ftp_close($ftp_conn);
+*/
+  ftp_close($conn_id);
 }

@@ -115,6 +115,20 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
  * if the mode is set to updateforce, it will overwrite the existing islandora object on
  * ingest.
  *
+ * (FROM AN EMAIL BY abrenner) following collections wouldn’t go into Fedora:
+ * 
+ *   ascead (finding aids are going in, but this should not be the record of them, nor is the content coming from bigfoot)
+ *   ascead-test (test version of finding aids as above)
+ *   cleftpalate (moving to OJS)
+ *   hswpead (history center finding aids, same as ascead above)
+ *   hswpead-test (test version of above)
+ *   internal_requests
+ *   mali (was a very small collection Rush Miller arranged; I don’t believe we are carrying it forward)
+ *   ncjw (in the workflow but media content is not on bigfoot)
+ *   outside_requests
+ *   pittpress_quarantine (these could potentially go into Fedora but be kept dark. They are books we digitized but authors did not allow them to go online)
+ *
+ *
  * @param string $barcodes - will be split into an array
  * @param string $mode
  * @return markup HTML
