@@ -27,9 +27,18 @@ function upitt_workflow_menu() {
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
       'file' => 'includes/admin.form.inc',
     ),
-    'workflow/testftp' => array(
+    'ajax/workflow/browse_ftp' => array(
       'title' => 'test ftp',
-      'page callback' => array('upitt_workflow_test_ftp'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_test_ftp'),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/test.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
+    'ajax/workflow/browse_ftp/%' => array(
+      'title' => 'test ftp',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_test_ftp', 3),
       'type' => MENU_CALLBACK,
       'file' => 'includes/test.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
@@ -355,6 +364,7 @@ function upitt_workflow_preprocess_page(&$vars) {
 
       $vars['page']['sidebar_first'] = array();
       $vars['page']['sidebar'] = array();
+      drupal_add_js($path . '/js/workflow.js');
       drupal_add_css($path . '/style/workflow.css');
 
       if (isset($vars['node']) && $vars['node']->type == 'workflow_batch') {

@@ -66,6 +66,18 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
   $batch_hosts = upitt_workflow_get_batch_host_values();
   $count_existing_batch_files = upitt_workflow_array_flat_count_values($existing_batch_files);
 
+  if ($batch['batch_host'] == 'ftp_access' || ltrim($batch['batch_host'], 'ftp:') <> $batch['batch_host']) {
+    $show_or_hide['local_files'] = 'display:none';
+    $show_or_hide['box_files'] = '';
+  }
+  else {
+    $show_or_hide['local_files'] = '';
+    $show_or_hide['box_files'] = 'display:none';
+  }
+  $initial_batch_host = ltrim(str_replace(
+          array("ftp_access", "ftp:"),
+          array("Digital Collections Contributors", ""), $batch['batch_host']), '/');
+
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
     'nid' => array(
@@ -91,20 +103,52 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#options' => $fedora_object_mappings,
       '#default_value' => ($batch && isset($batch['default_type_of_resource']))? $batch['default_type_of_resource'] : '',
     ),
-    'source_holdings_folder' => array(
+    // Requestor: textfield
+    'batch_host' => array(
       '#type' => 'select',
-      '#description' => 'Select the holdings folder that this batch should convert to an Islandora batch.',
-      '#title' => t('Holdings folder'),
-      '#options' => $holdings_folders,
-      '#default_value' => $batch_external_id,
-      '#size' => 10,
+      '#title' => t('Ingest files from host'),
+      '#options' => $batch_hosts,
+      '#default_value' => ($batch && isset($batch['batch_host']))? $batch['batch_host'] : '',
+      '#description' => t('Specify the location of the files that relate to the uploaded spreadsheet.'),
+      '#attributes' => array(
+        'onchange' => 'host_selected(this)'
+      ),
     ),
-    'do_copy' => array(
-      '#type' => 'checkbox',
-      '#title' => t('Copy the files?'),
-      '#description' => t('YES = copy the files, NO = inspect the files, but do not copy'),
-      '#default_value' => '0',
+    'initial_batch_host' => array(
+      '#type' => 'hidden',
+      '#default_value' => $initial_batch_host,
     ),
+    'box_files' => array(
+      '#type' => 'fieldset',
+      '#title' => 'Box files',
+      '#attributes' => array('style' => $show_or_hide['box_files']),
+      'box_selector' => array(
+        '#type' => 'select',
+        '#title' => 'Box.com folder',
+        '#options' => array('test1' => 'blah', 'test2' => 'blah blah', 'test3' => 'blahblah blah!'),
+        '#size' => 10,
+      ),
+    ),
+    'local_files' => array(
+      '#type' => 'fieldset',
+      '#title' => 'Local Files',
+      '#attributes' => array('style' => $show_or_hide['local_files']),
+      'source_holdings_folder' => array(
+        '#type' => 'select',
+        '#description' => 'Select the holdings folder that this batch should convert to an Islandora batch.',
+        '#title' => t('Holdings folder'),
+        '#options' => $holdings_folders,
+        '#default_value' => $batch_external_id,
+        '#size' => 10,
+      ),
+      'do_copy' => array(
+        '#type' => 'checkbox',
+        '#title' => t('Copy the files?'),
+        '#description' => t('YES = copy the files, NO = inspect the files, but do not copy'),
+        '#default_value' => '0',
+      ),
+    ),
+
     // Collection: select box
     //   THIS SELECTBOX WILL BE A PROBLEM SINCE WE MAP TO MORE THAN ONE COLLECTION
     'mapto_collections' => array(
@@ -199,14 +243,6 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       ),
     ),
 
-    // Requestor: textfield
-    'batch_host' => array(
-      '#type' => 'select',
-      '#title' => t('Ingest files from host'),
-      '#options' => $batch_hosts,
-      '#default_value' => ($batch && isset($batch['batch_host']))? $batch['batch_host'] : '',
-      '#description' => t('Specify the location of the files that relate to the uploaded spreadsheet.')
-    ),
     // File: file
     'file' => array(
       '#type' => 'file',
@@ -408,6 +444,9 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   // If these values are still set in the form_state, the save_batch code will not know what to do with them.
   unset($form_state['values']['source_holdings_folder']);
   unset($form_state['values']['do_copy']);
+  unset($form_state['values']['box_selector']);
+  unset($form_state['values']['initial_batch_host']);
+
   $batch_id = upitt_workflow_save_batch($form_state['values'], $collection_options);
 
   drupal_set_message('Updated "' . $batch_external_id . '" batch record.');
