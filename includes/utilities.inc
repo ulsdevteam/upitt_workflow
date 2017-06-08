@@ -910,7 +910,7 @@ function upitt_workflow_csv_extract_identifiers($csv_arr) {
  * and the batch_external_id.  If the folder does not exist, it will be created.  It will be
  * named 'batch_{$batch_external_id}'.
  *
- * In the case when the batch is coming from the ftp_access to box.com, the system will use
+ * In the case when the batch is coming from the ftp to box.com, the system will use
  * the return the Default Ingest Path (configured admin/islandora/workflow) and the files
  * would the downloaded and extracted to this path from "box.com"
  *
@@ -930,7 +930,7 @@ function upitt_workflow_batch_path($batch_values) {
   }
   $ingest_path = $batch_values['batch_host'];
 
-  if ($ingest_path == 'ftp_access') {
+  if ($ingest_path == 'ftp' || (ltrim($ingest_path, 'ftp:') <> $ingest_path)) {
     $ingest_path = variable_get('upitt_workflow_ingest_path', '/ingest/incoming');
   } elseif (strstr($ingest_path, ":")) {
     @list($ingest_host, $ingest_path) = explode(":", $ingest_path, 2);
@@ -994,7 +994,7 @@ function upitt_workflow_get_batch_host_values() {
  * are configured for the workflow module.
  *
  * Values for the batch_hosts_array will have an alias and then one of two kinds of possible values:
- *   "ftp_access" - currently designates the box.com as an incoming "host"
+ *   "ftp" - currently designates the box.com as an incoming "host"
  * or
  *   servername:/folderpath/subfolder1/subfolder2
  * 
@@ -1004,7 +1004,7 @@ function upitt_workflow_create_host_paths($batch_hosts_array) {
   foreach ($batch_hosts_array as $alias_host_path) {
 
     @list($alias, $host_path) = explode("=", $alias_host_path, 2);
-    if ($host_path <> 'ftp_access') {
+    if ($host_path <> 'ftp') {
       @list($host, $path) = explode(":", $host_path, 2);
       // if $host is the same as this current server's ID, then we can check the folder just using file_exists()
       if ($host == $_SERVER['SERVER_NAME']) {

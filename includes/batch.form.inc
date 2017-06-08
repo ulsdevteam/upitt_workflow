@@ -66,7 +66,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
   $batch_hosts = upitt_workflow_get_batch_host_values();
   $count_existing_batch_files = upitt_workflow_array_flat_count_values($existing_batch_files);
 
-  if ($batch['batch_host'] == 'ftp_access' || ltrim($batch['batch_host'], 'ftp:') <> $batch['batch_host']) {
+  if ($batch['batch_host'] == 'ftp' || ltrim($batch['batch_host'], 'ftp:') <> $batch['batch_host']) {
     $show_or_hide['local_files'] = 'display:none';
     $show_or_hide['box_files'] = '';
   }
@@ -75,7 +75,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     $show_or_hide['box_files'] = 'display:none';
   }
   $initial_batch_host = ltrim(str_replace(
-          array("ftp_access", "ftp:"),
+          array("ftp", "ftp:"),
           array("Digital Collections Contributors", ""), $batch['batch_host']), '/');
 
   $form = array(

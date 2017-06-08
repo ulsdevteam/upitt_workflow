@@ -3,58 +3,88 @@
 
 function upitt_workflow_test_ftp(array $form, array &$form_state, $current_path) {
   $current_path = str_replace("|", "/", $current_path);
-  $ftp_user = variable_get('upitt_workflow_ftp_username');
+  $ftp_user = 'ulsdabox@pitt.edu'; //variable_get('upitt_workflow_ftp_username');
   $ftp_pass = variable_get('upitt_workflow_ftp_password');
   $ftp_port = ""; // variable_get('upitt_workflow_ftp_port', 990);
-  $ftp_server = "ftp.box.com" . ($ftp_port ? ':' . $ftp_port : '');
+  $ftp_server = "ftp.box.com"; 
 
   echo $current_path ."<br>";
   $conn_id = ftp_ssl_connect($ftp_server) or die("Couldn't connect to $ftp_server");
-  if (!@ftp_login($conn_id, $ftp_user, $ftp_pass)) {
-    die("not logged in to $ftp_server [" . $ftp_user . "] [md5:" . md5($ftp_pass) . "] <br>");
-  }
-  
-  // specify port or enter passive mode
-  ftp_pasv($conn_id, true);
 
-  echo  "current path : " . $current_path . "<hr>";
-  ftp_chdir($conn_id, $current_path);
+  try {
+    $conn_id = ftp_ssl_connect($ftp_server);
+    if (false === $conn_id) {
+        throw new Exception('Unable to connect');
+    }
 
-  $ftp_root_folder = ftp_pwd($conn_id) . '/';
+    $loggedIn = ftp_login($conn_id,  $ftp_user,  $ftp_pass);
+    if (true === $loggedIn) {
+        echo 'Success!';
+    } else {
+        throw new Exception('Unable to log in');
+    }
 
-  $contents = ftp_nlist($conn_id, ".");
-  echo "<pre>" . print_r($contents, true);
+    // do stuff with the connection...
+    // print_r(ftp_nlist($conn_id, "."));
 
-//  $contents = ftp_rawlist($conn_id, "Digital Collections Contributors", true);
-//  echo "<pre>" . print_r($contents, true);
+    // specify port or enter passive mode
+    ftp_pasv($conn_id, true);
 
-  $files = $folders = array();
+    echo  "current path : " . $current_path . "<hr>";
+    ftp_chdir($conn_id, $current_path);
 
-  echo "<pre style='color:#4b3'>";
-  foreach ($contents as $ftp_file_or_folder) {
-    //  Digital Collections Contributors
-    if ($ftp_file_or_folder <> '.' && $ftp_file_or_folder <> '..') {
-      $full_path_file_or_folder = $ftp_root_folder . $ftp_file_or_folder;
-      echo 'chdir ' . $full_path_file_or_folder . "<br>";
-      if (ftp_chdir($conn_id, $full_path_file_or_folder)) {
-        $folders[$full_path_file_or_folder] = $ftp_file_or_folder;
-      }
-      else {
-        $files[$full_path_file_or_folder] = $ftp_file_or_folder;
+    $ftp_root_folder = ftp_pwd($conn_id) . '/';
+
+    $contents = ftp_nlist($conn_id, ".");
+    echo "<pre>" . print_r($contents, true);
+
+    $files = $folders = array();
+    echo "<pre style='color:#4b3'>";
+    foreach ($contents as $ftp_file_or_folder) {
+      //  Digital Collections Contributors
+      if ($ftp_file_or_folder <> '.' && $ftp_file_or_folder <> '..') {
+        $full_path_file_or_folder = $ftp_root_folder . $ftp_file_or_folder;
+        echo 'chdir ' . $full_path_file_or_folder . "<br>";
+        if (ftp_chdir($conn_id, $full_path_file_or_folder)) {
+          $folders[$full_path_file_or_folder] = $ftp_file_or_folder;
+        }
+        else {
+          $files[$full_path_file_or_folder] = $ftp_file_or_folder;
+        }
       }
     }
-  }
-echo "</pre>";
-  echo "<h3>Folders:</h3><pre>" . print_r($folders, true). "</pre>";
-  echo "<h3>Files:</h3><pre>" . print_r($files, true). "</pre>";
+    echo "</pre>";
+    echo "<h3>Folders:</h3><pre>" . print_r($folders, true). "</pre>";
+    echo "<h3>Files:</h3><pre>" . print_r($files, true). "</pre>";
 
 
-  $command = 'LIST Digital Collections Contributors/HeinzHistoryCenter'; // yields "450 Non-existing file"
+    $command = 'LIST /Digital Collections Contributors/HeinzHistoryCenter'; // yields "450 Non-existing file"
 //  $command = "LIST README\ -\ Contributor\ Setup.boxnote";
-  if ($results = ftp_raw($conn_id, $command)) {
-    echo "<pre>" . print_r($results, true)."</pre>";
+    if ($results = ftp_raw($conn_id, $command)) {
+      echo "<pre>" . print_r($results, true)."</pre>";
+    }
+
+
+
+
+    ftp_close($conn_id);
+  } catch (Exception $e) {
+    $message = $e->getMessage(); 
+    if ($message == 'Unable to log in') {
+      echo "<br><b style='color:red'>Contact Admin <a href='mailto:digital-collections@pitt.edu?subject=Need to reset login for ftp account&body=Need to login to box.com with a CAPTCHA code for " . $ftp_user . ".'>digital-collections@pitt.edu</a> to reset the login for the FTP connection.</b>";
+    } else {
+      echo "Failure: " . $message;
+    }
   }
 
+
+/*  $result_code = ftp_login($conn_id, $ftp_user, $ftp_pass);
+  if (!$result_code) {
+    $e = error_get_last();
+echo "<pre>".print_r($e, true). "</pre>";
+    die("not logged in to $ftp_server [" . $ftp_user . "] [" . md5($ftp_pass) . "] <br>");
+  }
+  */
 die('<hr>done');
   // $local_file = "/tmp/test.txt";
 /* May need to change to directory several times to get to the correct folder.

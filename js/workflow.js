@@ -12,7 +12,7 @@ function host_selected(control) {
   jQuery('#edit-box-selector').append('<option value="foo" selected="selected">Foo</option>');
   jQuery('#edit-box-selector').append('<option value="bar" selected="selected">BAaaar</option>');
 
-  ftp_selected = (control.value == 'ftp_access');
+  ftp_selected = (control.value == 'ftp');
   if (ftp_selected) {
     jQuery('#edit-local-files').hide();
     jQuery('#edit-box-files').show();
@@ -28,7 +28,7 @@ function host_selected(control) {
   var current_path = jQuery('[name="initial_batch_host"]').val();
   current_path = current_path.replace("/", "|");
   
-  var get_ftp_files_url = 'http://infost01-02.library.pitt.edu:8000/ajax/workflow/browse_ftp/' + current_path;
+  var get_ftp_files_url = '/ajax/workflow/browse_ftp/' + current_path;
   console.log(get_ftp_files_url);
   
   var ajaxcall = jQuery.get(get_ftp_files_url, function( data ) {
