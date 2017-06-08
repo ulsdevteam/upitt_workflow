@@ -74,9 +74,14 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     $show_or_hide['local_files'] = '';
     $show_or_hide['box_files'] = 'display:none';
   }
-  $initial_batch_host = ltrim(str_replace(
-          array("ftp", "ftp:"),
-          array("Digital Collections Contributors", ""), $batch['batch_host']), '/');
+  $initial_ftp_path = ltrim(str_replace(
+          array("ftp:"),
+          array(""), $batch['batch_host']), '/');
+  if (!$initial_ftp_path == '') {
+    $initial_ftp_path = 'Digital Collections Contributors';
+  }
+
+  $site = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'];
 
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
@@ -111,12 +116,12 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#default_value' => ($batch && isset($batch['batch_host']))? $batch['batch_host'] : '',
       '#description' => t('Specify the location of the files that relate to the uploaded spreadsheet.'),
       '#attributes' => array(
-        'onchange' => 'host_selected(this)'
+        'onchange' => 'host_selected(this,"' . $site . '")'
       ),
     ),
     'initial_batch_host' => array(
       '#type' => 'hidden',
-      '#default_value' => $initial_batch_host,
+      '#default_value' => $initial_ftp_path,
     ),
     'box_files' => array(
       '#type' => 'fieldset',

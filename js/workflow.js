@@ -3,7 +3,7 @@
  * Javascript file for islandora solr extras
  */
 
-function host_selected(control) {
+function host_selected(control, site_url) {
   var ftp_selected;
   // 
   var initial_path;
@@ -28,7 +28,7 @@ function host_selected(control) {
   var current_path = jQuery('[name="initial_batch_host"]').val();
   current_path = current_path.replace("/", "|");
   
-  var get_ftp_files_url = '/ajax/workflow/browse_ftp/' + current_path;
+  var get_ftp_files_url = site_url + '/ajax/workflow/browse_ftp/' + current_path;
   console.log(get_ftp_files_url);
   
   var ajaxcall = jQuery.get(get_ftp_files_url, function( data ) {

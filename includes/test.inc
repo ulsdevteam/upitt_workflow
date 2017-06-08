@@ -1,14 +1,9 @@
 <?php
 
-
-function upitt_workflow_test_ftp(array $form, array &$form_state, $current_path) {
-  $current_path = str_replace("|", "/", $current_path);
-  $ftp_user = 'ulsdabox@pitt.edu'; //variable_get('upitt_workflow_ftp_username');
+function upitt_workflow_get_ftp_connection() {
+  $ftp_user = variable_get('upitt_workflow_ftp_username');
   $ftp_pass = variable_get('upitt_workflow_ftp_password');
-  $ftp_port = ""; // variable_get('upitt_workflow_ftp_port', 990);
   $ftp_server = "ftp.box.com"; 
-
-  echo $current_path ."<br>";
   $conn_id = ftp_ssl_connect($ftp_server) or die("Couldn't connect to $ftp_server");
 
   try {
@@ -23,17 +18,38 @@ function upitt_workflow_test_ftp(array $form, array &$form_state, $current_path)
     } else {
         throw new Exception('Unable to log in');
     }
-
-    // do stuff with the connection...
-    // print_r(ftp_nlist($conn_id, "."));
-
     // specify port or enter passive mode
-    ftp_pasv($conn_id, true);
+//    ftp_pasv($conn_id, true);
+
+    ftp_close($conn_id);
+  } catch (Exception $e) {
+    $message = $e->getMessage(); 
+    if ($message == 'Unable to log in') {
+      echo "<br><b style='color:red'>Contact Admin <a href='mailto:digital-collections@pitt.edu?subject=Need to reset login for ftp account&body=Need to login to box.com with a CAPTCHA code for " . $ftp_user . ".'>digital-collections@pitt.edu</a> to reset the login for the FTP connection.</b>";
+    } else {
+      echo "Failure: " . $message;
+    }
+    // Close the connection if it is somehow still active.
+    @ftp_close($conn_id);
+    $conn_id = FALSE;
+  }
+  
+  return $conn_id;
+}
+
+function upitt_workflow_test_ftp($current_path) {
+  $current_path = str_replace("|", "/", $current_path);
+
+  $conn_id = upitt_workflow_get_ftp_connection();
+  if ($conn_id) {
+    // What is the current FTP directory?
+    $ftp_root_folder = ftp_pwd($conn_id) . '/';
+    echo 'current directory ' . $ftp_root_folder ."<br>";
 
     echo  "current path : " . $current_path . "<hr>";
-    ftp_chdir($conn_id, $current_path);
-
-    $ftp_root_folder = ftp_pwd($conn_id) . '/';
+    if ($current_path && !ftp_chdir($conn_id, $current_path)) {
+      die('could not change to ' . $current_path);
+    }
 
     $contents = ftp_nlist($conn_id, ".");
     echo "<pre>" . print_r($contents, true);
@@ -64,78 +80,7 @@ function upitt_workflow_test_ftp(array $form, array &$form_state, $current_path)
       echo "<pre>" . print_r($results, true)."</pre>";
     }
 
-
-
-
     ftp_close($conn_id);
-  } catch (Exception $e) {
-    $message = $e->getMessage(); 
-    if ($message == 'Unable to log in') {
-      echo "<br><b style='color:red'>Contact Admin <a href='mailto:digital-collections@pitt.edu?subject=Need to reset login for ftp account&body=Need to login to box.com with a CAPTCHA code for " . $ftp_user . ".'>digital-collections@pitt.edu</a> to reset the login for the FTP connection.</b>";
-    } else {
-      echo "Failure: " . $message;
-    }
   }
-
-
-/*  $result_code = ftp_login($conn_id, $ftp_user, $ftp_pass);
-  if (!$result_code) {
-    $e = error_get_last();
-echo "<pre>".print_r($e, true). "</pre>";
-    die("not logged in to $ftp_server [" . $ftp_user . "] [" . md5($ftp_pass) . "] <br>");
-  }
-  */
-die('<hr>done');
-  // $local_file = "/tmp/test.txt";
-/* May need to change to directory several times to get to the correct folder.
-
-   Digital Collections Contributors
-   + HeinzHistoryCenter
-     + Lenox-2017.03.21
- */
-/*  $server_file = "ftp_test.txt"; // "Bryce_Lenox_MSS_800_Image_Metadata.xlsx";
-//   $server_file = "Digital Collections Contributors/HeinzHistoryCenter/Lenox-2017.03.21/Bryce_Lenox_MSS_800_Image_Metadata.xlsx";
-echo "a<br>";
-$list = ftp_nlist($ftp_conn, 'Digital Collections Contributors');
-echo "<pre>".print_r($list, true) . "</pre>";
-
-$dir = 'Digital Collections Contributors';
-  if (ftp_chdir($ftp_conn, $dir) == false) {
-    echo 'could not change to ' . $dir . "<br>";
-  }
-echo "a<br>";
-
-$list = ftp_nlist($ftp_conn, 'HeinzHistoryCenter');
-echo "<pre>".print_r($list, true) . "</pre>";
-
-$dir = 'HeinzHistoryCenter';
-  if (ftp_chdir($ftp_conn, $dir) == false) {
-    echo 'could not change to ' . $dir . "<br>";
-  }
-echo "a<br>";
-$list = ftp_nlist($ftp_conn, 'Lenox-2017.03.21');
-echo "<pre>".print_r($list, true) . "</pre>";
-
-$dir = 'Lenox-2017.03.21';
-  if (ftp_chdir($ftp_conn, $dir) == false) {
-    echo 'could not change to ' . $dir . "<br>";
-  }
-echo "a<br>";
-return 'done';
-// download server file
-//  if (ftp_get($ftp_conn, $local_file, $server_file, FTP_BINARY))
-//  if (ftp_get($ftp_conn, $local_file, $server_file, FTP_ASCII))
-  if (ftp_nb_get($ftp_conn, $local_file, $server_file, FTP_ASCII))
-    {
-    echo "Successfully written to $local_file.";
-    }
-  else
-    {
-    echo "Error downloading $server_file.";
-    }
-
-  // close connection
-  ftp_close($ftp_conn);
-*/
-  ftp_close($conn_id);
+  // exit;
 }

@@ -23,7 +23,7 @@ function upitt_workflow_admin_form() {
           '<span style="color:red">' . t('There is a value for the password, but it is not displayed.  
              Only enter text here if the password value needs to change.') . '</span>':
           t('There is NOT any password value.  FTP will not work without a valid password.'));
-  $box_alias_default = 'box.com=ftp_access';
+  $box_alias_default = 'box.com=ftp';
   $form = array(
     'settings_file' => array(
       '#type' => 'textfield',
@@ -92,12 +92,12 @@ function upitt_workflow_admin_form() {
         '#title' => t('Password'),
         '#description' => $password_field_description,
       ),
-      'ftp_port' => array(
+      /* 'ftp_port' => array(
         '#type' => 'textfield',
         '#title' => t('FTP Port'),
         '#description' => t('21 default FTP, 990 default sFTP.'),
         '#default_value' => variable_get('upitt_workflow_ftp_port', 990),
-      ),
+      ), */
     ),
     'submit' => array(
       '#type' => 'submit',
@@ -129,7 +129,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_set('upitt_workflow_holdings_path', $form_state['values']['incoming_holdings_path']);
       variable_set('upitt_workflow_ftp_username', $form_state['values']['ftp_username']);
       variable_set('upitt_workflow_ftp_password', $form_state['values']['ftp_password']);
-      variable_set('upitt_workflow_ftp_port', $form_state['values']['ftp_port']);
+      // variable_set('upitt_workflow_ftp_port', $form_state['values']['ftp_port']);
       variable_set('upitt_workflow_hosts_for_ingest', $form_state['values']['batch_hosts']);
       break;
 
@@ -140,7 +140,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_del('upitt_workflow_holdings_path');
       variable_del('upitt_workflow_ftp_username');
       variable_del('upitt_workflow_ftp_password');
-      variable_del('upitt_workflow_ftp_port');
+      // variable_del('upitt_workflow_ftp_port');
       variable_del('upitt_workflow_hosts_for_ingest');
       break;
   }
