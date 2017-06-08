@@ -81,7 +81,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     $initial_ftp_path = 'Digital Collections Contributors';
   }
 
-  $site = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'];
+  $site = 'http://' . $_SERVER['HTTP_HOST'];
 
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
@@ -119,7 +119,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
         'onchange' => 'host_selected(this,"' . $site . '")'
       ),
     ),
-    'initial_batch_host' => array(
+    'initial_ftp_path' => array(
       '#type' => 'hidden',
       '#default_value' => $initial_ftp_path,
     ),
@@ -450,7 +450,7 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   unset($form_state['values']['source_holdings_folder']);
   unset($form_state['values']['do_copy']);
   unset($form_state['values']['box_selector']);
-  unset($form_state['values']['initial_batch_host']);
+  unset($form_state['values']['initial_ftp_path']);
 
   $batch_id = upitt_workflow_save_batch($form_state['values'], $collection_options);
 
