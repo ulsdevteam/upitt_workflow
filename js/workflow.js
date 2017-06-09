@@ -8,7 +8,7 @@ jQuery( document ).ready(function() {
     if (batch_host == 'ftp') {
       var protocol = window.location.protocol;
       var hostname = window.location.host;
-      host_selected('ftp', protocol + '://' + hostname);
+      host_selected('ftp', protocol + '//' + hostname);
     }
 });
 
