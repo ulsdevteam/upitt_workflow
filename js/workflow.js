@@ -1,12 +1,21 @@
 /**
  * @file
- * Javascript file for islandora solr extras
+ * Javascript file for pitt_workflow
  */
 
+jQuery( document ).ready(function() {
+    var batch_host = jQuery('#edit-batch-host').val();
+    if (batch_host == 'ftp') {
+      host_selected('ftp', 'http://dev.gamera.library.pitt.edu');
+    }
+});
+
 function host_selected(control, site_url) {
-  var ftp_selected = (control.value == 'ftp');
+  var ftp_selected = (control == 'ftp' || control.value == 'ftp');
   var initial_path = jQuery('#edit-initial-batch-host').val();
   jQuery('#edit-box-selector option').remove();
+
+  jQuery('#edit-loading').val('...');
 
   if (ftp_selected) {
     jQuery('#edit-local-files').hide();
@@ -16,14 +25,22 @@ function host_selected(control, site_url) {
     jQuery('#edit-box-files').hide();
     jQuery('#edit-local-files').show();
   } 
-  var current_path = jQuery('[name="initial_ftp_path"]').val();
-  current_path = current_path.replace("/", "|");
-  
+  var current_path = jQuery('[name="initial_ftp_path"]').val();  
   var get_ftp_files_url = site_url + '/ajax/workflow/browse_ftp/' + current_path;
-  console.log(get_ftp_files_url);
+
+  jQuery('#edit-loading').val('done!');
   
   var ajaxcall = jQuery.get(get_ftp_files_url, function( data ) {
     jQuery('#edit-box-files').html( data );
   });
           
 }
+
+function ftp_change_path(path, site_url) {
+  var get_ftp_files_url = site_url + '/ajax/workflow/browse_ftp/' + path;
+  var ajaxcall = jQuery.get(get_ftp_files_url, function( data ) {
+    jQuery('#edit-box-files').html( data );
+    jQuery('[name="initial_ftp_path"]').val('ftp:' + path);
+  });
+}
+

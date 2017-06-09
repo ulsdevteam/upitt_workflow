@@ -1114,6 +1114,7 @@ function upitt_workflow_save_batch($values, $collection_options) {
   $sql_values[] = $user->uid;
 
   $sql = "REPLACE INTO `batch` (`" . implode("`, `", $sql_fields) . "`) VALUES (" . implode(", ", $sql_values) . ")";
+dpm($sql);
   $result = mysqli_query($link, $sql);
   if (!$result) {
     upitt_workflow_sql_error_die($link, $sql);
@@ -1462,6 +1463,7 @@ function upitt_workflow_set_status_for_pid($ingested_object, $transaction_action
  * @param integer $transaction_action_id
  */
 function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id) {
+  global $user;
   my_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id);
   // error_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id . "\n", 3, '/tmp/log');
 
@@ -1507,9 +1509,8 @@ function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_ac
     
     // Two records for the transaction ... insert the transaction record -- and update the item_current_status table with a pointer to this transaction
     $transaction_insert = 'INSERT INTO `transaction` (`item_id`, `user_id`, `transaction_action_id`, `timestamp`) ' . 
-                          'VALUES (' . $item_id . ', ' . $user->uid . ', ' . $transaction_action_id . ', now())';
-    $result = mysqli_query($link, $transaction_insert);
-    $row = mysqli_fetch_assoc($result);
+                          'VALUES (' . $item_id . ', ' . $user->uid . ', ' . ($transaction_action_id + 0) . ', now())';
+    mysqli_query($link, $transaction_insert);
     
     $transaction_query = 'SELECT id FROM `transaction` WHERE `item_id` = ' . $item_id . ' ORDER BY id DESC LIMIT 1';
     $result = mysqli_query($link, $transaction_query);

@@ -28,13 +28,13 @@ function upitt_workflow_menu() {
       'file' => 'includes/admin.form.inc',
     ),
     'ajax/workflow/browse_ftp' => array(
-      'page callback' => 'upitt_workflow_test_ftp',
+      'page callback' => 'upitt_workflow_ftp_listing',
       'type' => MENU_CALLBACK,
       'file' => 'includes/test.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     'ajax/workflow/browse_ftp/%' => array(
-      'page callback' => 'upitt_workflow_test_ftp',
+      'page callback' => 'upitt_workflow_ftp_listing',
       'page arguments' => array(3),
       'type' => MENU_CALLBACK,
       'file' => 'includes/test.inc',

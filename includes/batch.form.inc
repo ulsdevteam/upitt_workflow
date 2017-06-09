@@ -69,18 +69,19 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
   if ($batch['batch_host'] == 'ftp' || ltrim($batch['batch_host'], 'ftp:') <> $batch['batch_host']) {
     $show_or_hide['local_files'] = 'display:none';
     $show_or_hide['box_files'] = '';
+    $current_batch_host_selection = 'ftp';
   }
   else {
     $show_or_hide['local_files'] = '';
     $show_or_hide['box_files'] = 'display:none';
+    $current_batch_host_selection = ($batch && isset($batch['batch_host']))? $batch['batch_host'] : '';
   }
   $initial_ftp_path = ltrim(str_replace(
-          array("ftp:"),
-          array(""), $batch['batch_host']), '/');
-  if (!$initial_ftp_path == '') {
+          array("ftp:", '/'),
+          array("", '|'), $batch['batch_host']), '|');
+  if ($initial_ftp_path == '') {
     $initial_ftp_path = 'Digital Collections Contributors';
   }
-
   $site = 'http://' . $_SERVER['HTTP_HOST'];
 
   $form = array(
@@ -113,7 +114,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#type' => 'select',
       '#title' => t('Ingest files from host'),
       '#options' => $batch_hosts,
-      '#default_value' => ($batch && isset($batch['batch_host']))? $batch['batch_host'] : '',
+      '#default_value' => $current_batch_host_selection,
       '#description' => t('Specify the location of the files that relate to the uploaded spreadsheet.'),
       '#attributes' => array(
         'onchange' => 'host_selected(this,"' . $site . '")'
@@ -127,11 +128,9 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#type' => 'fieldset',
       '#title' => 'Box files',
       '#attributes' => array('style' => $show_or_hide['box_files']),
-      'box_selector' => array(
-        '#type' => 'select',
-        '#title' => 'Box.com folder',
-        '#options' => array('test1' => 'blah', 'test2' => 'blah blah', 'test3' => 'blahblah blah!'),
-        '#size' => 10,
+      'loading' => array(
+        '#type' => 'textfield',
+        '#title' => 'Connecting to FTP... please be patient',
       ),
     ),
     'local_files' => array(
@@ -428,6 +427,10 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
 
   $collection_options = $form_state['complete form']['mapto_collections']['#options'];
 
+  if ($form_state['values']['batch_host'] == 'ftp') {
+    $form_state['values']['batch_host'] = 'ftp:' . str_replace("|", "/", $form_state['values']['initial_ftp_path']);
+  }
+
   $holdings_folder = $form_state['values']['source_holdings_folder'];
   $do_copy = isset($form_state['values']['do_copy']) ? $form_state['values']['do_copy'] : FALSE;
   $content_model = isset($form_state['values']['default_type_of_resource']) ? $form_state['values']['default_type_of_resource'] : 'sp_large_image_cmodel';
@@ -451,6 +454,7 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   unset($form_state['values']['do_copy']);
   unset($form_state['values']['box_selector']);
   unset($form_state['values']['initial_ftp_path']);
+  unset($form_state['values']['loading']);
 
   $batch_id = upitt_workflow_save_batch($form_state['values'], $collection_options);
 
