@@ -6,7 +6,9 @@
 jQuery( document ).ready(function() {
     var batch_host = jQuery('#edit-batch-host').val();
     if (batch_host == 'ftp') {
-      host_selected('ftp', 'http://dev.gamera.library.pitt.edu');
+      var protocol = window.location.protocol;
+      var hostname = window.location.host;
+      host_selected('ftp', protocol + '://' + hostname);
     }
 });
 
