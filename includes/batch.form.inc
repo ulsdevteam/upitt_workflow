@@ -438,7 +438,8 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   }
 
   $holdings_folder = $form_state['values']['source_holdings_folder'];
-  $do_copy = isset($form_state['values']['do_copy']) ? $form_state['values']['do_copy'] : FALSE;
+  $do_copy = isset($form_state['values']['do_copy']) ? $form_state['values']['do_copy'] |
+    ((isset($form_state['values']['batch_host']) && strstr($form_state['values']['batch_host'], 'ftp:')) ? TRUE : FALSE) : FALSE;
   $content_model = isset($form_state['values']['default_type_of_resource']) ? $form_state['values']['default_type_of_resource'] : 'sp_large_image_cmodel';
   $batch_external_id = $form_state['values']['batch_external_id'];
 
@@ -448,12 +449,14 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   }
 
   // Now it is safe to make the full path to the specific holdings subfolder that has been selected.
-  $holdings_folder = rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/') . '/' . $holdings_folder;
+  $holdings_folder = (isset($form_state['values']['batch_host']) && strstr($form_state['values']['batch_host'], 'ftp:')) ?
+          $form_state['values']['batch_host'] :
+          rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/') . '/' . $holdings_folder;
   $batch_path = rtrim(variable_get('upitt_workflow_ingest_path', '/ingest/incoming'), '/') . '/batch_' . $batch_external_id;
 
-  $markup = upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy);
+  $markup = upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy, $batch_external_id);
 
-  upitt_workflow_set_status_for_batch($batch_external_id, UPITT_WORKFLOW_ACTION_HOLDING_FILES_MOVED);
+  upitt_workflow_set_status_for_batch($batch_external_id, UPITT_WORKFLOW_ACTION_HOLDING_FILES_MOVED, NULL);
 
   // If these values are still set in the form_state, the save_batch code will not know what to do with them.
   unset($form_state['values']['source_holdings_folder']);
@@ -493,9 +496,18 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
  * @param bool $do_copy - if FALSE, provides a report on the file size for the move,
  *          else, it copies the files as expected for an islandora batch.
  */
-function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy = FALSE) {
-  // with the folder of files, get the PID value from the {PID}.marcxml.xml file.
+function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy = FALSE, $batch_external_id = '') {
+  if (strstr($holdings_folder, 'ftp:')) {
+    // make a temp folder - unzip all files there - and set $holdings_folder to this
+    // temp path -- and proceed as if they were local files.
+    $temp_folder = tempnam(variable_get('file_temporary_path', '/tmp'), 'ftp_unzip');
+    upitt_workflow_unzip_ftp_zipfiles_to_tempfolder($holdings_folder, $temp_folder, $batch_external_id);
+    $holdings_folder = $temp_folder;
+  }
+
   $model_filemasks = upitt_workflow_content_model_filemask($content_model);
+
+  // with the folder of files, get the PID value from the {PID}.marcxml.xml file.
 
   // FOR sp_large_image_cmodel:
   //
@@ -517,6 +529,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
   // 3) make a subfolder for each page and copy the {page#}.tif to the folder as : {page#}/OBJ.tif
 
   $tmp_files = upitt_workflow_file_scan_directory($holdings_folder, '', TRUE, FALSE);
+
   $files = array();
   // FLATTEN this result
   foreach ($tmp_files as $key => $file) {
@@ -723,4 +736,22 @@ function upitt_workflow_array_flat_count_values($array) {
     }
   }
   return $count;
+}
+
+function upitt_workflow_unzip_ftp_zipfiles_to_tempfolder($ftp_folder, $temp_folder, $batch_external_id) {
+  module_load_include('inc', 'upitt_workflow', 'includes/ftp_ops');
+  if ($results_array = upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $temp_folder)) {
+    if ($results_array['downloaded']) {
+      dpm('There was ' . $results_array['num_zip_files_unzipped'] . ' zip file' . ($results_array['num_zip_files_unzipped'] == 1 ? '' : 's') .
+          'downloaded from the FTP location `' . $ftp_folder . '`.' . "\n\n" . 
+          'The batch record has been updated to point to the CSV file that was in the FTP folder `' . $results_array['csv_file'] . '`.' . "\n\n" .
+          'The zip files were extracted to `' . $temp_folder . '` and contained ' . $results_array['files_unzipped'] . ' file' .
+          ($results_array['files_unzipped'] == 1 ? '' : 's') . '.  The raw files unzipped to ' . implode(",", $results_array['files_unzipped']));
+
+      // TODO: move the csv file to the batch_holding directory along with all the
+      // files ... and update the batch record using the batch_external_id
+      
+      $csv_file = $results_array['csv_file'];
+    }
+  }
 }

@@ -63,7 +63,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
     }
 
     // Update the batch status record for the matching batch record for this batch_external_id
-    upitt_workflow_set_status_for_batch($batch['batch_external_id'], UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_STARTED);
+    upitt_workflow_set_status_for_batch($batch['batch_external_id'], UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_STARTED, NULL);
 
     $set = upitt_workflow_get_set($batch['batch_external_id']);
 

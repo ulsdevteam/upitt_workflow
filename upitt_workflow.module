@@ -12,6 +12,8 @@ define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup t
 
 // Constants for various workflow actions (transactions)
 define('UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY', 3); // ingest completed
+define('UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_STARTED', 145); // ingest started
+define('UPITT_WORKFLOW_ACTION_HOLDING_FILES_MOVED', 146); // files moved and prepared
 
 
 /**
@@ -30,14 +32,14 @@ function upitt_workflow_menu() {
     'ajax/workflow/browse_ftp' => array(
       'page callback' => 'upitt_workflow_ftp_listing',
       'type' => MENU_CALLBACK,
-      'file' => 'includes/test.inc',
+      'file' => 'includes/ftp_ops.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     'ajax/workflow/browse_ftp/%' => array(
       'page callback' => 'upitt_workflow_ftp_listing',
       'page arguments' => array(3),
       'type' => MENU_CALLBACK,
-      'file' => 'includes/test.inc',
+      'file' => 'includes/ftp_ops.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     'workflow' => array(

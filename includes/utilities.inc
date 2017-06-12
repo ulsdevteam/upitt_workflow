@@ -1454,7 +1454,7 @@ function upitt_workflow_set_status_for_pid($ingested_object, $transaction_action
   // Take the namespace off of the pid to get the "batch_external_id" a.k.a. the "barcode" -- for finding the record in the workflow's item table.
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   $batch_external_id = str_replace($ingest_namespace, "", $ingested_object->id);
-  return upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id);
+  return upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id, $ingested_object);
 }
 
 /**
@@ -1464,7 +1464,7 @@ function upitt_workflow_set_status_for_pid($ingested_object, $transaction_action
  * @param object $batch_external_id
  * @param integer $transaction_action_id
  */
-function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id) {
+function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id, $islandora_object = NULL) {
   global $user;
   my_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id);
   // error_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id . "\n", 3, '/tmp/log');
@@ -1491,11 +1491,12 @@ function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_ac
   $row = mysqli_fetch_assoc($result);
   if (!isset($row['id'])) {
     my_log('item record did not exist');
-    //  error_log('item record did not exist' . "\n", 3, '/tmp/log');
+    // If the passed $islandora_object is not null, use the label from that for this record.
+    $label = (is_null($islandora_object) ? '' : $islandora_object->label);
     // Need to insert the item record.
     $insert_item = 'INSERT INTO item (do_id, name, type_id, property_owner_id) ' . 
-                   'VALUES ("' . upitt_workflow_safe_qstring($batch_external_id) . '",' .
-                   ' "' . upitt_workflow_safe_qstring($ingested_object->label) . '", ' . $batch['type_id'] . ', ' . $batch['batch_property_owner_id'] . ')';
+                   'VALUES ("' . upitt_workflow_safe_qstring($link, $batch_external_id) . '",' .
+                   ' "' . upitt_workflow_safe_qstring($link, $label) . '", ' . $batch['type_id'] . ', ' . $batch['batch_property_owner_id'] . ')';
     mysqli_query($link, $insert_item);
 
     // Use the same query as before to get the item_id of the new record created above.

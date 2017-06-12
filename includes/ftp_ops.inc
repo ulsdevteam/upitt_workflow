@@ -99,5 +99,93 @@ function upitt_workflow_ftp_listing($current_path) {
     ftp_close($conn_id);
   }
   // exit;
+}
 
+function upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $download_to) {
+  $conn_id = upitt_workflow_get_ftp_connection();
+  $downloaded = false;
+  $num_zip_files_unzipped = 0;
+  $files_unzipped = array();
+  $csv_file = '';
+  if ($conn_id) {
+    // 1. Change to the $ftp_folder directory
+    // 2. For each of the *.zip files in that directory, save in $download_to -
+    //    and finally change to the newly created local directory.
+    $make_folder_command = 'rm -rf ' . $download_to . ';mkdir ' . $download_to;
+    exec($make_folder_command);
+
+    $ftp_folder = '/' . str_replace(
+            array("ftp:", "|"),
+            array("", "/"),
+            $ftp_folder);
+    $command = 'CWD ' . $ftp_folder;
+    // Put in the "Loading" animation, but keep it hidden
+    if (!$results = ftp_raw($conn_id, $command)) {
+      echo "Could not change to directory $ftp_folder<br>";
+      return FALSE;
+    }
+
+    $folder_contents = ftp_nlist($conn_id, ".");
+    $zip_files = array();
+    foreach ($folder_contents as $ftp_file_or_folder) {
+      if ($ftp_file_or_folder <> '.' && $ftp_file_or_folder <> '..') {
+        $full_path_file_or_folder = (($ftp_folder) ? $ftp_folder . '/' : '') . $ftp_file_or_folder;
+        $full_local_path_to_file = (($download_to) ? $download_to . '/' : '') . $ftp_file_or_folder;
+        if (!@ftp_chdir($conn_id, $full_path_file_or_folder)) {
+          $pathinfo = pathinfo($ftp_file_or_folder);
+          if (isset($pathinfo['extension'])) {
+            if ($pathinfo['extension'] == 'zip') {
+              $zip_files[$full_local_path_to_file] = $ftp_file_or_folder;
+            }
+            elseif ($pathinfo['extension'] == 'csv') {
+              $csv_file = $ftp_file_or_folder;
+            }
+          }
+        }
+      }
+    }
+    // Must change back to the working directory
+    $command = 'CWD ' . $ftp_folder;
+    if ($results = ftp_raw($conn_id, $command)) {
+      foreach ($zip_files as $local_filename => $zip_file) {
+        // 1. Download this to the local $download_to
+        $local_name = $download_to . '/' . $zip_file;
+        $downloaded |= ftp_get($conn_id, $local_name, $zip_file, FTP_BINARY);
+      }
+
+      if ($csv_file) {
+        $local_name = $download_to . '/' . $csv_file;
+        $downloaded_csv = ftp_get($conn_id, $local_name, $csv_file, FTP_BINARY);
+      }
+      // Must also change to the local download_to directory.
+      chdir($download_to);
+
+      $return_var = $unzip_output = array();
+      // 2. Unzip the files - and delete the ZIP files as we go.
+      foreach ($zip_files as $local_filename => $zip_file) {
+        $unzip_command = 'unzip ' . $local_filename;
+        $output = array();
+        exec($unzip_command, $output, $return_var);
+        $unzip_output = array_merge($output, $unzip_output);
+        if (!unlink($local_filename)) {
+          dpm('There was a problem deleting the file ' . $zip_file);
+        }
+      }
+    }
+
+    foreach ($unzip_output as $output) {
+      if (strstr($output, 'Archive:')) {
+        $num_zip_files_unzipped++;
+      } elseif (strstr($output, 'inflating:')) {
+        $extracted_filename_only = str_replace("inflating: ", "", $output);
+        $files_unzipped[] = $extracted_filename_only;
+      }
+    }
+
+    ftp_close($conn_id);
+  }
+  return array('downloaded' => $downloaded,
+      'num_zip_files_unzipped' => $num_zip_files_unzipped,
+      'files_unzipped' => $files_unzipped,
+      'csv_file' => $csv_file);
 }
