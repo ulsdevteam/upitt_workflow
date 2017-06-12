@@ -129,10 +129,6 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#title' => 'Box files',
       '#attributes' => array('style' => $show_or_hide['box_files']),
       'loading' => array(
-        '#type' => 'textfield',
-        '#title' => 'Connecting to FTP... please be patient',
-      ),
-      'loading' => array(
         '#markup' => '<div id="edit-box-files-loading-img"><h3>Loading results from FTP</h3><p>Please be patient...</p></div>',
       )
     ),
