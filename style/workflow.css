@@ -1,43 +1,96 @@
 h5 {
-	margin-bottom:4px;
+    margin-bottom:4px;
 }
 
 .left_floater {
-	float: left;
-	margin: 2px;
-	max-width: 20%;
-        width: 20%;
+    float: left;
+    margin: 2px;
+    max-width: 20%;
+    width: 20%;
 }
 
 .left_floater div select, .left_floater div input {
-	width: 95%;
-	margin: 0 10px;
+    width: 95%;
+    margin: 0 10px;
 }
 
 #lookup_item_form {
-	float: right;
+    float: right;
 }
 
 #upitt-workflow-new-batch-form .fieldset-wrapper {
-	margin-left: 0;
+    margin-left: 0;
 }
 
 .numeric {
-	text-align: right;
+    text-align: right;
 }
 
 .non_numeric {
-	color: #333;
-	white-space: nowrap;
+    color: #333;
+    white-space: nowrap;
 }
 
 .report_table {
-	font-size: 0.825em;
-	font-family: Andale Mono, monospace;
+    font-size: 0.825em;
+    font-family: Andale Mono, monospace;
 }
 
 .report_table_wrapper {
-        max-height: 330px;
-        height: 330px;
-        overflow: scroll;
+    max-height: 330px;
+    height: 330px;
+    overflow: scroll;
+}
+
+#current_directory {
+    border-bottom: 2px solid #ccc;
+    background-color: #444;
+    color: #f4f4f4;
+}
+
+#edit-box-files {
+    height: 250px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#edit-box-files legend {
+    top: 0px;
+}
+
+#edit-box-files-loading-img {
+    position:relative;
+    top:20px;
+    left:0;
+    background-color: red;
+    width:100%;
+    height:205px;
+    text-align:center;
+    vertical-align:middle;
+    background: url('../images/Loading_icon.gif');
+    background-repeat: no-repeat;
+    background-position: center; 
+}
+
+.ftp_file_zip {
+    background: url('../images/file_zip.png');
+}
+
+.ftp_file {
+    background: url('../images/file.png');
+}
+
+.ftp_folder {
+    background: url('../images/folder.png');
+}
+
+.ftp_file, .ftp_file_zip {
+    color: #999;
+}
+
+.ftp_folder, .ftp_file_zip, .ftp_file {
+    padding-left:24px;
+    background-repeat: no-repeat;
+    background-position-x: 0px;
+    background-position-y: 0px;
 }

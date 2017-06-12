@@ -132,6 +132,9 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
         '#type' => 'textfield',
         '#title' => 'Connecting to FTP... please be patient',
       ),
+      'loading' => array(
+        '#markup' => '<div id="edit-box-files-loading-img"><h3>Loading results from FTP</h3><p>Please be patient...</p></div>',
+      )
     ),
     'local_files' => array(
       '#type' => 'fieldset',
@@ -457,6 +460,7 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   unset($form_state['values']['do_copy']);
   unset($form_state['values']['box_selector']);
   unset($form_state['values']['initial_ftp_path']);
+  unset($form_state['values']['loading']);
   unset($form_state['values']['loading']);
 
   $batch_id = upitt_workflow_save_batch($form_state['values'], $collection_options);

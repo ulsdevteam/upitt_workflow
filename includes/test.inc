@@ -41,11 +41,14 @@ function upitt_workflow_ftp_listing($current_path) {
   $conn_id = upitt_workflow_get_ftp_connection();
   if ($conn_id) {
     $command = 'CWD ' . $current_path;
+    // Put in the "Loading" animation, but keep it hidden
+    echo '<div id="edit-box-files-loading-img" style="display:none"><h3>Loading results from FTP</h3><p>Please be patient...</p></div>';
     if (!$results = ftp_raw($conn_id, $command)) {
       echo "Could not change to directory $current_path<br>";
     }
-    echo  "Current directory : " . ftp_pwd($conn_id) . "<hr>";
+    echo  '<div id="current_directory"> ' . ftp_pwd($conn_id) . '</div>';
 
+    echo '<div id="box-files-output">';
     $site = 'http://' . $_SERVER['HTTP_HOST'];
 
     $contents = ftp_nlist($conn_id, ".");
@@ -78,12 +81,20 @@ function upitt_workflow_ftp_listing($current_path) {
       else {
         $thisfolder_path = $current_path_no_leftslash . '|' . $folder;
       }
-      echo '<a class="ftp_folder" href="#" onclick="ftp_change_path(\'' . $thisfolder_path . '\', \'' . $site . '\');return false;">' . $folder . '</a><br>';
+      echo '<div class="ftp_folder"><a href="#" onclick="ftp_change_path(\'' . $thisfolder_path . '\', \'' . $site . '\');return false;">' . $folder . '</a></div>';
     }
     foreach ($files as $file) {
-      echo '<span class="ftp_file">' . $file . '</span><br>';
+      $pathinfo = pathinfo($file);
+      $file_class = 'ftp_file';
+      if (isset($pathinfo['extension'])) {
+        if ($pathinfo['extension'] == 'zip') {
+          $file_class='ftp_file_zip';
+        }
+      }
+      echo '<div class="' . $file_class . '">' . $file . '</div>';
     }
 
+    echo '</div>';
 
     ftp_close($conn_id);
   }
