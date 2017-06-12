@@ -1035,7 +1035,8 @@ function upitt_workflow_save_batch($values, $collection_options) {
   // these form_state values are not needed for the SQL and would cause problems, so removed them here.
   unset($values['submit']);  unset($values['form_build_id']); unset($values['form_token']); unset($values['form_id']); unset($values['op']);
   // this includes the TINYINT fields used for the checkboxes
-  $batch_integer_fields = array('use_color_target', 'is_batch_request', 'is_batch_active', 'has_file', 'batch_property_owner_id', 'batch_sequence_id', 'item_count', 'content_type_id');
+  $batch_integer_fields = array('use_color_target', 'is_batch_request', 'is_batch_active', 'has_file', 'batch_property_owner_id',
+      'batch_sequence_id', 'item_count', 'content_type_id');
 
   $batch_external_id = $values['batch_external_id'];
 
@@ -1114,7 +1115,8 @@ function upitt_workflow_save_batch($values, $collection_options) {
   $sql_values[] = $user->uid;
 
   $sql = "REPLACE INTO `batch` (`" . implode("`, `", $sql_fields) . "`) VALUES (" . implode(", ", $sql_values) . ")";
-dpm($sql);
+  dpm($sql);
+
   $result = mysqli_query($link, $sql);
   if (!$result) {
     upitt_workflow_sql_error_die($link, $sql);

@@ -428,7 +428,10 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   $collection_options = $form_state['complete form']['mapto_collections']['#options'];
 
   if ($form_state['values']['batch_host'] == 'ftp') {
-    $form_state['values']['batch_host'] = 'ftp:' . str_replace("|", "/", $form_state['values']['initial_ftp_path']);
+    $form_state['values']['batch_host'] = 'ftp:' . str_replace(
+            array("|", "ftp:"),
+            array("/", ""),
+            $form_state['values']['initial_ftp_path']);
   }
 
   $holdings_folder = $form_state['values']['source_holdings_folder'];

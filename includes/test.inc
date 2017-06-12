@@ -67,9 +67,18 @@ function upitt_workflow_ftp_listing($current_path) {
     $current_path_no_leftslash = str_replace("/", "|", ltrim($current_path, '/'));
 
     foreach ($folders as $folder) {
-      $thisfolder_path = $current_path_no_leftslash . '|' . $folder;
+      // Special handling for the ".." folder name -- else, just add the folder to
+      // the previous value using the "|" delimiter.
+      if ($folder == '..') {
+        $current_path_parts = explode("|", $current_path_no_leftslash);
+        $last_part = array_pop($current_path_parts);
+        unset($current_path_parts[$last_part]);
+        $thisfolder_path = implode("|", $current_path_parts );
+      }
+      else {
+        $thisfolder_path = $current_path_no_leftslash . '|' . $folder;
+      }
       echo '<a class="ftp_folder" href="#" onclick="ftp_change_path(\'' . $thisfolder_path . '\', \'' . $site . '\');return false;">' . $folder . '</a><br>';
-//      echo '<span class="ftp_folder" onclick="ftp_change_path(\'' . $thisfolder_path . '\', \'' . $site . '\')">' . $folder . '</span><br>';
     }
     foreach ($files as $file) {
       echo '<span class="ftp_file">' . $file . '</span><br>';

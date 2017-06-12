@@ -42,6 +42,7 @@ function ftp_change_path(path, site_url) {
   var get_ftp_files_url = site_url + '/ajax/workflow/browse_ftp/' + path;
   var ajaxcall = jQuery.get(get_ftp_files_url, function( data ) {
     jQuery('#edit-box-files').html( data );
+    path = path.replace("ftp:", "");
     jQuery('[name="initial_ftp_path"]').val('ftp:' + path);
   });
 }
