@@ -8,6 +8,7 @@
   <?php endforeach; ?>
 </ul> 
 
+<?php if (count($links) > 0) { ?>
 <h3>Edit Lists</h3>
 <?php include_once('upitt-workflow-admin-links.tpl.php'); ?>
-
+<?php } ?>

@@ -16,6 +16,7 @@ function upitt_workflow_make_batchrecords_form($form, &$form_state) {
     'update' => 'Update batch records (no overwrite if islandora object exists)',
     'updateforce' => 'Update batch records (force overwrite)');
   $form = array(
+    'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
     'barcodes' => array(
       '#type' => 'textarea',
       '#title' => 'Barcodes',
@@ -151,7 +152,6 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
     $markup .= '<h2>Update batch records (no overwrite if islandora object exists)</h3>';
     $use_pids = $check_results['not_found_pids'];
   }
-  
   $markup .= '<h2>Process these Islandora PID values</h3><pre style="color:blue">' . implode("\n", $use_pids) . '</pre><hr>';
 
   $markup .= '<h2>Found in Islandora</h3><pre style="color:red">' . implode("\n", $check_results['found_pids']) . '</pre>' .

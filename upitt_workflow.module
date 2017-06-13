@@ -54,7 +54,7 @@ function upitt_workflow_menu() {
       'page callback' => array('upitt_workflow_legacy_objectreport_form'), // upitt_workflow_objectreport_form'),
       'page arguments' => array(2),
       'type' => MENU_CALLBACK,
-      'file' => 'includes/report.form.inc',
+      'file' => 'includes/legacy.report.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     // depricated instance of workflow page
@@ -85,6 +85,9 @@ function upitt_workflow_menu() {
     ),
     'workflow/object/%/islandora_ingest' => array(
       'title' => t('Islandora Ingest'),
+/*      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_islandora_object_ingest', 2),
+ */
       'page callback' => 'upitt_workflow_islandora_object_ingest',
       'page arguments' => array(2),
       'type' => MENU_CALLBACK,
@@ -456,6 +459,25 @@ function upitt_workflow_get_listname_manage_links($listname) {
 }
 
 /**
+ * Used by various templates to display links for basic workflow users.
+ *
+ * Make batch records from Workflow items
+Workflow Admin
+Create a New Batch
+Manage Lookup Tables
+Workflow
+Active Batches
+All Batches
+Collections (legacy)
+ */
+function upitt_workflow_get_basic_links() {
+  $links[] = l('Active Batches', '/workflow/batches/active');
+  $links[] = l('All Batches', '/workflow/batches/all');
+  $links[] = l('Workflow Collections (legacy)', '/workflow/collection');
+  return $links;
+}
+
+/**
  * Function used by various templates to display a trail of breadcrumbs.
  */
 function upitt_workflow_get_breadcrumb_path() {
@@ -469,9 +491,8 @@ function upitt_workflow_get_breadcrumb_path() {
     if (substr($item['path'], 0, 16) == 'legacy_workflow/') {
       $links[] = l(t('Workflow (legacy)'), '/legacy_workflow');
     }
-    if ($item['path'] == 'workflow/workflowadmin/manage/%' ||
-      $item['path'] == 'workflow/batch/new' || $item['path'] == 'workflow/batch/edit/%'
-      ) {
+    if (strstr($item['path'], 'workflow/workflowadmin') ||
+      $item['path'] == 'workflow/batch/new' || $item['path'] == 'workflow/batch/edit/%') {
       $links[] = l(t('Workflow Admin'), '/workflow/workflowadmin');
     }
     if ($item['path'] == 'workflow/collection/%') {

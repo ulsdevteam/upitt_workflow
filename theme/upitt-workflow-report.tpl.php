@@ -19,10 +19,8 @@
  */
 
 ?>
-<?php 
-  $links[] = l('Active Batches', '/workflow/batches/active');
-  $links[] = l('All Batches', '/workflow/batches/all');
-  $links[] = l('Collections (legacy)', '/workflow/collection');
+<?php
+  $links = upitt_workflow_get_basic_links();
   include_once('upitt-workflow-admin-links.tpl.php');
   $breadcrumb = (isset($breadcrumb) ? $breadcrumb : '');
 ?>

@@ -1,9 +1,60 @@
 <?php
 
-function upitt_workflow_islandora_object_ingest($object_id) {
-  drupal_set_message('ingest by object not currently supported');
-  // This code would need to use the upitt_workflow_batch_of_item function to determine
-  // the batch of the given object id
+function upitt_workflow_islandora_object_ingest($do_id) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+
+  $detail_query = 'SELECT b.batch_external_id `name`, b.batch_description `title`, b.batch_id `batch_id` ' .
+                  'FROM `item` i ' .
+                  'JOIN batch_item bi ON (bi.item_id = i.id) ' .
+                  'JOIN batch b ON (bi.batch_id = b.batch_id) ' .
+                  'WHERE i.do_id = \'' . upitt_workflow_safe_qstring($link, $do_id) . '\'';
+
+  $result = mysqli_query($link, $detail_query);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $detail_query);
+  }
+  $ingest_namespace = upitt_workflow_get_ingest_namespace(); 
+
+  $pid = $ingest_namespace . $do_id;
+  $islandora_object = islandora_object_load($pid);
+  
+  $object_title = (is_object($islandora_object) ? $islandora_object->label : $do_id);
+  $islandora_object_link = (is_object($islandora_object) ? 'Islandora: "' . l($islandora_object->label, '/islandora/object/' . $pid) . '"' : '');
+
+  $files_headings = $status_headings = $files_rows = $required_workflow_actions = $status_rows = array();
+  while ($row = mysqli_fetch_assoc($result)) {
+    if (isset($row['batch_id']) && isset($row['name'])) {
+      $row['batch'] = l($row['name'], '/workflow/batch/' . $row['batch_id']) . '<br />';
+      unset($row['batch_id']);
+    }
+    else {
+      $row['batch'] = 'n/a';
+    }
+
+    // TODO: this edit link may need to be suppressed if the batch is at a specific stage.
+    $edit_item_link = l('Edit "' . $object_title . '"', '/workflow/object/' . $do_id . '/edit');
+
+    $details = theme('workflow_item_details', array('details' => $row, 'edit_item_link' => $edit_item_link));
+  }
+
+  drupal_set_message('Ingest by object not currently supported.' .
+    ((isset($row['batch']) && $row['batch'] <> 'n/a') ? '  Edit the batch that this object belongs to: ' .
+      $row['batch'] : '') .
+    ($islandora_object_link ? '  This object seems to exist in Islandora:  ' . $islandora_object_link . '.' : ''));
+
+  $links = array();
+  $breadcrumb = upitt_workflow_get_breadcrumb_path();
+  $page = array();
+
+  $task_links[] = l(t('Create Islandora Collection'), '/islandora/object/pitt%3Aroot/manage/overview/ingest');
+  $task_links[] = l(t('Make batch records from Workflow items'), '/workflow/workflowadmin/makebatch_from_workflow');
+  $task_links[] = l(t('Create New Batch'), '/workflow/batch/new');
+  $task_links[] = l(t('Workflow Collections (legacy)'), '/workflow/collection');
+  $task_links[] = l(t('Quick Status Change'), '/workflow/status/change');
+
+  $page['#markup'] = theme('upitt_workflow_workflowadmin', array('links' => $links, 'task_links' => $task_links, 'breadcrumb' => $breadcrumb));
+
+  return $page;
 }
 
 /**
