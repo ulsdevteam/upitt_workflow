@@ -7,6 +7,9 @@ function upitt_workflow_datastreams_io_export($batch_id) {
   $pids = array();
   if ($batch_id) {
     $batch = upitt_workflow_batch_load($batch_id);
+    // TODO: this may be better to load the items from the database, but that
+    // table is not populated with newly created batches that use a CSV upload.
+    // The code would need to be written that will populate that record FIRST.
     $csv_arr = upitt_workflow_csv_file_as_array($batch['file']);
     $pid_values = upitt_workflow_csv_extract_identifiers($csv_arr);
     foreach ($pid_values as $p) {
@@ -15,5 +18,5 @@ function upitt_workflow_datastreams_io_export($batch_id) {
   }
 
   // Calling this will populate the PIDS for and redirect to the export form.
-  islandora_datastreams_io_pids_to_export_form($pids, ISLANDORA_DATASTREAMS_IO_FETCH_LISTPIDS);
+  islandora_datastreams_io_pids_to_export_form($pids, 1);
 }

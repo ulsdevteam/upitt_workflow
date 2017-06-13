@@ -929,8 +929,7 @@ function upitt_workflow_batch_path($batch_values) {
     return '';
   }
   $ingest_path = $batch_values['batch_host'];
-
-  if ($ingest_path == 'ftp' || (ltrim($ingest_path, 'ftp:') <> $ingest_path)) {
+  if (!$batch_values['batch_host'] || $ingest_path == 'ftp' || (ltrim($ingest_path, 'ftp:') <> $ingest_path)) {
     $ingest_path = variable_get('upitt_workflow_ingest_path', '/ingest/incoming');
   } elseif (strstr($ingest_path, ":")) {
     @list($ingest_host, $ingest_path) = explode(":", $ingest_path, 2);
