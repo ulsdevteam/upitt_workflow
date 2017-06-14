@@ -5,6 +5,9 @@ function upitt_workflow_get_ftp_connection() {
   $ftp_pass = variable_get('upitt_workflow_ftp_password');
   $ftp_server = "ftp.box.com"; 
 
+  // Should this use the variable_get('upitt_workflow_notification_email', 'digital-collections@pitt.edu')
+  // account that is configured to recieve the notifications?  That is probably a separate account.
+
   try {
     $conn_id = ftp_ssl_connect($ftp_server);
     if (false === $conn_id) {
