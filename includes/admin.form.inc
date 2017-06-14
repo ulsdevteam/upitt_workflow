@@ -27,39 +27,39 @@ function upitt_workflow_admin_form() {
   $form = array(
     'settings_file' => array(
       '#type' => 'textfield',
-      '#size' => 20,
       '#title' => t('settings.php File'),
       '#description' => t('Full path to the site\'s settings.php file.  Usually this would ' .
         'be located under the /var/www/drupal7/sites/default/settings.php, but for a site ' .
         'that has a specific "sites" folder, that must be provided here.'),
       '#default_value' => variable_get('upitt_workflow_settings_file', ''),
-      '#size' => 100,
+    ),
+    'notification_email' => array(
+      '#type' => 'textfield',
+      '#title' => t('Notification Email Address'),
+      '#description' => t('The email addresses to send notifications of various workflow actions.  Separate multiple address values with semicolon.'),
+      '#default_value' => variable_get('upitt_workflow_notification_email', 'digital-collections@pitt.edu'),
     ),
     'ingest_namespace' => array(
       '#type' => 'textfield',
-      '#size' => 20,
       '#title' => t('Ingest Namespace'),
       '#description' => t('The namespace to use for ingesting all objects.'),
       '#default_value' => $ingest_namespace, 
-      '#size' => 100,
     ),
     'incoming_ingest_path' => array(
       '#type' => 'textfield',
-      '#title' => t('Default Incoming Ingest Path'),
+      '#title' => t('Incoming Ingest Path'),
       '#description' => t('The incoming ingest directory.  In order to be ingested, the folders created 
                            here should be named to match the name of the batch.  This path
                            should be configured to a location that has plenty of hard space.'),
       '#default_value' => variable_get('upitt_workflow_ingest_path', '/ingest/incoming'),
-      '#size' => 100,
     ),
     'incoming_holdings_path' => array(
       '#type' => 'textfield',
-      '#title' => t('Default Holdings Path'),
+      '#title' => t('Holdings Path'),
       '#description' => t('The holdings directory.  A batch can be created by pointing to a folder
                            that is contained with this location.  The batch will convert the files
                            and the structure of the contents for an Islandora batch.'),
       '#default_value' => variable_get('upitt_workflow_holdings_path', '/ingest/holding'),
-      '#size' => 100,
     ),
     'batch_hosts' => array(
       '#type' => 'textarea',
@@ -124,6 +124,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       $batch_hosts_array = explode("\r\n", $form_state['values']['batch_hosts']);
       upitt_workflow_create_host_paths($batch_hosts_array);
       variable_set('upitt_workflow_settings_file', $form_state['values']['settings_file']);
+      variable_set('upitt_workflow_notification_email', $form_state['values']['notification_email']);
       variable_set('upitt_workflow_ingest_namespace', $form_state['values']['ingest_namespace']);
       variable_set('upitt_workflow_ingest_path', $form_state['values']['incoming_ingest_path']);
       variable_set('upitt_workflow_holdings_path', $form_state['values']['incoming_holdings_path']);
@@ -135,6 +136,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
 
     case 'edit-reset':
       variable_del('upitt_workflow_settings_file');
+      variable_del('upitt_workflow_notification_email');
       variable_del('upitt_workflow_ingest_namespace');
       variable_del('upitt_workflow_ingest_path');
       variable_del('upitt_workflow_holdings_path');
