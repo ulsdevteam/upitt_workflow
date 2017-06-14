@@ -259,8 +259,9 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
         'file_validate_size' => array($upload_size * 1024 * 1024),
       ),
       '#prefix' => "<a id='file_upload'> </a>",
-      '#suffix' => '<div class="report_table_wrapper">' . theme('table', array('rows' => $file_rows, 'header' => $file_header, 'attributes' => array('class' => array('report_table')))) .
-        '</div>',
+      '#suffix' => (count($file_rows) ? '<div class="report_table_wrapper">' .
+          theme('table', array('rows' => $file_rows, 'header' => $file_header, 'attributes' => array('class' => array('report_table')))) .
+        '</div>'  : ''),
     ),
 
 /*
@@ -419,6 +420,21 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
   );
 
   return $form;
+}
+
+/**
+ * This will perform the various checks to see whether or not the batch can be saved.
+ *
+ * @param array $elements
+ * @param array $form_state
+ * @param string $form_id
+ */
+function upitt_workflow_new_batch_form_validate(&$elements, &$form_state, $form_id = NULL) {
+  if ($elements['default_type_of_resource']['#value'] == '') {
+    form_set_error('default_type_of_resource', t('You have added an invalid Model.'));
+  }
+  // Now, if there is a file attached, the CSV validation can be performed
+  
 }
 
 function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
@@ -654,8 +670,13 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
       $barcode = str_replace(rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/') . '/', '', $holdings_folder);
       $voystaff_uri = 'http://voystaff.library.pitt.edu/cgi-bin/barcode2marcxml.php?barcode=' . $barcode;
       $xml = file_get_contents($voystaff_uri);
-      $markup .= '<pre>' . htmlspecialchars(print_r($xml, true)) . '</pre>';
-      $bytes_written = file_put_contents($marc_filename, $xml);
+      if ($xml && (strstr($xml, 'BibID not found for barcode') == '')) {
+        $markup .= '<pre>' . htmlspecialchars(print_r($xml, true)) . '</pre>';
+        $bytes_written = file_put_contents($marc_filename, $xml);
+      } else {
+        drupal_set_message('The MARC record could not be retrieved from the Voyager application. ' . l($voystaff_uri, $voystaff_uri) . '.' .
+          ((strstr($xml, 'BibID not found for barcode') == '') ? '' : 'The BibID was not found for the barcode "' . $barcode . '".'), 'warning');
+      }
     }    
   }
 

@@ -16,8 +16,6 @@ function upitt_workflow_datastreams_io_export($batch_id) {
       $pids[] = $p;
     }
   }
-  $pids[] = 'pitt:testOCR2';
-  $pids[] = 'pitt:20710320-hpichswp-0024';
 
   // Calling this will populate the PIDS for and redirect to the export form.
   islandora_datastreams_io_pids_to_export_form($pids, 1);
