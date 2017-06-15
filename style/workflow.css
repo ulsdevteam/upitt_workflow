@@ -52,10 +52,15 @@ h5 {
     height: 250px;
     overflow-y: auto;
     overflow-x: hidden;
+    margin-bottom: 1em;
 }
 
 #edit-box-files legend {
     top: 0px;
+}
+
+#edit-box-files-wrapper .fieldset-wrapper {
+    margin-top: 0;
 }
 
 #edit-box-files-loading-img {
