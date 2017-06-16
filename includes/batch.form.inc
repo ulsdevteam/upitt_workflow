@@ -539,7 +539,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
   //     --METADATA--.xml, METS.xml (?) (for marcxml))
 
 
-  // FOR bookCModel:
+  // FOR bookCModel or manuscriptCModel:
   //
   // 1) make a new folder under variable_get('upitt_workflow_ingest_path', '/ingest/incoming')
   //    named "batch_{PID}"
@@ -550,7 +550,6 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
   // 3) make a subfolder for each page and copy the {page#}.tif to the folder as : {page#}/OBJ.tif
 
   $tmp_files = upitt_workflow_file_scan_directory($holdings_folder, '', TRUE, FALSE);
-
   $files = array();
   // FLATTEN this result
   foreach ($tmp_files as $key => $file) {
@@ -563,24 +562,19 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
       $files[] = $file;
     }
   }
-
   $move_files = array();
   $size = $filemove_size = 0;
   foreach ($files as $i => $file) {
     $this_size = filesize($holdings_folder . '/' . $file);
     $size += $this_size;
-    $keep_file = FALSE;
     // If the file has a subfolder reference, skip it
     if (strstr($file, '/')) {
       // SKIP
     }
     else {
-      foreach ($model_filemasks as $mask => $model_filemask) {
-        $keep_file |= upitt_workflow_filemask_comparison($file, $mask);
-      }
-      if ($keep_file) {
-        $filemove_size += $this_size;
-        $move_files[] = $file;
+      $mask_matches = array();
+      if ($matched_model_filemask = upitt_workflow_filemask_comparison($file, $model_filemasks)) {
+        $move_files[$matched_model_filemask][] = $file;
       }
     }
   }
@@ -609,76 +603,103 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
       exec($command);
     }
     mkdir($batch_path);
-
-    if ($content_model == 'bookCModel') {
+    if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
       mkdir($batch_path . '/book');
     }
-    foreach ($move_files as $k => $file) {
-      $file_mask_match = '';
-      foreach ($model_filemasks as $mask => $model_filemask) {
-        if (!$file_mask_match) {
-          if (upitt_workflow_filemask_comparison($file, $mask)) {
-            $file_mask_match = $mask;
-          }
+    $mods_file = '';
+    $obj_filename = '';
+
+    foreach ($move_files as $file_mask_match => $files) {
+      foreach ($files as $file) {
+        switch ($file_mask_match) {
+          case '*.tif'; case '*.jpg';
+            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
+              // for Book, make directory, move file into that directory, rename OBJ.tif
+              $file_baseName = str_replace(str_replace("*", "", $file_mask_match), "", $file);
+              $this_fileinfo = pathinfo($file);
+              $extension = (isset($this_fileinfo['extension'])) ? $this_fileinfo['extension'] : '';
+
+              if (strtolower($file_baseName) <> 'target') {
+                mkdir($batch_path . '/book/' . $file_baseName);
+                copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $file_baseName . '/' . $file);
+                rename($batch_path . '/book/' . $file_baseName . '/' . $file, $batch_path . '/book/' . $file_baseName . '/OBJ.' . $extension);
+                $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/" . $file_baseName . "/OBJ." . $extension . "'<br>";
+              }
+            }
+            else {
+              // for large image, simply move file to root of batch_path
+              $obj_filename = $file;
+              copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
+              $markup .= "Moved '$file' to '" . $batch_path . "/" . $file . "'<br>";
+            }
+            break;
+          case '*.mods.xml':
+            $mods_file = $file;
+            break;
+          case '*.marcxml.xml':
+            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
+              copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $file);
+              rename($batch_path . '/book/' . $file, $batch_path . '/book/--METADATA--.xml');
+              $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/--METADATA--.xml'<br>";
+            }
+            else {
+              copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
+              rename($batch_path . '/' . $file, $batch_path . '/--METADATA--.xml');
+              $markup .= "Moved and renamed '$file' to '" . $batch_path . "/--METADATA--.xml'<br>";
+            }
+            break;
+          case '*.mets.xml':
+            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
+              copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $file);
+              rename($batch_path . '/book/' . $file, $batch_path .  '/book/METS.xml');
+              $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/METS.xml'<br>";
+            }
+            else {
+              copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
+              rename($batch_path . '/' . $file, $batch_path .  '/METS.xml');
+              $markup .= "Moved and renamed '$file' to '" . $batch_path . "/METS.xml'<br>";
+            }
+            break;
+          default:
+            break;
         }
       }
-
-      switch ($file_mask_match) {
-        case '*.tif':
-          if ($content_model == 'bookCModel') {
-            // for Book, make directory, move file into that directory, rename OBJ.tif
-            $file_baseName = str_replace(".tif", "", $file);
-            mkdir($batch_path . '/book/' . $file_baseName);
-            copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $file_baseName . '/' . $file);
-            rename($batch_path . '/book/' . $file_baseName . '/' . $file, $batch_path . '/book/' . $file_baseName . '/OBJ.tif');
-            $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/" . $file_baseName . "/OBJ.tif'<br>";
+    }
+    if ($mods_file) {
+      if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
+        copy($holdings_folder . '/' . $mods_file, $batch_path . '/book/' . $mods_file);
+        rename($batch_path . '/book/' . $mods_file, $batch_path . '/book/--METADATA--.xml');
+        $markup .= "Moved and renamed '$mods_file' to '" . $batch_path . "/book/--METADATA--.xml'<br>";
+      }
+      else {
+        copy($holdings_folder . '/' . $mods_file, $batch_path . '/' . $mods_file);
+        // Each OBJ file has a corresponding XML file, and that the filenames of the OBJs and the XML files
+        // are identical in every way – including capitalization – except for the extension based on:
+        //   https://wiki.duraspace.org/display/ISLANDORA/How+to+Batch+Ingest+Files#HowtoBatchIngestFiles-IngestMetadataandFilestogether .
+        if ($obj_filename) {
+          $obj_pathinfo = pathinfo($obj_filename);
+          if (isset($obj_pathinfo['filename'])) {
+            $rename_to = $obj_pathinfo['filename'] . '.xml';
+            rename($batch_path . '/' . $mods_file, $batch_path . '/' . $rename_to);
+            $markup .= "Moved and renamed '$mods_file' to '" . $batch_path . "/" . $rename_to . "'<br>";
           }
-          else {
-            // for large image, simply move file to root of batch_path
-            copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
-            $markup .= "Moved '$file' to '" . $batch_path . "/" . $file . "'<br>";
-          }
-          break;
-        case '*.marcxml.xml':
-          if ($content_model == 'bookCModel') {
-            copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $file);
-            rename($batch_path . '/book/' . $file, $batch_path . '/book/--METADATA--.xml');
-            $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/--METADATA--.xml'<br>";
-          }
-          else {
-            copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
-            rename($batch_path . '/' . $file, $batch_path . '/--METADATA--.xml');
-            $markup .= "Moved and renamed '$file' to '" . $batch_path . "/--METADATA--.xml'<br>";
-          }
-          break;
-        case '*.mets.xml':
-          if ($content_model == 'bookCModel') {
-            copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $file);
-            rename($batch_path . '/book/' . $file, $batch_path .  '/book/METS.xml');
-            $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/METS.xml'<br>";
-          }
-          else {
-            copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
-            rename($batch_path . '/' . $file, $batch_path .  '/METS.xml');
-            $markup .= "Moved and renamed '$file' to '" . $batch_path . "/METS.xml'<br>";
-          }
-          break;
-        default:
-          break;
+        }
       }
     }
     $markup .= "</pre>";
   }
 
-  // In either case, if the object is a book, and the --METADATA--.xml does not exist in the batch path, download the XML from voystaff
-  if ($content_model == 'bookCModel') {
+  // In either case, if the object is a book, and the --METADATA--.xml does not 
+  // exist in the batch path, download the XML from voystaff.  This is only needed
+  // if there is not a MODS file.
+  if (($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') && !$mods_file) {
     $marc_filename = $batch_path . '/book/--METADATA--.xml';
     if (!file_exists($marc_filename)) {
       // download the MARC file and save it... display / log the results.
       $markup .= '--METADATA--.xml did not exist<br>';
       $barcode = str_replace(rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/') . '/', '', $holdings_folder);
       $voystaff_uri = 'http://voystaff.library.pitt.edu/cgi-bin/barcode2marcxml.php?barcode=' . $barcode;
-      $xml = file_get_contents($voystaff_uri);
+      $xml = @file_get_contents($voystaff_uri);
       if ($xml && (strstr($xml, 'BibID not found for barcode') == '')) {
         $markup .= '<pre>' . htmlspecialchars(print_r($xml, true)) . '</pre>';
         $bytes_written = file_put_contents($marc_filename, $xml);
@@ -699,56 +720,93 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
  * @param type $content_model
  */
 function upitt_workflow_content_model_filemask($content_model) {
-  $filemasks = array();
+  $filemasks = $discard_filemasks = array();
   switch ($content_model) {
     case 'sp_large_image_cmodel':
       // the MODS is created via CSV
-      // $filemask['*.mods.xml'] = 'MODS XML';
-      $filemasks['*.tif'] = 'Image';
+      $filemasks['*.mods.xml'] = 'MODS XML';
+      $filemasks['*.tif'] = 'Image TIF';
+      $filemasks['*.jpg'] = 'Image JPG';
+      $discard_filemasks['*.thumb.jpg'] = 'old thumbnail file';
+      $discard_filemasks['*.thumb_large.jpg'] = 'old large thumbnail file';
+      $discard_filemasks['target.tif'] = 'graphics calibration';
       break;
 
-    case 'bookCModel':
-      $filemask['*.mods.xml'] = 'MODS XML';
+    case 'bookCModel'; case 'manuscriptCModel';
+      $filemasks['*.mods.xml'] = 'MODS XML';
       $filemasks['*.marcxml.xml'] = 'MARC XML';
       $filemasks['*.mets.xml'] = 'METS XML';
-      $filemasks['*.tif'] = 'Page';
+      $filemasks['*.tif'] = 'Page TIF';
+      $filemasks['*.jpg'] = 'Page JPG';
       $filemasks['*.pdf'] = 'PDF file';
+      $discard_filemasks['*.thumb.jpg'] = 'old thumbnail file';
+      $discard_filemasks['*.thumb_large.jpg'] = 'old large thumbnail file';
+      $discard_filemasks['target.tif'] = 'graphics calibration';
       break;
 
     default:
       break;
 
   }
-  return $filemasks;
+  return array('keep_filemasks' => $filemasks, 'discard_filemasks' => $discard_filemasks);
 }
 
 /**
- * This will return TRUE if the file should be kept based upon the filemask.
+ * This will return the filematch that was matched if the file should be kept based
+ * upon matching a single filemask.
  *
- * @param string $file
- * @param string $filemask
+ * @param type $file
+ * @param type $filemask
+ * @return string
  */
-function upitt_workflow_filemask_comparison($file, $filemask) {
+function upitt_workflow_filemask_match($file, $filemask) {
+  $d = ($file == '0001.thumb.jpg' && $filemask == '*.thumb.jpg');
   $filemask_without_wildcards = str_replace("*", "", $filemask);
   $starts_with_wildcard = ($filemask[0] == '*');
   $ends_with_wildcard = ($filemask[strlen($filemask) - 1] == '*');
-
   if ($starts_with_wildcard && $ends_with_wildcard) {
-    return (strstr($file, $filemask));
+    $result = (strstr($file, $filemask));
   }
   elseif ($starts_with_wildcard && !$ends_with_wildcard) {
     // the last few characters are the same as the mask, but not anything before the
     // wildcard, but MUST compare to the $filemask_without_wildcards
-    return (substr($file, -strlen($filemask_without_wildcards)) == $filemask_without_wildcards);
+    $result = (substr($file, -strlen($filemask_without_wildcards)) == $filemask_without_wildcards);
   }
   elseif (!$starts_with_wildcard && $ends_with_wildcard) {
     // the first few characters are the same as the mask, but not anything after the
     // wildcard, but MUST compare to the $filemask_without_wildcards
-    return (substr($file, 1, strlen($filemask_without_wildcards)) == $filemask_without_wildcards);
+    $result = (substr($file, 1, strlen($filemask_without_wildcards)) == $filemask_without_wildcards);
   }
   else {
-    return ($file == $filemask);
+    $result = ($file == $filemask);
   }
+  return ($result) ? $filemask : '';
+}
+
+/**
+ * This will return either a blank string if the file should be discarded, or the filemask
+ * that was used for keeping the file.
+ *
+ * @param string $file
+ * @param string $filemask
+ */
+function upitt_workflow_filemask_comparison($file, $filemasks) {
+  $discard = FALSE;
+  foreach ($filemasks['discard_filemasks'] as $discard_mask => $discard_filemask_name) {
+    if (!$discard) {
+      $discard = upitt_workflow_filemask_match($file, $discard_mask);
+    }
+  }
+  if ($discard) {
+    return '';
+  }
+  $keep = FALSE;
+  foreach ($filemasks['keep_filemasks'] as $keep_mask => $keep_filemask_name) {
+    if (!$keep) {
+      $keep = upitt_workflow_filemask_match($file, $keep_mask);
+    }
+  }
+  return $keep;
 }
 
 function upitt_workflow_array_flat_count_values($array) {
@@ -766,13 +824,13 @@ function upitt_workflow_array_flat_count_values($array) {
 
 function upitt_workflow_unzip_ftp_zipfiles_to_tempfolder($ftp_folder, $temp_folder, $batch_external_id) {
   module_load_include('inc', 'upitt_workflow', 'includes/ftp_ops');
-  if ($results_array = upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $temp_folder)) {
+  if ($results_array = upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $temp_folder, $batch_external_id)) {
     if ($results_array['downloaded']) {
-      dpm('There was ' . $results_array['num_zip_files_unzipped'] . ' zip file' . ($results_array['num_zip_files_unzipped'] == 1 ? '' : 's') .
-          'downloaded from the FTP location `' . $ftp_folder . '`.' . "\n\n" . 
-          'The batch record has been updated to point to the CSV file that was in the FTP folder `' . $results_array['csv_file'] . '`.' . "\n\n" .
-          'The zip files were extracted to `' . $temp_folder . '` and contained ' . count($results_array['files_unzipped']) . ' file' .
-          ($results_array['files_unzipped'] == 1 ? '' : 's') . '.  The raw files unzipped to ' . implode(",", $results_array['files_unzipped']));
+      drupal_set_message('There was ' . $results_array['num_zip_files_unzipped'] . ' zip file' . ($results_array['num_zip_files_unzipped'] == 1 ? '' : 's') .
+        'downloaded from the FTP location `' . $ftp_folder . '`.' . "\n\n" . 
+        'The batch record has been updated to point to the CSV file that was in the FTP folder `' . $results_array['csv_file'] . '`.' . "\n\n" .
+        'The zip files were extracted to `' . $temp_folder . '` and contained ' . count($results_array['files_unzipped']) . ' file' .
+        ($results_array['files_unzipped'] == 1 ? '' : 's') . '.  The raw files unzipped to ' . implode(",", $results_array['files_unzipped']));
 
       // TODO: move the csv file to the batch_holding directory along with all the
       // files ... and update the batch record using the batch_external_id

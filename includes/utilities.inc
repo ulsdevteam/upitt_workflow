@@ -26,6 +26,7 @@ function upitt_workflow_get_workflow_to_fedora_object_mappings() {
                'bookCModel' => 'Book',
                'findingAidCModel' => 'Finding Aids (pending development)',
                'sp_large_image_cmodel' => 'Large Images',
+               'manuscriptCModel' => 'Manuscript',
                'newspaperIssueCModel' => 'Newspaper (pending development)',
                'oralhistoriesCModel' => 'Oral Histories (pending development)',
                'sp_videoCModel' => 'Video (pending development)',
@@ -1119,7 +1120,6 @@ function upitt_workflow_save_batch($values, $collection_options) {
   $sql_values[] = $user->uid;
 
   $sql = "REPLACE INTO `batch` (`" . implode("`, `", $sql_fields) . "`) VALUES (" . implode(", ", $sql_values) . ")";
-  dpm($sql);
 
   $result = mysqli_query($link, $sql);
   if (!$result) {
@@ -1537,4 +1537,10 @@ function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_ac
 //    error_log('item_id not found for ' . $item_query . "\n", 3, '/tmp/log');
   }
   mysqli_close($link);      
+}
+
+// TODO - finish this function and call 
+function upitt_workflow_update_batch_file($batch_external_id, $local_name) {
+  $sql = "UPDATE batch SET file = '" . $local_name . "' WHERE batch_external_id = '" . $batch_external_id . "'";
+  dpm($sql);
 }

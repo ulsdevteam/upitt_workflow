@@ -104,7 +104,7 @@ function upitt_workflow_ftp_listing($current_path) {
   // exit;
 }
 
-function upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $download_to) {
+function upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $download_to, $batch_external_id) {
   $conn_id = upitt_workflow_get_ftp_connection();
   $downloaded = false;
   $num_zip_files_unzipped = 0;
@@ -159,6 +159,9 @@ function upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $download_to) {
       if ($csv_file) {
         $local_name = $download_to . '/' . $csv_file;
         $downloaded_csv = ftp_get($conn_id, $local_name, $csv_file, FTP_BINARY);
+        // update the batch record for this batch to set the file value to point to this CSV
+        module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+        upitt_workflow_update_batch_file($batch_external_id, $local_name);
       }
       // Must also change to the local download_to directory.
       chdir($download_to);

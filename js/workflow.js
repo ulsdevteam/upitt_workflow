@@ -30,7 +30,7 @@ function host_selected(control, site_url) {
 }
 
 function ftp_change_path(path, site_url) {
-  if (!path.includes("ftp:")) {
+  if (!path.includes("Digital Collections Contributors")) {
     path = 'Digital Collections Contributors';
   }
   var get_ftp_files_url = site_url + '/ajax/workflow/browse_ftp/' + path;
