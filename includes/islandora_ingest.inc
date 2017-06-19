@@ -544,3 +544,120 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
 
   return $identifiers_and_filepaths;
 }
+
+/**
+ * Retrieves all applicable content models that should have TN_LARGE derivative.
+ * @return type
+ */
+function upitt_workflow_retrieve_TN_LARGE_applicable_cmodels() {
+  return array('islandora:manuscriptCModel','islandora:bookCModel','islandora:newspaperIssueCModel','islandora:sp_large_image_cmodel','islandora:sp_basic_image');
+}
+
+function upitt_workflow_make_tn_large($object) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+  upitt_workflow_log('in upitt_workflow_make_tn_large for ' . $object->id);
+
+  $obj_ds = NULL;
+  $is_paged = upitt_workflow_is_paged_object($islandora_object);
+
+  // Windows will likely store temp data in a temp directory
+  // rather than in memory. Since the colon is forbidden in
+  // filenames, replace it with an underscore instead.
+  $thumbnail_id = ((islandora_deployed_on_windows()) ? str_replace(':', '_', $object->id) : $object->id);
+
+  if ($is_paged) {
+    module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+    // if paged_content, must use a couple functions to get the OBJ which is to be used
+    // for the thumbnail creation
+    if ($can_create = islandora_paged_content_can_update_paged_content_thumbnail($object)) {
+      $pages = islandora_paged_content_get_pages($object);
+      $page = array_shift($pages);
+      $page = islandora_object_load($page['pid']);
+      $obj_ds = $page['OBJ'];
+    }
+  }
+  else {
+    // if image, simply pass the $object['OBJ'] from the $object
+    if (isset($object['OBJ'])) {
+      $obj_ds = $object['OBJ'];
+    }
+  }
+  $temp_dest_file_uri = upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id);
+
+  if (!$temp_dest_file_uri) {
+    return FALSE;
+  }
+  try {
+    $ingest = !isset($object['TN_LARGE']);
+    $mime_detector = new MimeDetect();
+    if ($ingest) {
+      $ds = $object->constructDatastream('TN_LARGE', 'M');
+      $ds->label = 'Large thumbnail';
+    }
+    else {
+      $ds = $object['TN_LARGE'];
+    }
+    if ($ds->mimetype != $mime_detector->getMimetype($temp_dest_file_uri)) {
+      $ds->mimetype = $mime_detector->getMimetype($temp_dest_file_uri);
+    }
+    $ds->setContentFromFile(drupal_realpath($temp_dest_file_uri));
+    file_unmanaged_delete($temp_dest_file_uri);
+
+    if ($ingest) {
+      $object->ingestDatastream($ds);
+    }
+    return array(
+      'success' => TRUE,
+      'messages' => array(
+        array(
+          'message' => t('Created TN_LARGE derivative for (@pid).'),
+          'message_sub' => array(
+            '@pid' => $object->id,
+          ),
+          'type' => 'dsm',
+        ),
+      ),
+    );
+  }
+  catch (exception $e) {
+    return array(
+      'success' => FALSE,
+      'messages' => array(
+        array(
+          'message' => t('Failed to create TN_LARGE derivative for @pid.'),
+          'message_sub' => array(
+            '@pid' => $object->id,
+          ),
+          'type' => 'watchdog',
+          'severity' => WATCHDOG_ERROR,
+        ),
+      ),
+    );
+  }
+}
+
+/**
+ * This will take an OBJ datastream and make a TN_LARGE JPG file derivative return
+ * value would be the name of the saved TN_LARGE file.
+ *
+ * @param type $obj_ds
+ * @return string
+ */
+function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id) {
+  $dest_file = drupal_realpath("temporary://{$thumbnail_id}_TN_LARGE.JPG");
+
+  // redundant - -this will be a TIF file or JPG file
+  $mime_detector = new MimeDetect();
+  $ext = $mime_detector->getExtension($obj_ds->mimeType);
+
+  $obj_ds_file = file_create_filename("{$obj_ds}_OBJ.{$ext}", 'temporary://');
+  $obj_ds->getContent($obj_ds_file);
+
+  $args = array();
+  $args[] = '-quality ' . escapeshellarg(variable_get('imagemagick_quality', 75));
+  $args[] = '-resize ' . escapeshellarg("500 x 500");
+  $derivative_file = islandora_large_image_imagemagick_convert($obj_ds_file, $dest_file, $args);
+  file_unmanaged_delete($obj_ds_file);
+  
+  return $derivative_file;
+}

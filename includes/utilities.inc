@@ -1470,7 +1470,7 @@ function upitt_workflow_set_status_for_pid($ingested_object, $transaction_action
  */
 function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id, $islandora_object = NULL) {
   global $user;
-  my_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id);
+  upitt_workflow_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id);
   // error_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id . "\n", 3, '/tmp/log');
 
   // will need the batch record for this object.
@@ -1489,12 +1489,12 @@ function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_ac
   if (!$result) {
     upitt_workflow_sql_error_die($link, $item_query);
   }
-  my_log('search for batch item');
+  upitt_workflow_log('search for batch item');
   // error_log('search for batch\'s item' . "\n", 3, '/tmp/log');
 
   $row = mysqli_fetch_assoc($result);
   if (!isset($row['id'])) {
-    my_log('item record did not exist');
+    upitt_workflow_log('item record did not exist');
     // If the passed $islandora_object is not null, use the label from that for this record.
     $label = (is_null($islandora_object) ? '' : $islandora_object->label);
     // Need to insert the item record.
@@ -1511,7 +1511,7 @@ function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_ac
   // at this point, the $row['id'] better be set, but still need to check before inserting the transaction record.
   if (isset($row['id'])) {
     $item_id = $row['id'];
-    my_log('item id = ' . $item_id);
+    upitt_workflow_log('item id = ' . $item_id);
     // error_log('item id = ' . $item_id . "\n", 3, '/tmp/log');
     
     // Two records for the transaction ... insert the transaction record -- and update the item_current_status table with a pointer to this transaction
@@ -1524,7 +1524,7 @@ function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_ac
     $row = mysqli_fetch_assoc($result);
     if (isset($row['id'])) {
       $transaction_id = $row['id'];
-      my_log('transaction_id = ' . $transaction_id);
+      upitt_workflow_log('transaction_id = ' . $transaction_id);
       // error_log('transaction_id = ' . $transaction_id . "\n", 3, '/tmp/log');
 
       // FINALLY, put the transaction_id into the item_current_status table.
@@ -1533,7 +1533,7 @@ function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_ac
     }
   }
   else {
-    my_log('item_id not found for ' . $item_query);
+    upitt_workflow_log('item_id not found for ' . $item_query);
 //    error_log('item_id not found for ' . $item_query . "\n", 3, '/tmp/log');
   }
   mysqli_close($link);      
