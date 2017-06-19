@@ -539,19 +539,31 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
       $queued_items = islandora_batch_get_queued_items_for_set($set);
       foreach ($queued_items as $ingested_pid) {
         $ingested_object = islandora_object_load($ingested_pid);
+        if (is_object($ingested_object)) {
+          upitt_workflow_log('object label = ' . $ingested_object->label . ' with PID ' . $ingested_object->id);
+          
+          // See whether or not this is a paged-content object in order to call the
+          // "aggregate PDF" and "aggregate OCR/HOCR" batch commands on it now.
+          if (upitt_workflow_is_paged_object($ingested_object)) {
+            upitt_workflow_aggregate_pdf_derivative($ingested_object);
+            upitt_workflow_aggregate_ocr_derivative($ingested_object);
 
-        upitt_workflow_log('object label = ' . $ingested_object->label . ' with PID ' . $ingested_object->id);
-        // error_log('object label = ' . $ingested_object->label . ' with PID ' . $ingested_object->id . "\n", 3, '/tmp/log');
+            $pages = islandora_paged_content_get_pages($ingested_object);
+            if (count($pages)) {
+              $page = array_shift($pages);
+              $page_object = islandora_object_load($page['pid']);
+              upitt_workflow_log('parent pid = ' . $page['pid']);
+              upitt_workflow_make_tn_large($page_object, $ingested_object);
+            }
+          }
 
-        // See whether or not this is a paged-content object in order to call the
-        // "aggregate PDF" and "aggregate OCR/HOCR" batch commands on it now.
-        if (upitt_workflow_is_paged_object($ingested_object)) {
-          upitt_workflow_aggregate_pdf_derivative($ingested_object);
-          upitt_workflow_aggregate_ocr_derivative($ingested_object);
+          // Update the batch status record for the matching batch record for this set's $ingested_pid
+          upitt_workflow_set_status_for_pid($ingested_object, UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY);
         }
-
-        // Update the batch status record for the matching batch record for this set's $ingested_pid
-        upitt_workflow_set_status_for_pid($ingested_object, UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY);
+        else {
+          watchdog(WATCHDOG_NOTICE, 'Set refers to an object by PID "' . $ingested_pid .
+              '" that no longer exists, can not execute the batch_process_finished routine for this set ' . $set. '.');
+        }
       }
     }
   }
@@ -606,8 +618,8 @@ function upitt_workflow_aggregate_ocr_derivative($islandora_object) {
   // error_log('pages\' ocr files temp filenames ' . print_r($ocr_files, true) . "\n", 3, '/tmp/log');
   $consolidated_ocr_temp_file = drupal_tempnam("temporary://", "OCR_" . $islandora_object->id . ".txt");
   islandora_paged_content_ocr_combine($ocr_files, $consolidated_ocr_temp_file);
-  $f = file($consolidated_ocr_temp_file);
-  upitt_workflow_log(implode("\n", $f));
+  // $f = file($consolidated_ocr_temp_file);
+  // upitt_workflow_log(implode("\n", $f));
   //  error_log(implode("\n", $f) . "\n", 3, '/tmp/log');
 
   module_load_include('inc', 'islandora_paged_content', 'includes/derivatives');
@@ -681,28 +693,39 @@ function upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 
 }
 
 /**
- * Implements hook_islandora_object_ingested().
+ * Implements hook_islandora_object_ingested().  This will generate the TN_LARGE for
+ * several objects based on model.  For paged content models, refer to
+ * upitt_workflow_islandora_batch_process_finished which calls upitt_workflow_make_tn_large.
  */
 function upitt_workflow_islandora_datastream_ingested(AbstractObject $object, AbstractDatastream $datastream) {
+  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+  $applicable_paged_content_cmodels = upitt_workflow_retrieve_applicable_paged_content_cmodels();
   // ONLY do this for OBJ datastreams
   if ($datastream->id == 'OBJ') {
-    upitt_workflow_log('continuing in $dsid = ' . $datastream->id . ' for upitt_workflow_islandora_datastream_ingested for ' . $object->id);
-    module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
     $applicable_cmodels = upitt_workflow_retrieve_TN_LARGE_applicable_cmodels();
-    $applicable_child_cmodels = upitt_workflow_retrieve_applicable_child_cmodels();
     if (array_intersect($applicable_cmodels, $object->models)) {
-      upitt_workflow_log('continuing');
-      $save_on_object = $object;
-      if ((array_intersect($applicable_child_cmodels, $object->models))) {
-        module_load_include('inc', 'islandora_paged_content', 'includes/derivatives');
-        $parent_pid = islandora_paged_content_get_relationship($object->relationships, FEDORA_RELS_EXT_URI, 'isMemberOf', NULL);
-        $save_on_object = islandora_object_load($parent_pid);
-      }
-      upitt_workflow_log('save_on_object ' . $save_on_object->id);
-
-      upitt_workflow_make_tn_large($object, $save_on_object);
+      upitt_workflow_make_tn_large($object, $object);
     }
   }
+
+  /*
+  elseif ($datastream->id == 'RELS-EXT' && !isset($object['TN_LARGE']) &&
+      (array_intersect($applicable_paged_content_cmodels, $object->models))) {
+    module_load_include('inc', 'islandora_paged_content', 'includes/derivatives');
+
+    // Get the first page's PID and pass that as the page_object for generating the TN_LARGE.
+    $pages = islandora_paged_content_get_pages($object);
+    if (count($pages)) {
+      $page = array_shift($pages);
+      $page_object = islandora_object_load($page['pid']);
+      error_log('parent pid = ' . $page['pid']);
+      upitt_workflow_make_tn_large($page_object, $object);
+    }
+    else {
+      watchdog(WATCHDOG_WARNING, 'Could not generate TN_LARGE for ' . $object->id .
+        ' because there are no pages related to this object, model ' . print_r($object->models, true));
+    }
+  }*/
 }
 
 function upitt_workflow_log($string) {

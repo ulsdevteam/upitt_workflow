@@ -618,12 +618,12 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
               $file_baseName = str_replace(str_replace("*", "", $file_mask_match), "", $file);
               $this_fileinfo = pathinfo($file);
               $extension = (isset($this_fileinfo['extension'])) ? $this_fileinfo['extension'] : '';
-
               if (strtolower($file_baseName) <> 'target') {
-                mkdir($batch_path . '/book/' . $file_baseName);
-                copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $file_baseName . '/' . $file);
-                rename($batch_path . '/book/' . $file_baseName . '/' . $file, $batch_path . '/book/' . $file_baseName . '/OBJ.' . $extension);
-                $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/" . $file_baseName . "/OBJ." . $extension . "'<br>";
+                $page_folder = $this_fileinfo['filename'];
+                mkdir($batch_path . '/book/' . $page_folder);
+                copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $page_folder . '/' . $file);
+                rename($batch_path . '/book/' . $page_folder . '/' . $file, $batch_path . '/book/' . $page_folder . '/OBJ.' . $extension);
+                $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/" . $page_folder . "/OBJ." . $extension . "'<br>";
               }
             }
             else {

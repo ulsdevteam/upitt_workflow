@@ -559,27 +559,27 @@ function upitt_workflow_retrieve_TN_LARGE_applicable_cmodels() {
  *
  * @return array
  */
-function upitt_workflow_retrieve_applicable_child_cmodels() {
-  return array('islandora:manuscriptPageCModel','islandora:pageCModel','islandora:newspaperPageCModel');
+function upitt_workflow_retrieve_applicable_paged_content_cmodels() {
+  return array('islandora:manuscriptCModel','islandora:bookCModel','islandora:newspaperIssueCModel');
 }
 
 function upitt_workflow_make_tn_large($object, $save_on_object) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
-  $obj_ds = NULL;
-  $is_paged = upitt_workflow_is_paged_object($object);
+  $str = (is_object($object) ? 'object = ' . $object->id : 'object NULL') . ' ';
+  $str .= (is_object($save_on_object) ? 'save_on_object = ' . $save_on_object->id : 'save_on_object NULL') . ' ';
+error_log('upitt_workflow_make_tn_large for ' . "\n" . $str);
 
-  // Windows will likely store temp data in a temp directory
-  // rather than in memory. Since the colon is forbidden in
-  // filenames, replace it with an underscore instead.
+  $obj_ds = NULL;
   $thumbnail_id = str_replace(':', '_', $save_on_object->id);
+  $is_paged = upitt_workflow_is_paged_object($object);
 
   if ($is_paged) {
     module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
     // if paged_content, must use a couple functions to get the OBJ which is to be used
     // for the thumbnail creation
-    if ($can_create = islandora_paged_content_can_update_paged_content_thumbnail($object)) {
-      $pages = islandora_paged_content_get_pages($object);
+    if ($can_create = islandora_paged_content_can_update_paged_content_thumbnail($save_on_object)) {
+      $pages = islandora_paged_content_get_pages($save_on_object);
       $page = array_shift($pages);
       $page = islandora_object_load($page['pid']);
       $obj_ds = $page['OBJ'];
@@ -610,7 +610,7 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
       $ds->mimetype = $mime_detector->getMimetype($temp_dest_file_uri);
     }
     $ds->setContentFromFile(drupal_realpath($temp_dest_file_uri));
-    // file_unmanaged_delete($temp_dest_file_uri);
+    file_unmanaged_delete($temp_dest_file_uri);
 
     if ($ingest) {
       $object->ingestDatastream($ds);
@@ -653,7 +653,7 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
  * @return string
  */
 function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id) {
-  // module_load_include('inc', 'islandora_large_image', 'includes/derivatives');
+  module_load_include('inc', 'islandora_large_image', 'includes/derivatives');
   module_load_include('module', 'imagemagick', 'imagemagick');
   
   $dest_file = drupal_realpath("temporary://{$thumbnail_id}_TN_LARGE.JPG");
@@ -662,16 +662,21 @@ function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id) {
   $mime_detector = new MimeDetect();
   $ext = $mime_detector->getExtension($obj_ds->mimeType);
 
-  $obj_ds_file = drupal_realpath("temporary://{$thumbnail_id}_OBJ.{$ext}[0]");
-
+  $obj_ds_file = drupal_realpath("temporary://{$thumbnail_id}_OBJ.{$ext}");
   $obj_ds->getContent($obj_ds_file);
+
   // For the imagemagick call, a TIF source needs [0] at the end of the filename source.
-  $obj_ds_file = str_replace("[0]", "", $obj_ds_file);
+  if (islandora_large_image_is_tiff($obj_ds_file)) {
+    $im_obj_ds_file = $obj_ds_file . '[0]';
+  } else {
+    $im_obj_ds_file = $obj_ds_file;
+  }
+
   $args = array();
   $args[] = '-quality ' . escapeshellarg(variable_get('imagemagick_quality', 75));
   $args[] = '-resize ' . escapeshellarg("500 x 500");
 
-  $command = escapeshellarg($obj_ds_file) . ' ' . implode(' ', $args) . ' ' . escapeshellarg($dest_file);
+  $command = escapeshellarg($im_obj_ds_file) . ' ' . implode(' ', $args) . ' ' . escapeshellarg($dest_file);
   $output = array();
   $ret = -1;
   if (_imagemagick_convert_exec($command, $output, $ret) !== TRUE) {
@@ -683,7 +688,7 @@ function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id) {
     watchdog('islandora_large_image', 'ImageMagick failed to convert.<br/>Error: @ret<br/>Command: @command <br/>Output !output', $variables, WATCHDOG_ERROR);
     return FALSE;
   }
-  
+  @file_unmanaged_delete($obj_ds_file);
   $derivative_file = $dest_file;
   return $derivative_file;
 }
