@@ -683,11 +683,25 @@ function upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 
 /**
  * Implements hook_islandora_object_ingested().
  */
-function upitt_workflow_islandora_object_ingested(AbstractObject $object) {
-  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
-  $applicable_cmodels = upitt_workflow_retrieve_TN_LARGE_applicable_cmodels();
-  if (array_intersect($applicable_cmodels, $object->models)) {
-    upitt_workflow_make_tn_large($object);
+function upitt_workflow_islandora_datastream_ingested(AbstractObject $object, AbstractDatastream $datastream) {
+  // ONLY do this for OBJ datastreams
+  if ($datastream->id == 'OBJ') {
+    upitt_workflow_log('continuing in $dsid = ' . $datastream->id . ' for upitt_workflow_islandora_datastream_ingested for ' . $object->id);
+    module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+    $applicable_cmodels = upitt_workflow_retrieve_TN_LARGE_applicable_cmodels();
+    $applicable_child_cmodels = upitt_workflow_retrieve_applicable_child_cmodels();
+    if (array_intersect($applicable_cmodels, $object->models)) {
+      upitt_workflow_log('continuing');
+      $save_on_object = $object;
+      if ((array_intersect($applicable_child_cmodels, $object->models))) {
+        module_load_include('inc', 'islandora_paged_content', 'includes/derivatives');
+        $parent_pid = islandora_paged_content_get_relationship($object->relationships, FEDORA_RELS_EXT_URI, 'isMemberOf', NULL);
+        $save_on_object = islandora_object_load($parent_pid);
+      }
+      upitt_workflow_log('save_on_object ' . $save_on_object->id);
+
+      upitt_workflow_make_tn_large($object, $save_on_object);
+    }
   }
 }
 

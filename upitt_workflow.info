@@ -6,5 +6,6 @@ core = 7.x
 dependencies[] = islandora
 dependencies[] = islandora_datastreams_io
 dependencies[] = islandora_paged_content
+dependencies[] = islandora_large_image
 dependencies[] = islandora_solr
 configure = admin/islandora/workflow
