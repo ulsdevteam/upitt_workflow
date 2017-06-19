@@ -274,11 +274,15 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
       // TODO: make sure this row is not an empty line
       $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
-                       // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                       (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                        '--type=directory --overwrite_existing=1 ' .
                        '--assign_pid=' . $csv_file_source['identifier'] . ' ' .
+              /*
+               * These relationships will be set after the batch-object has been reviewed.
+               *
+                       // assuming that only if the parent is set, than the parent_relationship_pred is needed
+                       (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                        (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
+               */
                        ' --target=' . $csv_file_source['path'];
       $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
       $retval .= $markup;
@@ -299,10 +303,14 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
     $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
                      '--content_models=islandora:' . $fedora_model_name . ' ' .
                      // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                     (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                      '--type=directory --overwrite_existing=1 ' .
                      '--assign_pid=' . $ingest_namespace . $batch_external_id . ' ' .
+              /*
+               * These relationships will be set after the batch-object has been reviewed.
+               *
+                     (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                      (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
+               */
                      ' --target=' . $filepath;
     $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code style="color:red">' . $drush_command . '</code>';
     $retval .= $markup;
@@ -339,11 +347,15 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
   $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=' . $ingest_namespace_nocolon . ' --uri=' . $this_domain . ' islandora_book_batch_preprocess ' .
                    '--content_models=islandora:bookCModel ' .
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                   (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                    '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
                    '--overwrite_existing=1 ' .
+              /*
+               * These relationships will be set after the batch-object has been reviewed.
+               *
+                   (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                    (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
+               */
                    ' --target=' . $filepath;
   $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
   $retval .= $markup;
@@ -380,11 +392,15 @@ function upitt_workflow_drush_manuscript($filepath, $parent, $site, $pid) {
   $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=' . $ingest_namespace_nocolon . ' --uri=' . $this_domain . ' islandora_manuscript_batch_preprocess ' .
                    '--content_models=islandora:manuscriptCModel ' .
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                   (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                    '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
                    '--overwrite_existing=1 ' .
+              /*
+               * These relationships will be set after the batch-object has been reviewed.
+               *
+                   (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                    (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
+               */
                    ' --target=' . $filepath;
   $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
   $retval .= $markup;

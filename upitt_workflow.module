@@ -14,6 +14,7 @@ define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup t
 define('UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY', 3); // ingest completed
 define('UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_STARTED', 145); // ingest started
 define('UPITT_WORKFLOW_ACTION_HOLDING_FILES_MOVED', 146); // files moved and prepared
+define('UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE', 147); // object published on site
 
 
 /**
@@ -274,7 +275,7 @@ function upitt_workflow_theme() {
       'template' => 'theme/upitt-workflow-report',
     ),
     'upitt_workflow_report_with_detail_table' => array(
-      'variables' => array('details' => NULL, 'files_table' => NULL, 'status_table', 'title' => '', 'links' => '', 'post_to' => ''),
+      'variables' => array('details' => NULL, 'files_table' => NULL, 'drive_along_workflow', 'status_table', 'title' => '', 'links' => '', 'post_to' => ''),
       'template' => 'theme/upitt-workflow-report-with-detail-table',
     ),
     'workflow_item_details' => array(

@@ -103,10 +103,21 @@ function upitt_workflow_legacy_objects() {
   return $form;
 }
 
+/**
+ * This will create the detail report for any given object from the workflow database.
+ *
+ * Based on the status of the object, there will be some relevant content to drive
+ * the workflow along such as a link to review the content and another link to publish
+ * the object to the site(s) / collection(s) related to the batch record.
+ *
+ * @param string $do_id
+ * @return #markup array
+ */
 function upitt_workflow_legacy_objectreport_form($do_id) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $status = upitt_workflow_get_status($do_id);
+  $drive_workflow_along = upitt_workflow_drive_along($do_id, $status);
 
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
@@ -262,13 +273,15 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
   }
   $links[] = l('Islandora Ingest', '/workflow/object/' . $do_id . '/islandora_ingest');
 
+  $last_status = $status[count($status) - 1]['description'];
   $table_markup = theme('upitt_workflow_report_with_detail_table',
       array('details' => $details,
             'workflow_sequence_name' => $workflow_sequence_name,
+            'drive_along_workflow' => $drive_workflow_along,
             'status_table' => theme('table', array('rows'=>$status_rows,'header'=>$status_headings)),
 //  ((count($status_table_problems) > 0) ? '<div class="messages error">' . implode('</div><div class="messages error">', $status_table_problems) . '</div>' : '') . theme('table', array('rows'=>$status_rows,'header'=>$status_headings)),
             'files_table' => theme('table', array('rows'=>$files_rows,'header'=>$files_headings)),
-            'title' => $title,
+            'title' => $title . ' <br><b>Last status:</b> ' . $last_status,
             'breadcrumb' => upitt_workflow_get_breadcrumb_path(),
             'links' => $links,
             'post_to' => '/workflow/object/' . $do_id,
@@ -279,4 +292,72 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
     'table_markup' => array('#markup' => $table_markup),
   );
   return $content;
+}
+
+/**
+ * This will inspect the status values for the given object and return markup of relevant
+ * links to drive the workflow along.
+ * 
+ * @param string $do_id
+ * @param array $status with 'description' and 'timestamp' values for each element
+ * @return array of #markup
+ */
+function upitt_workflow_drive_along($do_id, $status) {
+   $ingest_started = $ingested = $published_on_site = FALSE;
+
+  foreach ($status as $a_status) {
+    $ingest_started |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_STARTED);
+    $ingested |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY);
+    $published_on_site |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE);
+  }
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+
+  $pid = $ingest_namespace . $do_id;
+  $headings = array('Action', 'Operation');
+  $rows = array();
+  $rows[] = array(
+      'Action' => 'Islandora Ingest',
+      'Operation' => (($ingest_started) ? 'done' : l('Islandora Ingest', 'workflow/object/' . $do_id . '/islandora_ingest')));
+  if (!$published_on_site) {
+    // add a row to allow review of the object in islandora
+    $rows[] = array(
+        'Action' => 'Review object',
+        'Operation' => l('Review', 'islandora/object/' . $pid));
+    // Get the batch's site and collection values - display them in an inactive row.
+    $batch_id = upitt_workflow_get_batch_id($do_id, FALSE);
+    $batch = upitt_workflow_batch_load($batch_id);
+    $batch_collection_names = $batch_site_names = array();
+    if (isset($batch['mapto_collections'])) {
+      $all_collections = upitt_workflow_get_solr_options('RELS_EXT_hasModel_uri_ms:info\:fedora\/islandora\:collectionCModel', 'PID', 'fgs_label_s');
+      $collections = explode(",", $batch['mapto_collections']);
+      foreach ($collections as $collection) {
+        if (isset($all_collections[$collection])) {
+          $batch_collection_names[] = $all_collections[$collection];
+        }
+      }
+    }
+    if (isset($batch['mapto_site_id_values'])) {
+      $all_sites = upitt_workflow_get_mysql_options('wflocal_fedora_site', 'Site', 'pid', 'name', 'name', 0);
+      $sites = explode(",", $batch['mapto_site_id_values']);
+      foreach ($sites as $site) {
+        if (isset($all_sites[$site])) {
+          $batch_site_names[] = $all_sites[$site];
+        }
+      }
+    }
+    if (count($batch_site_names) > 0) {
+      $rows[] = array('<i>site(s)</i>', '<em>' . implode(", ", $batch_site_names) . '</em>');
+    }
+    if (count($batch_collection_names) > 0) {
+      $rows[] = array('<i>collection(s)</i>', '<em>' . implode(", ", $batch_collection_names) . '</em>');
+    }
+  }
+  $rows[] = array(
+      'Action' => 'Publish on site',
+      'Operation' => ((!$published_on_site) ?
+        l('publish on site', 'workflow/object/' . $do_id . '/do_publish') :
+        l('published', 'islandora/object/' . $pid)));
+
+  $table_markup = theme('table', array('rows' => $rows, 'header'=>$headings, 'attributes' =>array('class'=>array('report_table'))));
+  return $table_markup;
 }

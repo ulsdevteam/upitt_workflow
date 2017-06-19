@@ -14,6 +14,12 @@
     <?php print_r($details); ?>
   </div>
   <div style="float:left;width:66%;overflow-x:auto;padding-left:2%">
+    <?php if ($drive_along_workflow): ?>
+    <h3>Operations<?php print ($workflow_sequence_name ? ': ' . $workflow_sequence_name : '');  ?></h3>
+    <?php print $drive_along_workflow; ?>
+    <hr>
+    <?php endif; ?>
+
     <h3>Status Transactions<?php print ($workflow_sequence_name ? ': ' . $workflow_sequence_name : '');  ?></h3>
     <?php print $status_table; ?>
   </div>
