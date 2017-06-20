@@ -26,10 +26,10 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
                    ' "PENDING NEW status TABLE" `status` ' .
                    'FROM batch b ' .
                    'LEFT OUTER JOIN `workflow_sequence` cws ON (cws.id = b.batch_sequence_id) ' .
-                   'JOIN `batch_item_type` bit ON (bit.id = b.type_id) ' .
+                   'LEFT OUTER JOIN `batch_item_type` bit ON (bit.id = b.type_id) ' .
 //                   'LEFT OUTER JOIN `content_types` ct ON (ct.content_type_id = b.content_type_id) ' .
-                   'JOIN `collection` c ON (c.id = b.mapto_collections) ' .
-                   'JOIN `property_owner` po ON (po.property_owner_id = b.batch_property_owner_id) ' .
+                   'LEFT OUTER JOIN `collection` c ON (c.id = b.mapto_collections) ' .
+                   'LEFT OUTER JOIN `property_owner` po ON (po.property_owner_id = b.batch_property_owner_id) ' .
                    (($is_all) ? '' : 'WHERE b.is_batch_active = 1 ') .
                    'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
 

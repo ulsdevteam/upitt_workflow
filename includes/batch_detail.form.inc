@@ -114,10 +114,13 @@ function upitt_workflow_batch_detail_form($batch_id) {
   if ($export_link) {
     $links[] = $export_link;
   }
+  $batch = upitt_workflow_batch_load($batch_id);
+
   $table_markup = theme('upitt_workflow_report',
       array('table' => $details, //$pager . theme('table', array('rows'=>$batch_rows,'header'=>$batch_item_headings,'attributes' =>array('class'=>array('report_table')))) . $pager,
             'count_rows' => $count_rows_markup,
             'links' => $links,
+            'batch_external_id' => $batch['batch_external_id'],
             'collection_filter_choices' => upitt_workflow_get_collection_choices(),
             'details' => '', // $details
            )

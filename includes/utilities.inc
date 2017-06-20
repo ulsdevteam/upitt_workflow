@@ -1133,7 +1133,12 @@ function upitt_workflow_save_batch($values, $collection_options) {
 }
 
 function upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link) {
-  $sql = "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id = $batch_id";
+  if (!$item_id) {
+    $sql = "SELECT id FROM batch_item WHERE batch_id = $batch_id GROUP BY batch_id";
+  }
+  else {
+    $sql = "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id = $batch_id";
+  }
   $result = mysqli_query($link, $sql);
   if (!$result) {
     upitt_workflow_sql_error_die($link, $sql);

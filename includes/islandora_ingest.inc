@@ -87,7 +87,8 @@ function upitt_workflow_islandora_ingest($batch_id) {
 
     $ingest_namespace = upitt_workflow_get_ingest_namespace();
 
-    $markup .= ' from batch <a href="/islandora/object/' . $ingest_namespace . $batch['batch_external_id'] . '/manage">' . $batch['batch_external_id'] . '</a></p>';
+    $markup .= ' from batch <a href="/islandora/object/' . $ingest_namespace . $batch['batch_external_id'] . '/manage">' . 
+        $batch['batch_external_id'] . '</a> or <a href="/workflow/object/' . $batch['batch_external_id'] . '">review workflow item</a></p>';
 
     $markup .= '<h3 style="color:green">Batch `Model` (default_type_of_resource) = "' . $batch['default_type_of_resource'] . '", yields fedora model: "' . $fedora_model_name . '"</h3><br>';
 
@@ -704,4 +705,35 @@ function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id) {
   file_unmanaged_delete($obj_ds_file);
   $derivative_file = $dest_file;
   return $derivative_file;
+}
+
+function upitt_workflow_ingest_now_redirect_detail_report($do_id) {
+  // 1. look up the set that corresponds to this object and passthru the
+  //    appropriate drush_command.
+  // 2. redirect back to the object detail page.
+  global $user;
+  
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');  
+  module_load_include('inc', 'islandora_batch', 'includes/db');
+
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+
+  $pid = $ingest_namespace . $do_id;
+  $set = islandora_batch_get_set_for_object($pid);
+  $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+
+  $ingest_set_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=' . $set;
+
+  $output = $return_var = array();
+  exec($ingest_set_drush_command, $output, $return_var);
+
+  if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
+    drupal_set_message('There was an error calling the drush command : "' . $ingest_set_drush_command . '".
+' . implode('<br/>', $output), 'error');
+  } else {
+    drupal_set_message('The drush command to ingest this set has been issued.  The object should be ingested soon unless there are a lot of object in the queue.
+The drush command was "' . $ingest_set_drush_command . '"');
+  }
+
+  drupal_goto('/workflow/object/' . $do_id);
 }

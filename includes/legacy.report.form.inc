@@ -95,6 +95,7 @@ function upitt_workflow_legacy_objects() {
             'count_rows' => $count_rows_markup,
             'links' => $links,
             'breadcrumb' => '',
+            'batch_external_id' => '',
             'post_to' => '/workflow',
             'collection_filter_choices' => upitt_workflow_get_collection_choices(),
            )
@@ -141,6 +142,7 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
   $object_title = (is_object($islandora_object) ? $islandora_object->label : $do_id);
   $title = "Workflow object | " . (is_object($islandora_object) ? 'Islandora: "' . l($islandora_object->label, '/islandora/object/' . $pid) . '"' : $do_id);
 
+  $details = '';
   $files_headings = $status_headings = $files_rows = $required_workflow_actions = $status_rows = array();
   while ($row = mysqli_fetch_assoc($result)) {
     if (isset($row['batch_id']) && isset($row['name'])) {
@@ -154,7 +156,7 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
       // this has to lookup the collection names from the array that is loaded before this loop.
       $row['collection/s'] = upitt_workflow_collection_id_map_names($row['collection/s'], $collections);
     }
-
+    $row['title'] = iconv("ISO-8859-1//IGNORE", "UTF-8", $row['title']);
     // TODO: this edit link may need to be suppressed if the batch is at a specific stage.
     $edit_item_link = l('Edit "' . $object_title . '"', '/workflow/object/' . $do_id . '/edit');
 

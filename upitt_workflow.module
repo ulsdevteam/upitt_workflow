@@ -100,6 +100,13 @@ function upitt_workflow_menu() {
       'file' => 'includes/islandora_ingest.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
+    'workflow/object/%/islandora_ingest_now' => array(
+      'page callback' => array('upitt_workflow_ingest_now_redirect_detail_report'),
+      'page arguments' => array(2),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/islandora_ingest.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
     // handler to redirect when using the "look up an item by id" search box 
     'workflow/item/get' => array(
       'title' => t('Workflow Item'),
@@ -276,7 +283,7 @@ function upitt_workflow_theme() {
       'variables' => array('markup' => ''),
       'template' => 'theme/upitt-workflow-markup'),
     'upitt_workflow_report' => array(
-      'variables' => array('table' => NULL, 'count_rows' => '', 'links' => '', 'collection_filter_choices' => '', 'details' => ''),
+      'variables' => array('table' => NULL, 'count_rows' => '', 'links' => '', 'collection_filter_choices' => '', 'details' => '', 'batch_external_id' => ''),
       'template' => 'theme/upitt-workflow-report',
     ),
     'upitt_workflow_report_with_detail_table' => array(

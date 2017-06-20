@@ -21,6 +21,7 @@ function upitt_workflow_objects() {
             'links' => $links,
             'breadcrumb' => '',
             'post_to' => '',
+            'batch_external_id' => '',
             'collection_filter_choices' => upitt_workflow_get_collection_choices(),
            )
     );
