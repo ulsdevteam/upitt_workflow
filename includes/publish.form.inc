@@ -63,16 +63,34 @@ function upitt_workflow_do_publish_submit(array $form, array &$form_state) {
 
   $object_id = $form_state['values']['do_id'];
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
-  $pid = $ingest_namespace . $object_id;
   $sites = $form_state['values']['sites'];
   $collections = $form_state['values']['collections'];
 
-  dpm($sites);
-  dpm($collections);
-dpm($pid);
-  //upitt_workflow_set_status_for_batch($object_id, UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE, NULL);
+  if (count($sites) > 0 || count($collections) > 0) {
+    // 1. load the islandora_object - and loop through collections and sites to add
+    // these relationships using the upitt_workflow_addRelationship - which will ensure
+    // that duplicate relationships are not added.
+    $pid = $ingest_namespace . $object_id;
+    $object = islandora_object_load($pid);
 
-  drupal_set_message('Published "' . $object_id . '" to sites and collections.');
+    foreach ($sites as $site) {
+      $object->relationships->remove('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
+      $object->relationships->add('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
+    }
 
+    foreach ($collections as $collection) {
+      $object->relationships->remove(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
+      $object->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
+    }
+
+    upitt_workflow_set_status_for_batch($object_id, UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE, NULL);
+    drupal_set_message('Published "' . $object_id . '" to sites and collections.');
+  }
+  else {
+    drupal_set_message('There were no sites or collections related to the object "' . $object_id . '"', 'warning');
+  }
   $form_state['redirect'] = '/workflow/object/' . $object_id;
+
+
 }
+

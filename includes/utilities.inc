@@ -1592,3 +1592,30 @@ function upitt_workflow_update_batch_file($batch_external_id, $local_name) {
   $sql = "UPDATE batch SET file = '" . $local_name . "' WHERE batch_external_id = '" . $batch_external_id . "'";
   dpm($sql);
 }
+
+/**
+ * This will add the relationship specified by the predicate_uri, predicate
+ * and relation and make sure that the relationship does not exist before adding it.
+ *
+ * @param fedora_object $object
+ * @param string $predicate_uri
+ * @param string $predicate
+ * @param type $relation
+ * @param type $type
+ */
+function upitt_workflow_addRelationship($object, $predicate_uri, $predicate, $relation, $type) {
+  // get the current relationships
+  $rels = $object->relationships->get($predicate_uri, $relation);
+  dpm($predicate . ' || ' . $relation);
+  dpm($rels);
+  $existed = FALSE;
+  foreach ($rels as $rel) {
+    $existed |= ((isset($rel['object']['value']) && $rel['object']['value'] == $relation) && (isset($rel['predicate']['value']) && $rel['predicate']['value'] == $predicate));
+  }
+  if (!$existed) {
+    $relationships = $object->relationships;
+    $relationships->add($predicate_uri,$predicate,$relation,$type);
+  }
+  return !$existed;
+}
+

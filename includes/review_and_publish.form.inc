@@ -52,7 +52,7 @@ function upitt_workflow_review_and_publish(array $form, array &$form_state) {
     $test_object = islandora_object_load($pid);
     $review = (!is_object($test_object)) ? '<span class="error">object missing</span>' : l('Review', '/islandora/object/' . $pid);
 
-    $publish = l('Publish', '/workflow/object/' . $batch_external_id . '/do_publish');
+    $publish = (!is_object($test_object)) ? '<span class="error">object missing</span>' : l('Publish', '/workflow/object/' . $batch_external_id . '/do_publish');
     $row['operation'] = array('data' => $review . ' | ' . $publish);
 
     $rows[] = $row;
