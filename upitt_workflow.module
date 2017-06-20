@@ -84,6 +84,14 @@ function upitt_workflow_menu() {
       'file' => 'includes/item.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
+    'workflow/ready_to_publish' => array(
+      'title' => t('Review / Ready to Publish'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_review_and_publish'),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/review_and_publish.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
     'workflow/object/%/do_publish' => array(
       'title' => t('Publish to site'),
       'page callback' => 'drupal_get_form',

@@ -276,9 +276,9 @@ function upitt_workflow_get_item($object_id) {
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $query = 'SELECT i.id, i.do_id, i.name, i.type_id, i.property_owner_id, i.primary_collection_id, ' .
            ' (SELECT b.mapto_collections FROM batch b JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
-           '  WHERE bi.item_id = i.id) `collections`, ' .
+           '  WHERE bi.item_id = i.id ORDER BY bi.id DESC LIMIT 1) `collections`, ' .
            ' (SELECT b.mapto_site_id_values FROM batch b JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
-           '  WHERE bi.item_id = i.id) `sites` ' .
+           '  WHERE bi.item_id = i.id ORDER BY bi.id DESC LIMIT 1) `sites` ' .
            'FROM item i ' .
            'WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '"';
 
