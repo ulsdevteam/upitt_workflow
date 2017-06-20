@@ -75,12 +75,12 @@ function upitt_workflow_admin_manage($listname = '') {
              'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
 
   if ($listname == 'workflow_sequence_actions') {
-    $records = 'SELECT wsa.id `id`, wsa.workflow_sequence_id `workflow_sequence_id`, wsa.action_id `action_id`, wsa.`order` `order`, ws.name, ws.description ' .
+    $records = 'SELECT wsa.id `id`, wsa.workflow_sequence_id `workflow_sequence_id`, wsa.action_id `action_id`, wsa.`order` `order`, ws.name, wa.description ' .
                'FROM `workflow_sequence_actions` wsa ' .
-               'JOIN workflow_sequence ws ON (ws.id = wsa.workflow_sequence_id) ' .
+               'JOIN `workflow_sequence` ws ON (ws.id = wsa.workflow_sequence_id) ' .
+    'JOIN `action` wa ON (wa.id = wsa.action_id) ' . 
                'ORDER BY wsa.workflow_sequence_id, wsa.`order` ' . 
                'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
-      // str_replace(array(' FROM ', ' LIMIT '), array(', ws.name, ws.description FROM ', ' JOIN workflow_sequence ws ON (ws.id = workflow_sequence_id) ORDER BY workflow_sequence_id, `order` LIMIT '), $records);
   }
 
   $query = 'SELECT count(*) as `total` ' .

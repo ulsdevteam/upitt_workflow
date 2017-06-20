@@ -126,7 +126,7 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
                   'JOIN batch_item bi ON (bi.item_id = i.id) ' .
                   'JOIN batch b ON (bi.batch_id = b.batch_id) ' .
                   'WHERE i.do_id = \'' . upitt_workflow_safe_qstring($link, $do_id) . '\'';
-dpm($detail_query);
+
   $result = mysqli_query($link, $detail_query);
   if (!$result) {
     upitt_workflow_sql_error_die($link, $detail_query);
@@ -320,9 +320,15 @@ function upitt_workflow_drive_along($do_id, $status) {
       'Operation' => (($ingest_prepared) ? 'prepared' : l('Islandora Ingest Preprocess', '/workflow/object/' . $do_id . '/islandora_ingest')));
   if (!$published_on_site) {
     // add a row to allow review of the object in islandora
-    $rows[] = array(
-        'Action' => 'Review object',
-        'Operation' => l('Review', '/islandora/object/' . $pid));
+    if ($ingested) {
+      $rows[] = array(
+          'Action' => 'Review object',
+          'Operation' => l('Review', '/islandora/object/' . $pid));
+    } else {
+      $rows[] = array(
+          'Action' => 'Ingest now',
+          'Operation' => l('Islandora Ingest Preprocess', '/workflow/object/' . $do_id . '/islandora_ingest_now'));
+    }
     // Get the batch's site and collection values - display them in an inactive row.
     $batch_id = upitt_workflow_get_batch_id($do_id, FALSE);
     $batch = upitt_workflow_batch_load($batch_id);
@@ -355,7 +361,7 @@ function upitt_workflow_drive_along($do_id, $status) {
   $rows[] = array(
       'Action' => 'Publish on site',
       'Operation' => ((!$published_on_site) ?
-        l('publish on site', '/workflow/object/' . $do_id . '/do_publish') :
+        ($ingested ? l('publish on site', '/workflow/object/' . $do_id . '/do_publish') : 'pending ingest') :
         l('published', '/islandora/object/' . $pid)));
 
   $table_markup = theme('table', array('rows' => $rows, 'header'=>$headings, 'attributes' =>array('class'=>array('report_table'))));
