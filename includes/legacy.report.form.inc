@@ -269,9 +269,9 @@ dpm($detail_query);
   }
 
   if (module_exists('islandora_mets_editor')) {
-    $links[] = l('Edit METS', 'islandora/object/' . $ingest_namespace . $do_id . '/manage/mets_editor');
+    $links[] = l('Edit METS', '/islandora/object/' . $ingest_namespace . $do_id . '/manage/mets_editor');
   }
-  $links[] = l('Islandora Ingest', '/workflow/object/' . $do_id . '/islandora_ingest');
+  $links[] = l('Islandora Ingest Preprocess', '/workflow/object/' . $do_id . '/islandora_ingest');
 
   $last_status = (count($status) > 0) ? $status[count($status) - 1]['description'] : ' -- no status records -- ';
   $table_markup = theme('upitt_workflow_report_with_detail_table',
@@ -316,13 +316,13 @@ function upitt_workflow_drive_along($do_id, $status) {
   $headings = array('Action', 'Operation');
   $rows = array();
   $rows[] = array(
-      'Action' => 'Islandora Ingest',
-      'Operation' => (($ingest_prepared) ? 'prepared' : l('Islandora Ingest', 'workflow/object/' . $do_id . '/islandora_ingest')));
+      'Action' => 'Islandora Ingest Preprocess',
+      'Operation' => (($ingest_prepared) ? 'prepared' : l('Islandora Ingest Preprocess', '/workflow/object/' . $do_id . '/islandora_ingest')));
   if (!$published_on_site) {
     // add a row to allow review of the object in islandora
     $rows[] = array(
         'Action' => 'Review object',
-        'Operation' => l('Review', 'islandora/object/' . $pid));
+        'Operation' => l('Review', '/islandora/object/' . $pid));
     // Get the batch's site and collection values - display them in an inactive row.
     $batch_id = upitt_workflow_get_batch_id($do_id, FALSE);
     $batch = upitt_workflow_batch_load($batch_id);
@@ -355,8 +355,8 @@ function upitt_workflow_drive_along($do_id, $status) {
   $rows[] = array(
       'Action' => 'Publish on site',
       'Operation' => ((!$published_on_site) ?
-        l('publish on site', 'workflow/object/' . $do_id . '/do_publish') :
-        l('published', 'islandora/object/' . $pid)));
+        l('publish on site', '/workflow/object/' . $do_id . '/do_publish') :
+        l('published', '/islandora/object/' . $pid)));
 
   $table_markup = theme('table', array('rows' => $rows, 'header'=>$headings, 'attributes' =>array('class'=>array('report_table'))));
   return $table_markup;

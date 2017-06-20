@@ -84,11 +84,16 @@ function upitt_workflow_menu() {
       'file' => 'includes/item.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
+    'workflow/object/%/do_publish' => array(
+      'title' => t('Publish to site'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_do_publish', 2),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/publish.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
     'workflow/object/%/islandora_ingest' => array(
-      'title' => t('Islandora Ingest'),
-/*      'page callback' => 'drupal_get_form',
-      'page arguments' => array('upitt_workflow_islandora_object_ingest', 2),
- */
+      'title' => t('Islandora Ingest Preprocess'),
       'page callback' => 'upitt_workflow_islandora_object_ingest',
       'page arguments' => array(2),
       'type' => MENU_CALLBACK,
@@ -136,7 +141,7 @@ function upitt_workflow_menu() {
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
     'workflow/batch/%/islandora_ingest' => array(
-      'title' => t('Islandora Ingest'),
+      'title' => t('Islandora Ingest Preprocess'),
       'page callback' => 'upitt_workflow_islandora_ingest',
       'page arguments' => array(2),
       'type' => MENU_CALLBACK,

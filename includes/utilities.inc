@@ -275,14 +275,10 @@ function upitt_workflow_batch_of_item($object_id) {
 function upitt_workflow_get_item($object_id) {
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $query = 'SELECT i.id, i.do_id, i.name, i.type_id, i.property_owner_id, i.primary_collection_id, ' .
-           ' (SELECT GROUP_CONCAT(lfc.pid) ' . 
-           ' FROM wflocal_local_item_fedora_collections lifc ' . 
-           ' JOIN wflocal_fedora_collection lfc ON (lfc.id = lifc.fedora_collection_id) ' .
-           ' WHERE lifc.local_item_id = i.id) `collections`, ' .
-           ' (SELECT GROUP_CONCAT(lfs.pid) ' .
-           ' FROM wflocal_local_item_fedora_sites lifs ' .
-           ' JOIN wflocal_fedora_site lfs ON (lfs.id = lifs.fedora_site_id) ' .
-           ' WHERE lifs.local_item_id = i.id) `sites` ' .	
+           ' (SELECT b.mapto_collections FROM batch b JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
+           '  WHERE bi.item_id = i.id) `collections`, ' .
+           ' (SELECT b.mapto_site_id_values FROM batch b JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
+           '  WHERE bi.item_id = i.id) `sites` ' .
            'FROM item i ' .
            'WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $object_id) . '"';
 
@@ -1137,10 +1133,18 @@ function upitt_workflow_save_batch($values, $collection_options) {
 }
 
 function upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link) {
-  $sql = "REPLACE INTO batch_item (item_id, batch_id) VALUES (" . $item_id . ", " . $batch_id . ")";
+  $sql = "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id = $batch_id";
   $result = mysqli_query($link, $sql);
   if (!$result) {
     upitt_workflow_sql_error_die($link, $sql);
+  }
+  $row = mysqli_fetch_assoc($result);
+  if (!isset($row['id'])) {
+    $sql = "INSERT INTO batch_item (item_id, batch_id) VALUES (" . $item_id . ", " . $batch_id . ")";
+    $result = mysqli_query($link, $sql);
+    if (!$result) {
+      upitt_workflow_sql_error_die($link, $sql);
+    }
   }
 }
 

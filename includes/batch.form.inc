@@ -581,6 +581,9 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
     }
   }
 
+  if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
+    $paged_object_folder = ($content_model == 'manuscriptCModel') ? $batch_path . '/manuscript' : $batch_path . '/book';
+  }
   $mods_file = '';
   if (!$do_copy) {
     $markup = "<h3>Report of copying files from '" . $holdings_folder . "' to '" . $batch_path . "'</h3>";
@@ -607,7 +610,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
     }
     mkdir($batch_path);
     if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
-      mkdir($batch_path . '/book');
+      mkdir($paged_object_folder);
     }
     $obj_filename = '';
 
@@ -622,10 +625,10 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
               $extension = (isset($this_fileinfo['extension'])) ? $this_fileinfo['extension'] : '';
               if (strtolower($file_baseName) <> 'target') {
                 $page_folder = $this_fileinfo['filename'];
-                mkdir($batch_path . '/book/' . $page_folder);
-                copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $page_folder . '/' . $file);
-                rename($batch_path . '/book/' . $page_folder . '/' . $file, $batch_path . '/book/' . $page_folder . '/OBJ.' . $extension);
-                $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/" . $page_folder . "/OBJ." . $extension . "'<br>";
+                mkdir($paged_object_folder . '/' . $page_folder);
+                copy($holdings_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/' . $file);
+                rename($paged_object_folder . '/' . $page_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/OBJ.' . $extension);
+                $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . '/' . $page_folder . "/OBJ." . $extension . "'<br>";
               }
             }
             else {
@@ -640,9 +643,9 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
             break;
           case '*.marcxml.xml':
             if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
-              copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $file);
-              rename($batch_path . '/book/' . $file, $batch_path . '/book/--METADATA--.xml');
-              $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/--METADATA--.xml'<br>";
+              copy($holdings_folder . '/' . $file, $paged_object_folder . '/' . $file);
+              rename($paged_object_folder . '/' . $file, $paged_object_folder . '/--METADATA--.xml');
+              $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
             }
             else {
               copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
@@ -652,9 +655,9 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
             break;
           case '*.mets.xml':
             if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
-              copy($holdings_folder . '/' . $file, $batch_path . '/book/' . $file);
-              rename($batch_path . '/book/' . $file, $batch_path .  '/book/METS.xml');
-              $markup .= "Moved and renamed '$file' to '" . $batch_path . "/book/METS.xml'<br>";
+              copy($holdings_folder . '/' . $file, $paged_object_folder . '/' . $file);
+              rename($paged_object_folder . '/' . $file, $paged_object_folder . '/METS.xml');
+              $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . "/METS.xml'<br>";
             }
             else {
               copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
@@ -669,9 +672,9 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
     }
     if ($mods_file) {
       if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
-        copy($holdings_folder . '/' . $mods_file, $batch_path . '/book/' . $mods_file);
-        rename($batch_path . '/book/' . $mods_file, $batch_path . '/book/--METADATA--.xml');
-        $markup .= "Moved and renamed '$mods_file' to '" . $batch_path . "/book/--METADATA--.xml'<br>";
+        copy($holdings_folder . '/' . $mods_file, $paged_object_folder . '/' . $mods_file);
+        rename($paged_object_folder . '/' . $mods_file, $paged_object_folder . '/--METADATA--.xml');
+        $markup .= "Moved and renamed '$mods_file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
       }
       else {
         copy($holdings_folder . '/' . $mods_file, $batch_path . '/' . $mods_file);
@@ -695,7 +698,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
   // exist in the batch path, download the XML from voystaff.  This is only needed
   // if there is not a MODS file.
   if (($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') && !$mods_file) {
-    $marc_filename = $batch_path . '/book/--METADATA--.xml';
+    $marc_filename = $paged_object_folder . '/--METADATA--.xml';
     if (!file_exists($marc_filename)) {
       // download the MARC file and save it... display / log the results.
       $markup .= '--METADATA--.xml did not exist<br>';
