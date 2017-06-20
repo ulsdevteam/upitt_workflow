@@ -126,7 +126,7 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
                   'JOIN batch_item bi ON (bi.item_id = i.id) ' .
                   'JOIN batch b ON (bi.batch_id = b.batch_id) ' .
                   'WHERE i.do_id = \'' . upitt_workflow_safe_qstring($link, $do_id) . '\'';
-
+dpm($detail_query);
   $result = mysqli_query($link, $detail_query);
   if (!$result) {
     upitt_workflow_sql_error_die($link, $detail_query);
@@ -273,7 +273,7 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
   }
   $links[] = l('Islandora Ingest', '/workflow/object/' . $do_id . '/islandora_ingest');
 
-  $last_status = $status[count($status) - 1]['description'];
+  $last_status = (count($status) > 0) ? $status[count($status) - 1]['description'] : ' -- no status records -- ';
   $table_markup = theme('upitt_workflow_report_with_detail_table',
       array('details' => $details,
             'workflow_sequence_name' => $workflow_sequence_name,
@@ -303,10 +303,10 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
  * @return array of #markup
  */
 function upitt_workflow_drive_along($do_id, $status) {
-   $ingest_started = $ingested = $published_on_site = FALSE;
+   $ingest_prepared = $ingested = $published_on_site = FALSE;
 
   foreach ($status as $a_status) {
-    $ingest_started |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_STARTED);
+    $ingest_prepared |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED);
     $ingested |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY);
     $published_on_site |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE);
   }
@@ -317,7 +317,7 @@ function upitt_workflow_drive_along($do_id, $status) {
   $rows = array();
   $rows[] = array(
       'Action' => 'Islandora Ingest',
-      'Operation' => (($ingest_started) ? 'done' : l('Islandora Ingest', 'workflow/object/' . $do_id . '/islandora_ingest')));
+      'Operation' => (($ingest_prepared) ? 'prepared' : l('Islandora Ingest', 'workflow/object/' . $do_id . '/islandora_ingest')));
   if (!$published_on_site) {
     // add a row to allow review of the object in islandora
     $rows[] = array(

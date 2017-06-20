@@ -116,7 +116,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
     }
 
     // Update the batch status record for the matching batch record for this batch_external_id
-    upitt_workflow_set_status_for_batch($batch['batch_external_id'], UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_STARTED, NULL);
+    upitt_workflow_set_status_for_batch($batch['batch_external_id'], UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED, NULL);
 
     $set = upitt_workflow_get_set($batch['batch_external_id']);
 
@@ -582,10 +582,6 @@ function upitt_workflow_retrieve_applicable_paged_content_cmodels() {
 function upitt_workflow_make_tn_large($object, $save_on_object) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
-  $str = (is_object($object) ? 'object = ' . $object->id : 'object NULL') . ' ';
-  $str .= (is_object($save_on_object) ? 'save_on_object = ' . $save_on_object->id : 'save_on_object NULL') . ' ';
-error_log('upitt_workflow_make_tn_large for ' . "\n" . $str);
-
   $obj_ds = NULL;
   $thumbnail_id = str_replace(':', '_', $save_on_object->id);
   $is_paged = upitt_workflow_is_paged_object($object);
@@ -626,11 +622,12 @@ error_log('upitt_workflow_make_tn_large for ' . "\n" . $str);
       $ds->mimetype = $mime_detector->getMimetype($temp_dest_file_uri);
     }
     $ds->setContentFromFile(drupal_realpath($temp_dest_file_uri));
-    file_unmanaged_delete($temp_dest_file_uri);
 
     if ($ingest) {
-      $object->ingestDatastream($ds);
+      $save_on_object->ingestDatastream($ds);
     }
+    file_unmanaged_delete($temp_dest_file_uri);
+
     return array(
       'success' => TRUE,
       'messages' => array(
@@ -704,7 +701,7 @@ function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id) {
     watchdog('islandora_large_image', 'ImageMagick failed to convert.<br/>Error: @ret<br/>Command: @command <br/>Output !output', $variables, WATCHDOG_ERROR);
     return FALSE;
   }
-  @file_unmanaged_delete($obj_ds_file);
+  file_unmanaged_delete($obj_ds_file);
   $derivative_file = $dest_file;
   return $derivative_file;
 }

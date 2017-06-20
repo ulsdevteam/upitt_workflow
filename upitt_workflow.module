@@ -12,7 +12,7 @@ define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup t
 
 // Constants for various workflow actions (transactions)
 define('UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY', 3); // ingest completed
-define('UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_STARTED', 145); // ingest started
+define('UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED', 145); // ingest prepared
 define('UPITT_WORKFLOW_ACTION_HOLDING_FILES_MOVED', 146); // files moved and prepared
 define('UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE', 147); // object published on site
 
@@ -527,8 +527,10 @@ function upitt_workflow_filters_clause($in) {
 function upitt_workflow_islandora_batch_process_finished($sets) {
   // Look at the object - and delete the related temporary files that were needed for this object.
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
   module_load_include('inc', 'islandora_paged_content', 'includes/derivatives');
   module_load_include('inc', 'islandora_batch', 'includes/db');
+
 
   upitt_workflow_log('in hook upitt_workflow_islandora_batch_process_finished - ready to delete files for object');
   //error_log('in hook upitt_workflow_islandora_batch_process_finished - ready to delete files for object' . "\n", 3, '/tmp/log');
@@ -541,8 +543,6 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
       foreach ($queued_items as $ingested_pid) {
         $ingested_object = islandora_object_load($ingested_pid);
         if (is_object($ingested_object)) {
-          upitt_workflow_log('object label = ' . $ingested_object->label . ' with PID ' . $ingested_object->id);
-          
           // See whether or not this is a paged-content object in order to call the
           // "aggregate PDF" and "aggregate OCR/HOCR" batch commands on it now.
           if (upitt_workflow_is_paged_object($ingested_object)) {
@@ -551,9 +551,9 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
 
             $pages = islandora_paged_content_get_pages($ingested_object);
             if (count($pages)) {
+              module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
               $page = array_shift($pages);
               $page_object = islandora_object_load($page['pid']);
-              upitt_workflow_log('parent pid = ' . $page['pid']);
               upitt_workflow_make_tn_large($page_object, $ingested_object);
             }
           }

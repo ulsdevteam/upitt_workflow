@@ -1126,11 +1126,50 @@ function upitt_workflow_save_batch($values, $collection_options) {
     upitt_workflow_sql_error_die($link, $sql);
   }
 
+  $item_id = upitt_workflow_insert_item_for_batch_external_id($batch_external_id, $link);
+  upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link);
+
   mysqli_close($link);
   if (is_null($valid_upload) && upitt_workflow_model_uses_csv_to_make_mods($model)) {
     drupal_set_message('There was no CSV file uploaded for this batch.', 'warning');
   }
   return $batch_id;
+}
+
+function upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link) {
+  $sql = "REPLACE INTO batch_item (item_id, batch_id) VALUES (" . $item_id . ", " . $batch_id . ")";
+  $result = mysqli_query($link, $sql);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+}
+
+function upitt_workflow_insert_item_for_batch_external_id($batch_external_id, $link) {
+  // Update the item record for this do_id (*batch_external_id value)
+  $sql = "SELECT id FROM item WHERE `do_id` = '" . $batch_external_id . "'";
+  $result = mysqli_query($link, $sql);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+  $row = mysqli_fetch_assoc($result);
+  if (!isset($row['id'])) {
+    upitt_workflow_log('item record did not exist');
+    // If the passed $islandora_object is not null, use the label from that for this record.
+    $label = (is_null($islandora_object) ? '' : $islandora_object->label);
+    // Need to insert the item record.
+    $insert_item = 'INSERT INTO item (do_id, name, type_id, property_owner_id) ' .
+                   'VALUES ("' . upitt_workflow_safe_qstring($link, $batch_external_id) . '",' .
+                   ' "' . upitt_workflow_safe_qstring($link, $label) . '", ' . $batch['type_id'] . ', ' . $batch['batch_property_owner_id'] . ')';
+    mysqli_query($link, $insert_item);
+
+    $sql = "SELECT id FROM item WHERE `do_id` = '" . $batch_external_id . "'";
+    $result = mysqli_query($link, $sql);
+    if (!$result) {
+      upitt_workflow_sql_error_die($link, $sql);
+    }
+    $row = mysqli_fetch_assoc($result);
+  }
+  return $row['id'];
 }
 
 function upitt_workflow_update_batch_nid($batch_id, $node) {
