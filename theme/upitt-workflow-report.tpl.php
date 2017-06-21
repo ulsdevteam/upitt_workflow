@@ -20,8 +20,6 @@
 
 ?>
 <?php
-  $links = upitt_workflow_get_basic_links($batch_external_id);
-
   include_once('upitt-workflow-admin-links.tpl.php');
   $breadcrumb = (isset($breadcrumb) ? $breadcrumb : '');
 ?>

@@ -502,21 +502,9 @@ Collections (legacy)
 function upitt_workflow_get_basic_links($do_id = '', $batch_id = '') {
   $item = menu_get_item();
   $active_attrib = array('attributes' => array('class' => 'active'));
-
   $links = array();
 
-  // Links specific to being on a specific batch page
-  if ($batch_id) {
-    $links[] = l('Edit', '/workflow/batch/edit/' . $batch_id,
-      ($item['path'] == 'workflow/batch/edit/%') ? $active_attrib : array());
-    // If the islandora_datastreams_io module is installed and the user has permission, create the export link.
-    if (module_exists('islandora_datastreams_io') && user_access(ISLANDORA_DATASTREAMS_IO)) {
-      $links[] = l('Export', '/workflow/datastreams_io/export/batch/' . $batch_id,
-        ($item['path'] == 'workflow/datastreams_io/export/batch/%') ? $active_attrib : array());
-    }
-  }
-
-  // Links specific to being on a specific object page
+    // Links specific to being on a specific object page
   if ($do_id) {
     // Check on the transactions for the current object - and initialize the links
     // array with the values pertaining to this object.
@@ -531,6 +519,18 @@ function upitt_workflow_get_basic_links($do_id = '', $batch_id = '') {
     $links[] = l('Workflow Status and Files', '/workflow/object/' . $do_id,
         ($item['path'] == 'workflow/object/%') ? $active_attrib : array());
   }
+
+  // Links specific to being on a specific batch page
+  if ($batch_id) {
+    $links[] = l('Edit batch', '/workflow/batch/edit/' . $batch_id,
+      ($item['path'] == 'workflow/batch/edit/%') ? $active_attrib : array());
+    // If the islandora_datastreams_io module is installed and the user has permission, create the export link.
+    if (module_exists('islandora_datastreams_io') && user_access(ISLANDORA_DATASTREAMS_IO)) {
+      $links[] = l('Export', '/workflow/datastreams_io/export/batch/' . $batch_id,
+        ($item['path'] == 'workflow/datastreams_io/export/batch/%') ? $active_attrib : array());
+    }
+  }
+
   $links[] = l('Active Batches', '/workflow/batches/active',
     ($item['path'] == 'workflow/batches/active') ? $active_attrib : array());
   $links[] = l('All Batches', '/workflow/batches/all',
