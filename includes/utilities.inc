@@ -332,6 +332,30 @@ function upitt_workflow_batch_of_item($object_id) {
 }
 
 /**
+ * This returns whether or not the batch_external_id value is also stored in the
+ * items table as a do_id value.
+ *
+ * @param type $batch_external_id
+ * @return type
+ */
+function upitt_workflow_batch_external_is_item($batch_external_id) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $query = 'SELECT i.id ' .
+           'FROM item i ' .
+           'WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $batch_external_id) . '" LIMIT 1';
+
+  $result = mysqli_query($link, $query);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $query);
+  }
+
+  $row = mysqli_fetch_assoc($result);
+
+  mysqli_close($link);
+  return isset($row['id']);
+}
+
+/**
  * Will return just item file record for the given object_id (legacy :do_id value).
  */
 function upitt_workflow_get_item($object_id) {
