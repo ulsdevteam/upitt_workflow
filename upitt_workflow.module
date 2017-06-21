@@ -504,6 +504,12 @@ function upitt_workflow_get_basic_links($do_id = '', $batch_id = '') {
   $active_attrib = array('attributes' => array('class' => 'active'));
   $links = array();
 
+  // if there is a batch_id and not a do_id, try to use batch_external_id value as do_id
+  if (!$do_id && $batch_id) {
+    $batch = upitt_workflow_batch_load($batch_id);
+    $do_id = $batch['batch_external_id'];
+  }
+
     // Links specific to being on a specific object page
   if ($do_id) {
     // Check on the transactions for the current object - and initialize the links
