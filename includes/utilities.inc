@@ -296,7 +296,7 @@ function upitt_workflow_drive_along_links($do_id, $status) {
     if ($ingested) {
       $links[] = l('Review object', '/islandora/object/' . $pid,
         ($item['path'] == 'islandora/object/%') ? $active_attrib : array());
-    } else {
+    } elseif ($ingest_prepared) {
       $links[] = l('Ingest Now', '/workflow/object/' . $do_id . '/islandora_ingest_now',
         ($item['path'] == 'workflow/object/%/islandora_ingest_now') ? $active_attrib : array());
     }
@@ -306,7 +306,6 @@ function upitt_workflow_drive_along_links($do_id, $status) {
   else {
     $links[] = 'Object is <b>published on site</b>';
   }
-dpm($item['path']);
   return $links;
 }
 
@@ -1669,8 +1668,6 @@ function upitt_workflow_update_batch_file($batch_external_id, $local_name) {
 function upitt_workflow_addRelationship($object, $predicate_uri, $predicate, $relation, $type) {
   // get the current relationships
   $rels = $object->relationships->get($predicate_uri, $relation);
-  dpm($predicate . ' || ' . $relation);
-  dpm($rels);
   $existed = FALSE;
   foreach ($rels as $rel) {
     $existed |= ((isset($rel['object']['value']) && $rel['object']['value'] == $relation) && (isset($rel['predicate']['value']) && $rel['predicate']['value'] == $predicate));

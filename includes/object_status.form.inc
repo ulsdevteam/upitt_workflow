@@ -7,7 +7,7 @@ function upitt_workflow_object_status(array $form, array &$form_state) {
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
   $records = 'SELECT b.batch_external_id, b.batch_id, t.timestamp `most recent transaction`, ' .
-             ' (SELECT GROUP_CONCAT(a.description SEPARATOR "<br>") ' .
+             ' (SELECT GROUP_CONCAT(DISTINCT a.description SEPARATOR "<br>") ' .
              '  FROM `transaction_actions` a ' .
              '  JOIN `transaction` t2 ON (t2.transaction_action_id = a.id) ' .
              '  WHERE bi.item_id = t2.item_id ' .
@@ -25,8 +25,6 @@ function upitt_workflow_object_status(array $form, array &$form_state) {
            'FROM batch b ' .
            'JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
            'JOIN `transaction` t ON (t.item_id = bi.item_id)';
-
-  dpm($records);
 
   $result = mysqli_query($link, $query, MYSQLI_USE_RESULT);
 
