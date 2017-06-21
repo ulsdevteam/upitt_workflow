@@ -1,8 +1,5 @@
 <?php include_once('upitt-workflow-breadcrumb.tpl.php'); ?>
 <?php
-  $links[] = l('Active Batches', '/workflow/batches/active');
-  $links[] = l('All Batches', '/workflow/batches/all');
-  $links[] = l('Collections (legacy)', '/workflow/collection');
   include_once('upitt-workflow-admin-links.tpl.php');
 ?>
 <?php include_once('upitt-workflow-findobject-form.tpl.php'); ?>

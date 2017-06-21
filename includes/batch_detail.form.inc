@@ -106,14 +106,7 @@ function upitt_workflow_batch_detail_form($batch_id) {
   mysqli_close($link);
 
   $pager = theme('pager', array('quantity',$count_rows));
-  $links = array(l('Edit', '/workflow/batch/edit/' . $batch_id),
-                 l('Islandora Ingest Preprocess', '/workflow/batch/' . $batch_id . '/islandora_ingest'));
-  // If the islandora_datastreams_io module is installed and the user has permission, create the export link.
-  $export_link = ((module_exists('islandora_datastreams_io') && user_access(ISLANDORA_DATASTREAMS_IO)) ?
-    l('Export', '/workflow/datastreams_io/export/batch/' . $batch_id) : '');
-  if ($export_link) {
-    $links[] = $export_link;
-  }
+  $links = upitt_workflow_get_basic_links('', $batch_id);
   $batch = upitt_workflow_batch_load($batch_id);
 
   $table_markup = theme('upitt_workflow_report',

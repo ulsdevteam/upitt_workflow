@@ -1,17 +1,22 @@
 <?php
 
-function upitt_workflow_review_and_publish(array $form, array &$form_state) {
+function upitt_workflow_object_status(array $form, array &$form_state) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
-  $records = 'SELECT b.batch_external_id, b.batch_id, t.timestamp, \'\' `operation` ' .
+  $records = 'SELECT b.batch_external_id, b.batch_id, t.timestamp `most recent transaction`, ' .
+             ' (SELECT GROUP_CONCAT(a.description SEPARATOR "<br>") ' .
+             '  FROM `transaction_actions` a ' .
+             '  JOIN `transaction` t2 ON (t2.transaction_action_id = a.id) ' .
+             '  WHERE bi.item_id = t2.item_id ' .
+             '  ORDER BY t2.timestamp DESC ' .
+             ' ) `transactions`, ' .
+             ' \'\' `operation` ' .
              'FROM batch b ' .
              'JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
-             'JOIN `transaction` t ON (t.item_id = bi.item_id AND t.transaction_action_id = ' . UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY . ') ' .
-             'LEFT OUTER JOIN `transaction` t2 ON (t2.item_id = bi.item_id AND t2.transaction_action_id = ' . UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE . ') ' .
-             'WHERE t2.id IS NULL ' .
+             'JOIN `transaction` t ON (t.item_id = bi.item_id) ' .
              'GROUP BY b.batch_id ' .
              'ORDER BY t.timestamp DESC ' .
              'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
@@ -19,9 +24,9 @@ function upitt_workflow_review_and_publish(array $form, array &$form_state) {
   $query = 'SELECT count(distinct b.batch_external_id) as `total` ' .
            'FROM batch b ' .
            'JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
-           'JOIN `transaction` t ON (t.item_id = bi.item_id AND t.transaction_action_id = ' . UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY . ') ' .
-           'LEFT OUTER JOIN `transaction` t2 ON (t2.item_id = bi.item_id AND t2.transaction_action_id = ' . UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE . ') ' .
-           'WHERE t2.id IS NULL';
+           'JOIN `transaction` t ON (t.item_id = bi.item_id)';
+
+  dpm($records);
 
   $result = mysqli_query($link, $query, MYSQLI_USE_RESULT);
 

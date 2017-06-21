@@ -3,8 +3,7 @@
 function upitt_workflow_collections_form($c_id = '') {
   list($count_rows_markup, $table_markup) = ($c_id <> '') ? upitt_workflow_collections_get_c_id_table($c_id) : upitt_workflow_collections_get_table();
 
-  $links = array(l('Active Batches', '/workflow/batches/active'),
-                 l('All Batches', '/workflow/batches/all') );
+  $links = upitt_workflow_get_basic_links();
   $breadcrumb = upitt_workflow_get_breadcrumb_path();
 
   $page['#markup'] = theme('upitt_workflow_collection_page', array('links' => $links, 'breadcrumb' => $breadcrumb, 'count_rows' => $count_rows_markup, 'table' => $table_markup));

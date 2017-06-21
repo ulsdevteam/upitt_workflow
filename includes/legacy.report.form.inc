@@ -270,10 +270,7 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
     $status_rows[] = array('description' => '<span style="color:red">' . str_replace(" not completed", "", $problem) . '</span>', 'time' => '', 'when' => '');
   }
 
-  if (module_exists('islandora_mets_editor')) {
-    $links[] = l('Edit METS', '/islandora/object/' . $ingest_namespace . $do_id . '/manage/mets_editor');
-  }
-  $links[] = l('Islandora Ingest Preprocess', '/workflow/object/' . $do_id . '/islandora_ingest');
+  $links = upitt_workflow_get_basic_links($do_id);
 
   $last_status = (count($status) > 0) ? $status[count($status) - 1]['description'] : ' -- no status records -- ';
   $table_markup = theme('upitt_workflow_report_with_detail_table',
@@ -329,7 +326,7 @@ function upitt_workflow_drive_along($do_id, $status) {
     } else {
       $rows[] = array(
           'Action' => 'Ingest now',
-          'Operation' => l('Islandora Ingest Preprocess', '/workflow/object/' . $do_id . '/islandora_ingest_now'));
+          'Operation' => l('Ingest Now', '/workflow/object/' . $do_id . '/islandora_ingest_now'));
     }
     // Get the batch's site and collection values - display them in an inactive row.
     $batch_id = upitt_workflow_get_batch_id($do_id, FALSE);

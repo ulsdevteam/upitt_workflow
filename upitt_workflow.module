@@ -84,6 +84,14 @@ function upitt_workflow_menu() {
       'file' => 'includes/item.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
     ),
+    'workflow/object_status_table' => array(
+      'title' => t('Object Status Report'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('upitt_workflow_object_status'),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/object_status.form.inc',
+      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+    ),
     'workflow/ready_to_publish' => array(
       'title' => t('Review / Ready to Publish'),
       'page callback' => 'drupal_get_form',
@@ -181,7 +189,7 @@ function upitt_workflow_menu() {
     ),
     'workflow/collection' => array(
       'title' => t('Workflow Collections (legacy)'), 
-      'page callback' => array('upitt_workflow_collections_form'),
+      'page callback' => 'upitt_workflow_collections_form',
       'type' => MENU_CALLBACK,
       'file' => 'includes/collections.inc',
       'access arguments' => array(ISLANDORA_WORKFLOW_MANAGE),
@@ -491,10 +499,57 @@ Active Batches
 All Batches
 Collections (legacy)
  */
-function upitt_workflow_get_basic_links() {
-  $links[] = l('Active Batches', '/workflow/batches/active');
-  $links[] = l('All Batches', '/workflow/batches/all');
-  $links[] = l('Workflow Collections (legacy)', '/workflow/collection');
+function upitt_workflow_get_basic_links($do_id = '', $batch_id = '') {
+  $item = menu_get_item();
+  $active_attrib = array('attributes' => array('class' => 'active'));
+
+  $links = array();
+
+  // Links specific to being on a specific batch page
+  if ($batch_id) {
+    $links[] = l('Edit', '/workflow/batch/edit/' . $batch_id,
+      ($item['path'] == 'workflow/batch/edit/%') ? $active_attrib : array());
+    // If the islandora_datastreams_io module is installed and the user has permission, create the export link.
+    if (module_exists('islandora_datastreams_io') && user_access(ISLANDORA_DATASTREAMS_IO)) {
+      $links[] = l('Export', '/workflow/datastreams_io/export/batch/' . $batch_id,
+        ($item['path'] == 'workflow/datastreams_io/export/batch/%') ? $active_attrib : array());
+    }
+  }
+
+  // Links specific to being on a specific object page
+  if ($do_id) {
+    // Check on the transactions for the current object - and initialize the links
+    // array with the values pertaining to this object.
+    $status = upitt_workflow_get_status($do_id);
+    $links = upitt_workflow_drive_along_links($do_id, $status);
+
+    if (module_exists('islandora_mets_editor')) {
+      $ingest_namespace = upitt_workflow_get_ingest_namespace();
+      $links[] = l('Edit METS', '/islandora/object/' . $ingest_namespace . $do_id . '/manage/mets_editor',
+        ($item['path'] == 'islandora/object/%/manage/mets_editor') ? $active_attrib : array());
+    }
+    $links[] = l('Workflow Status and Files', '/workflow/object/' . $do_id,
+        ($item['path'] == 'workflow/object/%') ? $active_attrib : array());
+  }
+  $links[] = l('Active Batches', '/workflow/batches/active',
+    ($item['path'] == 'workflow/batches/active') ? $active_attrib : array());
+  $links[] = l('All Batches', '/workflow/batches/all',
+    ($item['path'] == 'workflow/batches/all') ? $active_attrib : array());
+  $links[] = l(t('Review / Ready to Publish'), '/workflow/ready_to_publish',
+    ($item['path'] == 'workflow/ready_to_publish') ? $active_attrib : array());
+  $links[] = l(t('Object Status Report'), '/workflow/object_status_table',
+    ($item['path'] == 'workflow/object_status_table') ? $active_attrib : array());
+  $links[] = l('Workflow Collections (legacy)', '/workflow/collection',
+    ($item['path'] == 'workflow/collection') ? $active_attrib : array());
+
+  $links[] = l(t('Create Islandora Collection'), '/islandora/object/pitt%3Aroot/manage/overview/ingest');
+  $links[] = l(t('Make batch records from Workflow items'), '/workflow/workflowadmin/makebatch_from_workflow',
+    ($item['path'] == 'workflow/workflowadmin/makebatch_from_workflow') ? $active_attrib : array());
+  $links[] = l(t('Create New Batch'), '/workflow/batch/new',
+    ($item['path'] == 'workflow/batch/new') ? $active_attrib : array());
+  $links[] = l(t('Quick Status Change'), '/workflow/status/change',
+    ($item['path'] == 'workflow/status/change') ? $active_attrib : array());
+
   return $links;
 }
 

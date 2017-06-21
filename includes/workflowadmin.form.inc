@@ -8,11 +8,7 @@ function upitt_workflow_workflowadmin() {
   $breadcrumb = upitt_workflow_get_breadcrumb_path();
   $page = array();
 
-  $task_links[] = l(t('Create Islandora Collection'), '/islandora/object/pitt%3Aroot/manage/overview/ingest');
-  $task_links[] = l(t('Make batch records from Workflow items'), '/workflow/workflowadmin/makebatch_from_workflow');
-  $task_links[] = l(t('Create New Batch'), '/workflow/batch/new');
-  $task_links[] = l(t('Workflow Collections (legacy)'), '/workflow/collection');
-  $task_links[] = l(t('Quick Status Change'), '/workflow/status/change');
+  $task_links = upitt_workflow_get_basic_links();
 
   $page['#markup'] = theme('upitt_workflow_workflowadmin', array('links' => $links, 'task_links' => $task_links, 'breadcrumb' => $breadcrumb));
 

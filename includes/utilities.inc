@@ -248,6 +248,69 @@ function upitt_workflow_get_status($object_id) {
 }
 
 /**
+ * This will inspect the status values for the given object and return only the
+ * links relevant to drive the workflow along for this object.
+ *
+ * @param string $do_id
+ * @param array $status with 'description' and 'timestamp' values for each element
+ * @return array of #markup
+ */
+function upitt_workflow_drive_along_links($do_id, $status) {
+  $item = menu_get_item();
+  $active_attrib = array('attributes' => array('class' => 'active'));
+
+  $ingest_prepared = $ingested = $published_on_site = FALSE;
+
+  foreach ($status as $a_status) {
+    $ingest_prepared |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED);
+    $ingested |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY);
+    $published_on_site |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE);
+  }
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  // Get the batch record related to this object - to inspect for other batch-level action links
+  $batch_id = upitt_workflow_get_batch_id($do_id, FALSE);
+  $batch = upitt_workflow_batch_load($batch_id);
+  // TODO
+
+  $pid = $ingest_namespace . $do_id;
+  $headings = array('Action', 'Operation');
+  $links = array();
+
+  if (!$ingested && !$ingest_prepared) {
+    $links[] = l('Islandora Ingest Preprocess (single object)', '/workflow/object/' . $do_id . '/islandora_ingest',
+      ($item['path'] == 'workflow/object/%/islandora_ingest') ? $active_attrib : array());
+    $links[] = l('Islandora Ingest Preprocess (batch)', '/workflow/batch/' . $batch_id . '/islandora_ingest',
+      ($item['path'] == 'workflow/batch/%/islandora_ingest') ? $active_attrib : array());
+  }
+  else {
+    if ($ingested) {
+      $links[] = 'Object is <b>ingested</b>';
+    }
+    if ($ingest_prepared) {
+      $links[] = 'Object is <b>prepared</b>';
+    }
+  }
+
+  if (!$published_on_site) {
+    // add a row to allow review of the object in islandora
+    if ($ingested) {
+      $links[] = l('Review object', '/islandora/object/' . $pid,
+        ($item['path'] == 'islandora/object/%') ? $active_attrib : array());
+    } else {
+      $links[] = l('Ingest Now', '/workflow/object/' . $do_id . '/islandora_ingest_now',
+        ($item['path'] == 'workflow/object/%/islandora_ingest_now') ? $active_attrib : array());
+    }
+    $links[] = l('Relate to Site(s) / collection(s)', '/workflow/object/' . $do_id . '/do_publish',
+      ($item['path'] == 'workflow/object/%/do_publish') ? $active_attrib : array());
+  }
+  else {
+    $links[] = 'Object is <b>published on site</b>';
+  }
+dpm($item['path']);
+  return $links;
+}
+
+/**
  * Given an object identifier, this will return the batch that the item belongs to.  This will return NULL if the batch is not found.
  */
 function upitt_workflow_batch_of_item($object_id) {

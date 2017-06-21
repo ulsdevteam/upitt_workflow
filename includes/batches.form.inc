@@ -64,9 +64,8 @@ function upitt_workflow_batches_form(array $form, array &$form_state) {
   }
 
   $form = array();
-  $links = array(l('Active Batches', '/workflow/batches/active'),
-                 l('All Batches', '/workflow/batches/all') );
-
+  $links = upitt_workflow_get_basic_links();
+  
   mysqli_close($link);
   $ob1_page = $page + 1;
   $count_rows_markup = number_format($count_rows) . ($is_all ? '' : ' active') . " batches " . (($ob1_page <> 0) ? " (page " . $ob1_page . " of " . round($count_rows / WF_OBJECTS_PER_PAGE) . ")" : "");

@@ -20,12 +20,8 @@
 
 ?>
 <?php
-  if ($batch_external_id) {
-    $links[] = l('Workflow Status and Files', '/workflow/object/' . $batch_external_id);
-  }
-  $links[] = l('Active Batches', '/workflow/batches/active');
-  $links[] = l('All Batches', '/workflow/batches/all');
-  $links[] = l('Collections (legacy)', '/workflow/collection');
+  $links = upitt_workflow_get_basic_links($batch_external_id);
+
   include_once('upitt-workflow-admin-links.tpl.php');
   $breadcrumb = (isset($breadcrumb) ? $breadcrumb : '');
 ?>
