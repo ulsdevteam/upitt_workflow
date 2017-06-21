@@ -10,11 +10,12 @@
 //  1) check objects in islandora
 //  2) create or update batch records
 
-function upitt_workflow_make_batchrecords_form($form, &$form_state) {
+function upitt_workflow_process_barcodes_form($form, &$form_state) {
   $process_options = array(
     'checkobjects' => 'Check for Islandora Objects',
     'update' => 'Update batch records (no overwrite if islandora object exists)',
-    'updateforce' => 'Update batch records (force overwrite)');
+    'updateforce' => 'Update batch records (force overwrite)',
+    'ingest_prepare' => 'Islandora Ingest Preprocess');
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
     'barcodes' => array(
@@ -44,7 +45,7 @@ function upitt_workflow_make_batchrecords_form($form, &$form_state) {
   return $form;
 }
 
-function upitt_workflow_make_batchrecords_form_submit($form, &$form_state) {
+function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
   $markup = '';
 
   $btn_id = $form_state['triggering_element']['#id'];
@@ -52,6 +53,9 @@ function upitt_workflow_make_batchrecords_form_submit($form, &$form_state) {
     case 'edit-submit':
       if ($form_state['values']['mode'] == 'checkobjects') {
         $markup = upitt_workflow_process_check_islandora_for_barcodes($form_state['values']['barcodes']);
+      }
+      elseif ($form_state['values']['mode'] == 'ingest_prepare') {
+        $markup = upitt_workflow_ingest_preprocess_from_barcodes($form_state['values']['barcodes']);
       }
       else {
         $markup = upitt_workflow_make_batch_records_from_barcodes($form_state['values']['barcodes'], $form_state['values']['mode']);
@@ -76,8 +80,8 @@ function upitt_workflow_make_batchrecords_form_submit($form, &$form_state) {
  */
 function upitt_workflow_process_check_islandora_for_barcodes($barcodes) {
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
-  $markup = '<h2>Found in Islandora</h3><pre style="color:red">' . implode("\n", $check_results['found_pids']) . '</pre><hr>' .
-            '<h2>NOT found in Islandora</h3><pre style="color:green">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
+  $markup = '<h3>Found in Islandora</h3><pre style="color:red">' . implode("\n", $check_results['found_pids']) . '</pre><hr>' .
+            '<h3>NOT found in Islandora</h3><pre style="color:green">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
   return $markup;
 }
 
@@ -137,25 +141,23 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
 function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
-  global $databases, $user;
-  $drupal_database_name = $databases['default']['default']['database'];
-  $workflow_database_name = $databases['default']['mysql_new_workflow']['database'];
+  global $user;
 
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
   $markup = '';
   if ($mode == 'updateforce') {
-    $markup .= '<h2>Update batch records (force overwrite)</h3>';
+    $markup .= '<h2>Update batch records (force overwrite)</h2>';
     $use_pids = $check_results['found_pids'] + $check_results['not_found_pids']; // array_merge($check_results['found_pids'], $check_results['not_found_pids']);
     asort($use_pids);
   }
   else {
-    $markup .= '<h2>Update batch records (no overwrite if islandora object exists)</h3>';
+    $markup .= '<h2>Update batch records (no overwrite if islandora object exists)</h2>';
     $use_pids = $check_results['not_found_pids'];
   }
-  $markup .= '<h2>Process these Islandora PID values</h3><pre style="color:blue">' . implode("\n", $use_pids) . '</pre><hr>';
+  $markup .= '<h2>Process these Islandora PID values</h2><pre style="color:blue">' . implode("\n", $use_pids) . '</pre><hr>';
 
-  $markup .= '<h2>Found in Islandora</h3><pre style="color:red">' . implode("\n", $check_results['found_pids']) . '</pre>' .
-            '<h2>NOT found in Islandora</h3><pre style="color:green">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
+  $markup .= '<h2>Found in Islandora</h2><pre style="color:red">' . implode("\n", $check_results['found_pids']) . '</pre>' .
+            '<h2>NOT found in Islandora</h2><pre style="color:green">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
 
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $toggle = FALSE;
@@ -202,6 +204,29 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
   mysqli_close($link);
   return $markup;
 }
+
+function upitt_workflow_ingest_preprocess_from_barcodes($barcodes) {
+  global $user;
+  $barcodes_arr = explode("\n", $barcodes);
+
+  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+  $markup = '';
+  $markup .= '<h2>Islandora Ingest Preprocess for These Barcodes</h2><pre style="color:blue">' . implode("\n", $barcodes_arr) . '</pre><hr>';
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+
+    // Need to get the related batch record to determine whether or not the object
+    // is ingested, the related model to use for ingest prepare call...
+    $batch = upitt_workflow_batch_of_item($barcode);
+    if (isset($batch['batch_id'])) {
+      // TODO -- can load the status transactions of this batch to see whether
+      // or not the object has been preprocessed or ingested already.
+      $markup .= upitt_workflow_drush_generic($batch);
+    }
+  }
+  return $markup;
+}
+
 
 /**
  * This will run a query to get the type of the item (barcode) from the legacy

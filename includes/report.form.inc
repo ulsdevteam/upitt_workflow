@@ -7,7 +7,7 @@ function upitt_workflow_objects() {
   if ($user->uid == 1 || user_access(ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES, $user)) {
     $options = array('attributes' => array('title' => 'Requires "Workflow Manage Lookup Tables" permission'));
     $asterisk = "<sup style='color:blue' title='Requires \"Workflow Manage Lookup Tables\" permission'>*</super>";
-    $links = array(l('Make batch records from Workflow items', '/workflow/workflowadmin/makebatch_from_workflow', $options),
+    $links = array(l('Process Barcodes', '/workflow/workflowadmin/process_barcodes', $options),
                    l('Workflow Admin', '/workflow/workflowadmin', $options),
                    l('Create a New Batch', '/workflow/batch/new', $options),
                    l('Manage Lookup Tables', '/workflow/workflowadmin/manage/action', $options),

@@ -204,12 +204,12 @@ function upitt_workflow_menu() {
     ),
 
     // ADMIN functions
-    'workflow/workflowadmin/makebatch_from_workflow' => array(
-      'title' => ('Create Batch Records From Barcodes'),
+    'workflow/workflowadmin/process_barcodes' => array(
+      'title' => ('Process Barcodes'),
       'page callback' => 'drupal_get_form',
-      'page arguments' => array('upitt_workflow_make_batchrecords_form'),
+      'page arguments' => array('upitt_workflow_process_barcodes_form'),
       'type' => MENU_CALLBACK,
-      'file' => 'includes/make_batchrecords_from_workflow.form.inc',
+      'file' => 'includes/process_barcodes.form.inc',
       'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
       'access callback' => 'upitt_workflow_workflowadmin_manage_access_callback',
     ),
@@ -551,8 +551,8 @@ function upitt_workflow_get_basic_links($do_id = '', $batch_id = '') {
     ($item['path'] == 'workflow/collection') ? $active_attrib : array());
 
   $links[] = l(t('Create Islandora Collection'), '/islandora/object/pitt%3Aroot/manage/overview/ingest');
-  $links[] = l(t('Make batch records from Workflow items'), '/workflow/workflowadmin/makebatch_from_workflow',
-    ($item['path'] == 'workflow/workflowadmin/makebatch_from_workflow') ? $active_attrib : array());
+  $links[] = l(t('Process Barcodes'), '/workflow/workflowadmin/process_barcodes',
+    ($item['path'] == 'workflow/workflowadmin/process_barcodes') ? $active_attrib : array());
   $links[] = l(t('Create New Batch'), '/workflow/batch/new',
     ($item['path'] == 'workflow/batch/new') ? $active_attrib : array());
   $links[] = l(t('Quick Status Change'), '/workflow/status/change',

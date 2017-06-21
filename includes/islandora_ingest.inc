@@ -47,7 +47,7 @@ function upitt_workflow_islandora_object_ingest($do_id) {
   $page = array();
 
   $task_links[] = l(t('Create Islandora Collection'), '/islandora/object/pitt%3Aroot/manage/overview/ingest');
-  $task_links[] = l(t('Make batch records from Workflow items'), '/workflow/workflowadmin/makebatch_from_workflow');
+  $task_links[] = l(t('Process Barcodes'), '/workflow/workflowadmin/process_barcodes');
   $task_links[] = l(t('Create New Batch'), '/workflow/batch/new');
   $task_links[] = l(t('Workflow Collections (legacy)'), '/workflow/collection');
   $task_links[] = l(t('Quick Status Change'), '/workflow/status/change');
@@ -98,23 +98,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
       $markup  .= '<h3>Requirements for "' . $fedora_model_name . '"</h3><pre>' . print_r($requirements, true) . '</pre>';
     } */
 
-    $batch_path = upitt_workflow_batch_path($batch);
-
-    // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.
-//    $parent = upitt_workflow_get_object_fedora_collections($object_id);
-//    $site = upitt_workflow_get_object_fedora_sites($object_id);
-    $parent = $batch['mapto_collections'];
-    $site = $batch['mapto_site_id_values'];
-
-    $batch_default_depositor = $batch['default_depositor'];
-
-    if ($fedora_model_name == 'bookCModel') {
-      $markup .= upitt_workflow_drush_book($batch_path, $parent, $site, $ingest_namespace . $batch['batch_external_id']);
-    } elseif ($fedora_model_name == 'manuscriptCModel') {
-      $markup .= upitt_workflow_drush_manuscript($batch_path, $parent, $site, $ingest_namespace . $batch['batch_external_id']);
-    } elseif ($fedora_model_name == 'sp_large_image_cmodel') {
-      $markup .= upitt_workflow_drush_image_possible_csv2mods($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
-    }
+    $markup .= upitt_workflow_drush_generic($batch);
 
     // Update the batch status record for the matching batch record for this batch_external_id
     upitt_workflow_set_status_for_batch($batch['batch_external_id'], UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED, NULL);
@@ -154,6 +138,30 @@ function upitt_workflow_islandora_ingest($batch_id) {
   return $markup;
 }
 
+/**
+ * This will take a batch record and call the appropriate ingest prepreprocess 
+ * drush command.
+ * 
+ * @param array $batch
+ * @return string markup HTML
+ */
+function upitt_workflow_drush_generic($batch) {
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  $batch_path = upitt_workflow_batch_path($batch);
+  $parent = $batch['mapto_collections'];
+  $site = $batch['mapto_site_id_values'];
+  // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.
+  $batch_default_depositor = $batch['default_depositor'];
+  $fedora_model_name = $batch['default_type_of_resource'];
+  if ($fedora_model_name == 'bookCModel') {
+    $markup = upitt_workflow_drush_book($batch_path, $parent, $site, $ingest_namespace . $batch['batch_external_id']);
+  } elseif ($fedora_model_name == 'manuscriptCModel') {
+    $markup = upitt_workflow_drush_manuscript($batch_path, $parent, $site, $ingest_namespace . $batch['batch_external_id']);
+  } elseif ($fedora_model_name == 'sp_large_image_cmodel') {
+    $markup = upitt_workflow_drush_image_possible_csv2mods($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
+  }
+  return $markup;
+}
 /**
  * This function will return the specific item file record that corresponds to a given `use` value, like the `TARGET` reference
  * would be whichever item_file record that had that value.
