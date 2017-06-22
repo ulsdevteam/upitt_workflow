@@ -32,12 +32,12 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     // by an earlier edit of this batch.  If so, warn the user.
     $existing_batch_files = upitt_workflow_file_scan_directory($batch_path, '', TRUE, FALSE);
   } else {
-    $batch_path = rtrim(variable_get('upitt_workflow_ingest_path', '/ingest/incoming'), '/') . '/batch_0_not_named';
+    $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_0_not_named';
     $batch_external_id = '';
     $existing_batch_files = array();
   }
 
-  $holdings_filepath = rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/');
+  $holdings_filepath = rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/');
   $tmp_holdings_folders = upitt_workflow_file_scan_directory($holdings_filepath, '', FALSE, TRUE);
   // need the key to be the value as well
   foreach ($tmp_holdings_folders as $k => $holdings_folder) {
@@ -471,8 +471,8 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   // Now it is safe to make the full path to the specific holdings subfolder that has been selected.
   $holdings_folder = (isset($form_state['values']['batch_host']) && strstr($form_state['values']['batch_host'], 'ftp:')) ?
           $form_state['values']['batch_host'] :
-          rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/') . '/' . $holdings_folder;
-  $batch_path = rtrim(variable_get('upitt_workflow_ingest_path', '/ingest/incoming'), '/') . '/batch_' . $batch_external_id;
+          rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $holdings_folder;
+  $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
 
   $markup = upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id);
 
@@ -530,7 +530,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
 
   // FOR sp_large_image_cmodel:
   //
-  // 1) make a new folder under variable_get('upitt_workflow_ingest_path', '/ingest/incoming')
+  // 1) make a new folder under variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest')
   //    named "batch_{PID}"
   //
   // 2) copy all relevant *.xml files and rename them to the assumed names (MODS.xml,
@@ -539,7 +539,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
 
   // FOR bookCModel or manuscriptCModel:
   //
-  // 1) make a new folder under variable_get('upitt_workflow_ingest_path', '/ingest/incoming')
+  // 1) make a new folder under variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest')
   //    named "batch_{PID}"
   //
   // 2) copy all relevant *.xml files and rename them to the assumed names (MODS.xml,
@@ -688,7 +688,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
       }
     }
     $markup .= "</pre>";
-    upitt_workflow_set_status_for_batch($batch_external_id, UPITT_WORKFLOW_ACTION_HOLDING_FILES_MOVED, NULL);
+    upitt_workflow_set_status_for_batch($batch_external_id, UPITT_WORKFLOW_ACTION_INCOMING_INGEST_FILES_MOVED, NULL);
   }
 
   // In either case, if the object is a book, and the --METADATA--.xml does not 
@@ -699,7 +699,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
     if (!file_exists($marc_filename)) {
       // download the MARC file and save it... display / log the results.
       $markup .= '--METADATA--.xml did not exist<br>';
-      $barcode = str_replace(rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/') . '/', '', $holdings_folder);
+      $barcode = str_replace(rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/', '', $holdings_folder);
       $voystaff_uri = 'http://voystaff.library.pitt.edu/cgi-bin/barcode2marcxml.php?barcode=' . $barcode;
       $xml = @file_get_contents($voystaff_uri);
       if ($xml && (strstr($xml, 'BibID not found for barcode') == '')) {

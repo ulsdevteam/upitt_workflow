@@ -265,7 +265,7 @@ function upitt_workflow_drive_along_links($do_id, $status) {
     $ingest_prepared |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED);
     $ingested |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY);
     $published_on_site |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE);
-    $files_moved |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_HOLDING_FILES_MOVED);
+    $files_moved |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_INCOMING_INGEST_FILES_MOVED);
   }
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   // Get the batch record related to this object - to inspect for other batch-level action links
@@ -1052,7 +1052,7 @@ function upitt_workflow_batch_path($batch_values) {
   }
   $ingest_path = $batch_values['batch_host'];
   if (!$batch_values['batch_host'] || $ingest_path == 'ftp' || (ltrim($ingest_path, 'ftp:') <> $ingest_path)) {
-    $ingest_path = variable_get('upitt_workflow_ingest_path', '/ingest/incoming');
+    $ingest_path = variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest');
   } elseif (strstr($ingest_path, ":")) {
     @list($ingest_host, $ingest_path) = explode(":", $ingest_path, 2);
     drupal_set_message('This batch is configured to use files from a different server.  That server needs ' .
@@ -1081,7 +1081,7 @@ function upitt_workflow_batch_path($batch_values) {
  * @return string
  */
 function upitt_workflow_batch_export_path($batch_external_id, $dsid = '') {
-  $export_path = variable_get('upitt_workflow_export_path', '/ingest/incoming');
+  $export_path = variable_get('upitt_workflow_export_path', '/ingest/islandora_ingest');
 
   $batch_path = rtrim($export_path, '/') . '/batch_' . ($dsid ? $dsid . '_' : '') . $batch_external_id;
   if (!file_exists($batch_path)) {
@@ -1098,7 +1098,7 @@ function upitt_workflow_batch_export_path($batch_external_id, $dsid = '') {
  */
 function upitt_workflow_get_batch_host_values() {
   $arr = explode("\r\n", variable_get('upitt_workflow_hosts_for_ingest'), 2);
-  $return_array = array(variable_get('upitt_workflow_ingest_path', '/ingest/incoming') => 'Default Incoming Ingest Path');
+  $return_array = array(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest') => 'Default Incoming Ingest Path');
 
   foreach ($arr as $alias_and_value) {
     @list($alias, $value) = explode("=", $alias_and_value, 2);
@@ -1246,6 +1246,7 @@ function upitt_workflow_save_batch($values, $collection_options) {
   if (!$batch_id) {
     $batch_id = upitt_workflow_get_batch_id($batch_external_id);
   }
+
   upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link);
 
   mysqli_close($link);
@@ -1267,6 +1268,7 @@ function upitt_workflow_save_batch($values, $collection_options) {
  */
 function upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link) {
   // 1. Look for a batch_item record that has the wrong batch associated with it...
+
   $sql = "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id <> $batch_id";
   $result = mysqli_query($link, $sql);
   if (!$result) {

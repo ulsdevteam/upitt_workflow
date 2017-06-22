@@ -236,8 +236,8 @@ function upitt_workflow_do_copy_for_barcodes($barcodes) {
     // Now it is safe to make the full path to the specific holdings subfolder that has been selected.
     $holdings_folder = (isset($batch['batch_host']) && strstr($batch['batch_host'], 'ftp:')) ?
             $batch['batch_host'] :
-            rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/') . '/' . $holdings_folder;
-    $batch_path = rtrim(variable_get('upitt_workflow_ingest_path', '/ingest/incoming'), '/') . '/batch_' . $batch_external_id;
+            rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $holdings_folder;
+    $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
 
     $markup .= '<div>' . upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id) . "</div>";
   }

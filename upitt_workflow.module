@@ -13,7 +13,7 @@ define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup t
 // Constants for various workflow actions (transactions)
 define('UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY', 3); // ingest completed
 define('UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED', 145); // ingest prepared
-define('UPITT_WORKFLOW_ACTION_HOLDING_FILES_MOVED', 146); // files moved and prepared
+define('UPITT_WORKFLOW_ACTION_INCOMING_INGEST_FILES_MOVED', 146); // files moved and prepared
 define('UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE', 147); // object published on site
 
 

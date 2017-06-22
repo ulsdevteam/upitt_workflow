@@ -45,21 +45,20 @@ function upitt_workflow_admin_form() {
       '#description' => t('The namespace to use for ingesting all objects.'),
       '#default_value' => $ingest_namespace, 
     ),
-    'incoming_ingest_path' => array(
+    'ingest_prepared_path' => array(
       '#type' => 'textfield',
-      '#title' => t('Incoming Ingest Path'),
-      '#description' => t('The incoming ingest directory.  In order to be ingested, the folders created 
-                           here should be named to match the name of the batch.  This path
+      '#title' => t('Ingest Working Directory'), // Incoming Ingest Path'),
+      '#description' => t('The working directory for prepared ingest batch files.  This path
                            should be configured to a location that has plenty of hard space.'),
-      '#default_value' => variable_get('upitt_workflow_ingest_path', '/ingest/incoming'),
+      '#default_value' => variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'),
     ),
-    'incoming_holdings_path' => array(
+    'ingest_incoming_path' => array(
       '#type' => 'textfield',
-      '#title' => t('Holdings Path'),
-      '#description' => t('The holdings directory.  A batch can be created by pointing to a folder
-                           that is contained with this location.  The batch will convert the files
+      '#title' => t('Incoming Directories'),
+      '#description' => t('The incoming batch files directories.  In order to be ingested, the folders
+                           here should be named to match the name of the batch.  The ingest code will convert the files
                            and the structure of the contents for an Islandora batch.'),
-      '#default_value' => variable_get('upitt_workflow_holdings_path', '/ingest/holding'),
+      '#default_value' => variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'),
     ),
     'batch_hosts' => array(
       '#type' => 'textarea',
@@ -126,8 +125,8 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_set('upitt_workflow_settings_file', $form_state['values']['settings_file']);
       variable_set('upitt_workflow_notification_email', $form_state['values']['notification_email']);
       variable_set('upitt_workflow_ingest_namespace', $form_state['values']['ingest_namespace']);
-      variable_set('upitt_workflow_ingest_path', $form_state['values']['incoming_ingest_path']);
-      variable_set('upitt_workflow_holdings_path', $form_state['values']['incoming_holdings_path']);
+      variable_set('upitt_workflow_ingest_prepared_path', $form_state['values']['ingest_prepared_path']);
+      variable_set('upitt_workflow_ingest_incoming', $form_state['values']['ingest_incoming_path']);
       variable_set('upitt_workflow_ftp_username', $form_state['values']['ftp_username']);
       variable_set('upitt_workflow_ftp_password', $form_state['values']['ftp_password']);
       // variable_set('upitt_workflow_ftp_port', $form_state['values']['ftp_port']);
@@ -138,8 +137,8 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_del('upitt_workflow_settings_file');
       variable_del('upitt_workflow_notification_email');
       variable_del('upitt_workflow_ingest_namespace');
-      variable_del('upitt_workflow_ingest_path');
-      variable_del('upitt_workflow_holdings_path');
+      variable_del('upitt_workflow_ingest_prepared_path');
+      variable_del('upitt_workflow_ingest_incoming');
       variable_del('upitt_workflow_ftp_username');
       variable_del('upitt_workflow_ftp_password');
       // variable_del('upitt_workflow_ftp_port');
