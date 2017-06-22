@@ -1243,6 +1243,9 @@ function upitt_workflow_save_batch($values, $collection_options) {
   }
 
   $item_id = upitt_workflow_insert_item_for_batch_external_id($batch_external_id, $link);
+  if (!$batch_id) {
+    $batch_id = upitt_workflow_get_batch_id($batch_external_id);
+  }
   upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link);
 
   mysqli_close($link);
