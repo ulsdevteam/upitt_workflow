@@ -204,7 +204,6 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
     $sqls[$barcode] = $sql;
   }
 
-  $markup .= "<hr>" . implode("<br>", $sqls);
   mysqli_close($link);
   return $markup;
 }
@@ -217,6 +216,7 @@ function upitt_workflow_do_copy_for_barcodes($barcodes) {
   $barcodes_arr = explode("\n", $barcodes);
   $markup = '';
   foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
     // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
     $batch = upitt_workflow_batch_load_by_batch_external_id($barcode);
     if (count($batch) < 1) {
@@ -239,7 +239,7 @@ function upitt_workflow_do_copy_for_barcodes($barcodes) {
             rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/') . '/' . $holdings_folder;
     $batch_path = rtrim(variable_get('upitt_workflow_ingest_path', '/ingest/incoming'), '/') . '/batch_' . $batch_external_id;
 
-    $markup = upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id);
+    $markup .= '<div>' . upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id) . "</div>";
   }
   return $markup;
 }

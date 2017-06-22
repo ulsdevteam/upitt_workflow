@@ -476,6 +476,9 @@ function upitt_workflow_timeago_from_timestamp($timestamp) {
 function upitt_workflow_sql_error_die($link, $sql) {
   $message  = 'Invalid query: ' . mysqli_error($link) . "<br>";
   $message .= 'Query: <pre>' . $sql ."</pre>";
+  $bt = debug_backtrace();
+  $variables = array('@sql' => $sql, '@backtrace' => $bt);
+  watchdog('upitt_workflow', 'There was an error executing a database query.  The sql = @sql.  Debug backtrace @backtrace', $variables, WATCHDOG_ERROR);
   die($message);
 }
 
@@ -1249,13 +1252,35 @@ function upitt_workflow_save_batch($values, $collection_options) {
   return $batch_id;
 }
 
+/**
+ * This will first look up whether or not there is already a batch_item record that
+ * matches this item, but is in the wrong batch it will delete that record ... 
+ * else, if it does not find a record matching the item_id and batch_id, a new 
+ * record will be created.
+ *
+ * @param integer $batch_id
+ * @param integer $item_id
+ * @param type $link
+ */
 function upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link) {
-  if (!$item_id) {
-    $sql = "SELECT id FROM batch_item WHERE batch_id = $batch_id GROUP BY batch_id";
+  // 1. Look for a batch_item record that has the wrong batch associated with it...
+  $sql = "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id <> $batch_id";
+  $result = mysqli_query($link, $sql);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
   }
-  else {
-    $sql = "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id = $batch_id";
+  $row = mysqli_fetch_assoc($result);
+  if (isset($row['id'])) {
+    $deleted = mysqli_query($link, "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id <> $batch_id");
+    if (!$deleted) {
+      $variables = array('@batch_id' => $batch_id, '@item_id' => $item_id);
+      watchdog('upitt_workflow', 'There was a problem trying to delete the `batch_item` record for ' .
+               'batch_id = @batch_id and item_id = @item_id.', $variables, WATCHDOG_NOTICE);
+    }
   }
+
+  // 2. Look for the record with the correct values already, and add it if not found.
+  $sql = "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id = $batch_id LIMIT 1";
   $result = mysqli_query($link, $sql);
   if (!$result) {
     upitt_workflow_sql_error_die($link, $sql);
@@ -1270,6 +1295,14 @@ function upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link) {
   }
 }
 
+/**
+ * This will look up the item record's id value - and create an item record if
+ * needed.  This should ALWAYS be able to return an integer value.
+ *
+ * @param type $batch_external_id
+ * @param type $link
+ * @return integer the value of id field for the existing or new item record.
+ */
 function upitt_workflow_insert_item_for_batch_external_id($batch_external_id, $link) {
   // Update the item record for this do_id (*batch_external_id value)
   $sql = "SELECT id FROM item WHERE `do_id` = '" . $batch_external_id . "'";

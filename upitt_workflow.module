@@ -645,8 +645,9 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
           upitt_workflow_set_status_for_pid($ingested_object, UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY);
         }
         else {
-          watchdog(WATCHDOG_NOTICE, 'Set refers to an object by PID "' . $ingested_pid .
-              '" that no longer exists, can not execute the batch_process_finished routine for this set ' . $set. '.');
+          $variables = array('@ingested_pid' => $ingested_pid, '@set' => $set);
+          watchdog('upitt_workflow', 'Set refers to an object by PID "@ingested_pid" that no longer exists, ' .
+              'and can not execute the batch_process_finished routine for this set @set.', $variables, WATCHDOG_NOTICE);
         }
       }
     }
@@ -806,8 +807,8 @@ function upitt_workflow_islandora_datastream_ingested(AbstractObject $object, Ab
       upitt_workflow_make_tn_large($page_object, $object);
     }
     else {
-      watchdog(WATCHDOG_WARNING, 'Could not generate TN_LARGE for ' . $object->id .
-        ' because there are no pages related to this object, model ' . print_r($object->models, true));
+      watchdog('upitt_workflow', 'Could not generate TN_LARGE for ' . $object->id .
+        ' because there are no pages related to this object, model ' . print_r($object->models, true), WATCHDOG_WARNING);
     }
   }*/
 }
