@@ -90,7 +90,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
     $markup .= ' from batch <a href="/islandora/object/' . $ingest_namespace . $batch['batch_external_id'] . '/manage">' . 
         $batch['batch_external_id'] . '</a> or <a href="/workflow/object/' . $batch['batch_external_id'] . '">review workflow item</a></p>';
 
-    $markup .= '<h3 style="color:green">Batch `Model` (default_type_of_resource) = "' . $batch['default_type_of_resource'] . '", yields fedora model: "' . $fedora_model_name . '"</h3><br>';
+    $markup .= '<h3 class="good">Batch `Model` (default_type_of_resource) = "' . $batch['default_type_of_resource'] . '", yields fedora model: "' . $fedora_model_name . '"</h3><br>';
 
     /* // bgg - skip this -
     $requirements = upitt_workflow_fedora_object_requirements($fedora_model_name);

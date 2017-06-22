@@ -258,7 +258,7 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
     $completed_action_found = FALSE;
     foreach ($status_rows as  $k => $status_row) {
       if ($status_row['description'] == $completed_action_name) {
-        $status_rows[$k]['description'] = '<span style="color:green">' . $status_rows[$k]['description'] . '</i>';
+        $status_rows[$k]['description'] = '<span class="good">' . $status_rows[$k]['description'] . '</i>';
         $completed_action_found = TRUE;
       }
     }
@@ -267,7 +267,7 @@ function upitt_workflow_legacy_objectreport_form($do_id) {
     }
   }
   foreach ($status_table_problems as $problem) {
-    $status_rows[] = array('description' => '<span style="color:red">' . str_replace(" not completed", "", $problem) . '</span>', 'time' => '', 'when' => '');
+    $status_rows[] = array('description' => '<span class="bad">' . str_replace(" not completed", "", $problem) . '</span>', 'time' => '', 'when' => '');
   }
 
   $links = upitt_workflow_get_basic_links($do_id);

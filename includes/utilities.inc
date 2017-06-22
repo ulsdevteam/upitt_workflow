@@ -259,12 +259,13 @@ function upitt_workflow_drive_along_links($do_id, $status) {
   $item = menu_get_item();
   $active_attrib = array('attributes' => array('class' => 'active'));
 
-  $ingest_prepared = $ingested = $published_on_site = FALSE;
+  $ingest_prepared = $ingested = $published_on_site = $files_moved = FALSE;
 
   foreach ($status as $a_status) {
     $ingest_prepared |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED);
     $ingested |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY);
     $published_on_site |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE);
+    $files_moved |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_HOLDING_FILES_MOVED);
   }
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   // Get the batch record related to this object - to inspect for other batch-level action links
@@ -276,23 +277,15 @@ function upitt_workflow_drive_along_links($do_id, $status) {
   $headings = array('Action', 'Operation');
   $links = array();
 
-  if (!$ingested && !$ingest_prepared) {
-    $links[] = l('Islandora Ingest Preprocess (single object)', '/workflow/object/' . $do_id . '/islandora_ingest',
-      ($item['path'] == 'workflow/object/%/islandora_ingest') ? $active_attrib : array());
-    $links[] = l('Islandora Ingest Preprocess (batch)', '/workflow/batch/' . $batch_id . '/islandora_ingest',
-      ($item['path'] == 'workflow/batch/%/islandora_ingest') ? $active_attrib : array());
-  }
-  else {
-    if ($ingested) {
-      $links[] = 'Object is <b>ingested</b>';
-    }
-    if ($ingest_prepared) {
-      $links[] = 'Object is <b>prepared</b>';
-    }
-  }
+  $links[] = (($files_moved) ? 'Batch files <b class="good">have been moved</b>' : 'Batch files <b class="bad">have not been moved</b>');
+  $links[] = (($ingest_prepared) ? 'Batch is <b class="good">prepared</b>' : l('Islandora Ingest Preprocess', '/workflow/batch/' . $batch_id . '/islandora_ingest',
+      ($item['path'] == 'workflow/batch/%/islandora_ingest') ? $active_attrib : array()));
+  $links[] = (($ingested) ? 'Batch is <b class="good">ingested</b>' :
+      (($ingest_prepared && $files_moved) ? l('Islandora Ingest Preprocess (batch)', '/workflow/batch/' . $batch_id . '/islandora_ingest',
+      ($item['path'] == 'workflow/batch/%/islandora_ingest') ? $active_attrib : array()) : ''));
 
   if (!$published_on_site) {
-    // add a row to allow review of the object in islandora
+    // add a row to allow review of the batch in islandora
     if ($ingested) {
       $links[] = l('Review object', '/islandora/object/' . $pid,
         ($item['path'] == 'islandora/object/%') ? $active_attrib : array());
@@ -304,7 +297,7 @@ function upitt_workflow_drive_along_links($do_id, $status) {
       ($item['path'] == 'workflow/object/%/do_publish') ? $active_attrib : array());
   }
   else {
-    $links[] = 'Object is <b>published on site</b>';
+    $links[] = 'Object is <b class="good">published on site</b>';
   }
   return $links;
 }
@@ -858,6 +851,44 @@ function upitt_workflow_get_batch_id($batch_external_id, $create_if_not_exists =
   return $batch_id;
 }
 
+/**
+ * Loads a batch record given the batch_external_id value.
+ *
+ * @param string $batch_external_id
+ * @return array representing the batch record
+ */
+function upitt_workflow_batch_load_by_batch_external_id($batch_external_id) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+
+  $batch_detail = 'SELECT * ' .
+                  'FROM batch ' .
+                  'WHERE batch_external_id = "' . mysqli_real_escape_string($link, $batch_external_id) . '" LIMIT 1';
+
+  $batch = array();
+
+  $result = mysqli_query($link, $batch_detail);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $batch_detail);
+  }
+
+  $batch = $fields = array();
+  if ($row = mysqli_fetch_assoc($result)) {
+    $fields = array_keys($row);
+    foreach ($fields as $field) {
+      $batch[$field] = $row[$field];
+    }
+  }
+
+  mysqli_close($link);
+  return $batch;
+}
+
+/**
+ * Loads a batch record given the batch_id value.
+ *
+ * @param type $batch_id
+ * @return array representing the batch record
+ */
 function upitt_workflow_batch_load($batch_id) {
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 

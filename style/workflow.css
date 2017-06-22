@@ -22,6 +22,14 @@ h5 {
     margin-left: 0;
 }
 
+.good {
+    color: green;
+}
+
+.bad {
+    color: red;
+}
+
 .numeric {
     text-align: right;
 }
@@ -67,7 +75,7 @@ h5 {
     position:relative;
     top:20px;
     left:0;
-    background-color: red;
+    background-color: black;
     width:100%;
     height:205px;
     text-align:center;

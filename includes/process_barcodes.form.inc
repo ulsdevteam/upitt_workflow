@@ -15,6 +15,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'checkobjects' => 'Check for Islandora Objects',
     'update' => 'Update batch records (no overwrite if islandora object exists)',
     'updateforce' => 'Update batch records (force overwrite)',
+    'do_copy' => 'Copy files from holding to ingest location',
     'ingest_prepare' => 'Islandora Ingest Preprocess');
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
@@ -57,6 +58,9 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
       elseif ($form_state['values']['mode'] == 'ingest_prepare') {
         $markup = upitt_workflow_ingest_preprocess_from_barcodes($form_state['values']['barcodes']);
       }
+      elseif ($form_state['values']['mode'] == 'do_copy') {
+        $markup = upitt_workflow_do_copy_for_barcodes($form_state['values']['barcodes']);
+      }
       else {
         $markup = upitt_workflow_make_batch_records_from_barcodes($form_state['values']['barcodes'], $form_state['values']['mode']);
       }
@@ -80,8 +84,8 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
  */
 function upitt_workflow_process_check_islandora_for_barcodes($barcodes) {
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
-  $markup = '<h3>Found in Islandora</h3><pre style="color:red">' . implode("\n", $check_results['found_pids']) . '</pre><hr>' .
-            '<h3>NOT found in Islandora</h3><pre style="color:green">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
+  $markup = '<h3>Found in Islandora</h3><pre class="bad">' . implode("\n", $check_results['found_pids']) . '</pre><hr>' .
+            '<h3>NOT found in Islandora</h3><pre class="good">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
   return $markup;
 }
 
@@ -202,6 +206,41 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
 
   $markup .= "<hr>" . implode("<br>", $sqls);
   mysqli_close($link);
+  return $markup;
+}
+
+function upitt_workflow_do_copy_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+  module_load_include('inc', 'upitt_workflow', 'includes/batch.form');
+
+  $missing_barcodes = array();
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '';
+  foreach ($barcodes_arr as $barcode) {
+    // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
+    $batch = upitt_workflow_batch_load_by_batch_external_id($barcode);
+    if (count($batch) < 1) {
+      $missing_barcodes[] = $barcode;
+    }
+    $do_copy = TRUE;
+    $do_download = (strstr($batch['batch_host'], 'ftp:'));
+    $content_model = isset($batch['default_type_of_resource']) ? $batch['default_type_of_resource'] : 'sp_large_image_cmodel';
+    $batch_external_id = $batch['batch_external_id'];
+    $holdings_folder = $batch_external_id;
+
+    if (!$holdings_folder || !$batch_external_id) {
+      drupal_set_message('The batch name and a holdings folder must be set in order to save this batch', 'error');
+      return;
+    }
+
+    // Now it is safe to make the full path to the specific holdings subfolder that has been selected.
+    $holdings_folder = (isset($batch['batch_host']) && strstr($batch['batch_host'], 'ftp:')) ?
+            $batch['batch_host'] :
+            rtrim(variable_get('upitt_workflow_holdings_path', '/ingest/holding'), '/') . '/' . $holdings_folder;
+    $batch_path = rtrim(variable_get('upitt_workflow_ingest_path', '/ingest/incoming'), '/') . '/batch_' . $batch_external_id;
+
+    $markup = upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id);
+  }
   return $markup;
 }
 
