@@ -37,11 +37,11 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     $existing_batch_files = array();
   }
 
-  $holdings_filepath = rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/');
-  $tmp_holdings_folders = upitt_workflow_file_scan_directory($holdings_filepath, '', FALSE, TRUE);
+  $incoming_filepath = rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/');
+  $tmp_incoming_folders = upitt_workflow_file_scan_directory($incoming_filepath, '', FALSE, TRUE);
   // need the key to be the value as well
-  foreach ($tmp_holdings_folders as $k => $holdings_folder) {
-    $holdings_folders[$holdings_folder] = $holdings_folder;
+  foreach ($tmp_incoming_folders as $k => $incoming_folder) {
+    $incoming_folders[$incoming_folder] = $incoming_folder;
   }
 
   // Prepare a couple variables for use with file upload options:
@@ -144,11 +144,11 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#type' => 'fieldset',
       '#title' => 'Local Files',
       '#attributes' => array('style' => $show_or_hide['local_files']),
-      'source_holdings_folder' => array(
+      'source_incoming_folder' => array(
         '#type' => 'select',
-        '#description' => 'Select the holdings folder that this batch should convert to an Islandora batch.',
-        '#title' => t('Holdings folder'),
-        '#options' => $holdings_folders,
+        '#description' => 'Select the incoming folder that this batch should convert to an Islandora batch.',
+        '#title' => t('Incoming folder'),
+        '#options' => $incoming_folders,
         '#default_value' => $batch_external_id,
         '#size' => 10,
       ),
@@ -457,27 +457,27 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
             $form_state['values']['initial_ftp_path']);
   }
 
-  $holdings_folder = $form_state['values']['source_holdings_folder'];
+  $incoming_folder = $form_state['values']['source_incoming_folder'];
   $do_copy = isset($form_state['values']['do_copy']) ? $form_state['values']['do_copy'] : FALSE;
   $do_download = isset($form_state['values']['do_download']) ? $form_state['values']['do_download'] : FALSE;
   $content_model = isset($form_state['values']['default_type_of_resource']) ? $form_state['values']['default_type_of_resource'] : 'sp_large_image_cmodel';
   $batch_external_id = $form_state['values']['batch_external_id'];
 
-  if (!$holdings_folder || !$batch_external_id) {
-    drupal_set_message('The batch name and a holdings folder must be set in order to save this batch', 'error');
+  if (!$incoming_folder || !$batch_external_id) {
+    drupal_set_message('The batch name and a incoming folder must be set in order to save this batch', 'error');
     return;
   }
 
-  // Now it is safe to make the full path to the specific holdings subfolder that has been selected.
-  $holdings_folder = (isset($form_state['values']['batch_host']) && strstr($form_state['values']['batch_host'], 'ftp:')) ?
+  // Now it is safe to make the full path to the specific incoming subfolder that has been selected.
+  $incoming_folder = (isset($form_state['values']['batch_host']) && strstr($form_state['values']['batch_host'], 'ftp:')) ?
           $form_state['values']['batch_host'] :
-          rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $holdings_folder;
+          rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $incoming_folder;
   $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
 
-  $markup = upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id);
+  $markup = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id);
 
   // If these values are still set in the form_state, the save_batch code will not know what to do with them.
-  unset($form_state['values']['source_holdings_folder']);
+  unset($form_state['values']['source_incoming_folder']);
   unset($form_state['values']['do_copy']);
   unset($form_state['values']['do_download']);
   unset($form_state['values']['box_selector']);
@@ -506,22 +506,22 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
 }
 
 /**
- * This function will take the contents of a folder that is in the holdings location
+ * This function will take the contents of a folder that is in the incoming location
  * and make the files/folder structure that Islandora batch expects.
  *
- * @param string $holdings_folder - holdings folder, the "from" folder here
+ * @param string $incoming_folder - incoming folder, the "from" folder here
  * @param string $batch_path - the batch destination folder, the "to" folder here.
  * @param string $content_model represents which fedora model the batch folder represents
  * @param bool $do_copy - if FALSE, provides a report on the file size for the move,
  *          else, it copies the files as expected for an islandora batch.
  */
-function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy = FALSE, $do_download = FALSE, $batch_external_id = '') {
-  if (strstr($holdings_folder, 'ftp:') && $do_download) {
-    // make a temp folder - unzip all files there - and set $holdings_folder to this
+function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy = FALSE, $do_download = FALSE, $batch_external_id = '') {
+  if (strstr($incoming_folder, 'ftp:') && $do_download) {
+    // make a temp folder - unzip all files there - and set $incoming_folder to this
     // temp path -- and proceed as if they were local files.
     $temp_folder = tempnam(variable_get('file_temporary_path', '/tmp'), 'ftp_unzip');
-    upitt_workflow_unzip_ftp_zipfiles_to_tempfolder($holdings_folder, $temp_folder, $batch_external_id);
-    $holdings_folder = $temp_folder;
+    upitt_workflow_unzip_ftp_zipfiles_to_tempfolder($incoming_folder, $temp_folder, $batch_external_id);
+    $incoming_folder = $temp_folder;
   }
 
   $model_filemasks = upitt_workflow_content_model_filemask($content_model);
@@ -547,7 +547,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
   //
   // 3) make a subfolder for each page and copy the {page#}.tif to the folder as : {page#}/OBJ.tif
 
-  $tmp_files = upitt_workflow_file_scan_directory($holdings_folder, '', TRUE, FALSE);
+  $tmp_files = upitt_workflow_file_scan_directory($incoming_folder, '', TRUE, FALSE);
   $files = array();
   // FLATTEN this result
   foreach ($tmp_files as $key => $file) {
@@ -563,7 +563,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
   $move_files = array();
   $size = $filemove_size = 0;
   foreach ($files as $i => $file) {
-    $this_size = filesize($holdings_folder . '/' . $file);
+    $this_size = filesize($incoming_folder . '/' . $file);
     $size += $this_size;
     // If the file has a subfolder reference, skip it
     if (strstr($file, '/')) {
@@ -582,10 +582,10 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
   }
   $mods_file = '';
   if (!$do_copy) {
-    $markup = "<h3>Report of copying files from '" . $holdings_folder . "' to '" . $batch_path . "'</h3>";
+    $markup = "<h3>Report of copying files from '" . $incoming_folder . "' to '" . $batch_path . "'</h3>";
 
     $markup .= "<div><div style='float:left;width:48%'>";
-    $markup .= "<h4>Size of all files in holding folder</h4>";
+    $markup .= "<h4>Size of all files in incoming folder</h4>";
     $markup .= '<pre>' . number_format($size) . " bytes</pre>";
     $markup .= "  <pre>" . print_r($files, true) . "</pre>";
     $markup .= "</div>";
@@ -597,7 +597,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
     $markup .= "</div></div><br style='clear:both'>";
   }
   else {
-    $markup = "<h3>Moving files from '" . $holdings_folder . "' to '" . $batch_path . "'</h3>";
+    $markup = "<h3>Moving files from '" . $incoming_folder . "' to '" . $batch_path . "'</h3>";
     $markup .= "<pre>";
 
     if (file_exists($batch_path)) {
@@ -622,7 +622,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
               if (strtolower($file_baseName) <> 'target') {
                 $page_folder = $this_fileinfo['filename'];
                 mkdir($paged_object_folder . '/' . $page_folder);
-                copy($holdings_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/' . $file);
+                copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/' . $file);
                 rename($paged_object_folder . '/' . $page_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/OBJ.' . $extension);
                 $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . '/' . $page_folder . "/OBJ." . $extension . "'<br>";
               }
@@ -630,7 +630,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
             else {
               // for large image, simply move file to root of batch_path
               $obj_filename = $file;
-              copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
+              copy($incoming_folder . '/' . $file, $batch_path . '/' . $file);
               $markup .= "Moved '$file' to '" . $batch_path . "/" . $file . "'<br>";
             }
             break;
@@ -639,24 +639,24 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
             break;
           case '*.marcxml.xml':
             if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
-              copy($holdings_folder . '/' . $file, $paged_object_folder . '/' . $file);
+              copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file);
               rename($paged_object_folder . '/' . $file, $paged_object_folder . '/--METADATA--.xml');
               $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
             }
             else {
-              copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
+              copy($incoming_folder . '/' . $file, $batch_path . '/' . $file);
               rename($batch_path . '/' . $file, $batch_path . '/--METADATA--.xml');
               $markup .= "Moved and renamed '$file' to '" . $batch_path . "/--METADATA--.xml'<br>";
             }
             break;
           case '*.mets.xml':
             if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
-              copy($holdings_folder . '/' . $file, $paged_object_folder . '/' . $file);
+              copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file);
               rename($paged_object_folder . '/' . $file, $paged_object_folder . '/METS.xml');
               $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . "/METS.xml'<br>";
             }
             else {
-              copy($holdings_folder . '/' . $file, $batch_path . '/' . $file);
+              copy($incoming_folder . '/' . $file, $batch_path . '/' . $file);
               rename($batch_path . '/' . $file, $batch_path .  '/METS.xml');
               $markup .= "Moved and renamed '$file' to '" . $batch_path . "/METS.xml'<br>";
             }
@@ -668,12 +668,12 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
     }
     if ($mods_file) {
       if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
-        copy($holdings_folder . '/' . $mods_file, $paged_object_folder . '/' . $mods_file);
+        copy($incoming_folder . '/' . $mods_file, $paged_object_folder . '/' . $mods_file);
         rename($paged_object_folder . '/' . $mods_file, $paged_object_folder . '/--METADATA--.xml');
         $markup .= "Moved and renamed '$mods_file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
       }
       else {
-        copy($holdings_folder . '/' . $mods_file, $batch_path . '/' . $mods_file);
+        copy($incoming_folder . '/' . $mods_file, $batch_path . '/' . $mods_file);
         // Each OBJ file has a corresponding XML file, and that the filenames of the OBJs and the XML files
         // are identical in every way – including capitalization – except for the extension based on:
         //   https://wiki.duraspace.org/display/ISLANDORA/How+to+Batch+Ingest+Files#HowtoBatchIngestFiles-IngestMetadataandFilestogether .
@@ -699,7 +699,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
     if (!file_exists($marc_filename)) {
       // download the MARC file and save it... display / log the results.
       $markup .= '--METADATA--.xml did not exist<br>';
-      $barcode = str_replace(rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/', '', $holdings_folder);
+      $barcode = str_replace(rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/', '', $incoming_folder);
       $voystaff_uri = 'http://voystaff.library.pitt.edu/cgi-bin/barcode2marcxml.php?barcode=' . $barcode;
       $xml = @file_get_contents($voystaff_uri);
       if ($xml && (strstr($xml, 'BibID not found for barcode') == '')) {
@@ -716,7 +716,7 @@ function upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $bat
 }
 
 /**
- * This will return an array of filemasks that should be kept / copied from the holding
+ * This will return an array of filemasks that should be kept / copied from the incoming
  * folder based upon content_model.
  *
  * @param type $content_model
@@ -834,7 +834,7 @@ function upitt_workflow_unzip_ftp_zipfiles_to_tempfolder($ftp_folder, $temp_fold
         'The zip files were extracted to `' . $temp_folder . '` and contained ' . count($results_array['files_unzipped']) . ' file' .
         ($results_array['files_unzipped'] == 1 ? '' : 's') . '.  The raw files unzipped to ' . implode(",", $results_array['files_unzipped']));
 
-      // TODO: move the csv file to the batch_holding directory along with all the
+      // TODO: move the csv file to the batch_incoming directory along with all the
       // files ... and update the batch record using the batch_external_id
       
       $csv_file = $results_array['csv_file'];

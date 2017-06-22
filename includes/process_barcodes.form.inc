@@ -15,7 +15,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'checkobjects' => 'Check for Islandora Objects',
     'update' => 'Update batch records (no overwrite if islandora object exists)',
     'updateforce' => 'Update batch records (force overwrite)',
-    'do_copy' => 'Copy files from holding to ingest location',
+    'do_copy' => 'Copy files from incoming to ingest location',
     'ingest_prepare' => 'Islandora Ingest Preprocess');
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
@@ -226,20 +226,20 @@ function upitt_workflow_do_copy_for_barcodes($barcodes) {
     $do_download = (strstr($batch['batch_host'], 'ftp:'));
     $content_model = isset($batch['default_type_of_resource']) ? $batch['default_type_of_resource'] : 'sp_large_image_cmodel';
     $batch_external_id = $batch['batch_external_id'];
-    $holdings_folder = $batch_external_id;
+    $incoming_folder = $batch_external_id;
 
-    if (!$holdings_folder || !$batch_external_id) {
-      drupal_set_message('The batch name and a holdings folder must be set in order to save this batch', 'error');
+    if (!$incoming_folder || !$batch_external_id) {
+      drupal_set_message('The batch name and a incoming folder must be set in order to save this batch', 'error');
       return;
     }
 
-    // Now it is safe to make the full path to the specific holdings subfolder that has been selected.
-    $holdings_folder = (isset($batch['batch_host']) && strstr($batch['batch_host'], 'ftp:')) ?
+    // Now it is safe to make the full path to the specific incoming subfolder that has been selected.
+    $incoming_folder = (isset($batch['batch_host']) && strstr($batch['batch_host'], 'ftp:')) ?
             $batch['batch_host'] :
-            rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $holdings_folder;
+            rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $incoming_folder;
     $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
 
-    $markup .= '<div>' . upitt_workflow_copyfiles_holding_folder_to_batch($holdings_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id) . "</div>";
+    $markup .= '<div>' . upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id) . "</div>";
   }
   return $markup;
 }

@@ -564,7 +564,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
     $identifiers_and_filepaths[] = array('path' => $path_parts['dirname'], 'identifier' => $ingest_namespace . $row_mods_id);
     $row_counter++;
   }
-  echo "<p>" . number_format($files_copied) . " files copied to holding directory <b>" . $working_directory . "</b></p>";
+  echo "<p>" . number_format($files_copied) . " files copied to incoming directory <b>" . $working_directory . "</b></p>";
   echo "<p>" . number_format($mods_created) . " MODS files created.</p>";
 
   return $identifiers_and_filepaths;
