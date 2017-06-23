@@ -16,7 +16,8 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'update' => 'Update batch records (no overwrite if islandora object exists)',
     'updateforce' => 'Update batch records (force overwrite)',
     'do_copy' => 'Copy files from incoming to ingest location',
-    'ingest_prepare' => 'Islandora Ingest Preprocess');
+    'ingest_prepare' => 'Islandora Ingest Preprocess',
+    'do_publish' => 'Publish objects to site');
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
     'barcodes' => array(
@@ -61,8 +62,10 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
       elseif ($form_state['values']['mode'] == 'do_copy') {
         $markup = upitt_workflow_do_copy_for_barcodes($form_state['values']['barcodes']);
       }
-      else {
+      elseif ($form_state['values']['mode'] == 'ingest_prepare') {
         $markup = upitt_workflow_make_batch_records_from_barcodes($form_state['values']['barcodes'], $form_state['values']['mode']);
+      } elseif ($form_state['values']['mode'] == 'do_publish') {
+        $markup = upitt_workflow_do_publish_for_barcodes($form_state['values']['barcodes']);
       }
       break;
     
@@ -209,6 +212,61 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
   return $markup;
 }
 
+function upitt_workflow_do_publish_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+  module_load_include('inc', 'upitt_workflow', 'includes/batch.form');
+
+  $missing_barcodes = array();
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
+    $batch = upitt_workflow_batch_load_by_batch_external_id($barcode);
+    if (count($batch) < 1) {
+      $missing_barcodes[] = $barcode;
+    }
+    $markup .= '<div>' . upitt_workflow_do_publish_using_batchvalues($batch, $ingest_namespace) . "</div>";
+  }
+  if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes could not be found ' . print_r($missing_barcodes, true), 'warning');
+  }
+  return $markup;
+}
+
+function upitt_workflow_do_publish_using_batchvalues($batch, $ingest_namespace) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  $object_id = $batch['batch_external_id'];
+  $sites = $batch['mapto_site_id_values'];
+  $collections = $batch['mapto_collections'];
+
+  if (count($sites) > 0 || count($collections) > 0) {
+    // 1. load the islandora_object - and loop through collections and sites to add
+    // these relationships using the upitt_workflow_addRelationship - which will ensure
+    // that duplicate relationships are not added.
+    $pid = $ingest_namespace . $object_id;
+    $object = islandora_object_load($pid);
+
+    foreach ($sites as $site) {
+      $object->relationships->remove('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
+      $object->relationships->add('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
+    }
+
+    foreach ($collections as $collection) {
+      $object->relationships->remove(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
+      $object->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
+    }
+
+    upitt_workflow_set_status_for_batch($object_id, UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE, NULL);
+    return 'Published "' . $object_id . '" to sites and collections.';
+  }
+  else {
+    drupal_set_message('There were no sites or collections related to the object "' . $object_id . '"', 'warning');
+  }
+}
+
 function upitt_workflow_do_copy_for_barcodes($barcodes) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('inc', 'upitt_workflow', 'includes/batch.form');
@@ -241,6 +299,9 @@ function upitt_workflow_do_copy_for_barcodes($barcodes) {
     $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
 
     $markup .= '<div>' . upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id) . "</div>";
+  }
+  if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes could not be found ' . print_r($missing_barcodes, true), 'warning');
   }
   return $markup;
 }

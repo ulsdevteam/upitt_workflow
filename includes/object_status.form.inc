@@ -17,6 +17,7 @@ function upitt_workflow_object_status(array $form, array &$form_state) {
              ' \'\' `operation` ' .
              'FROM batch b ' .
              'JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
+             'WHERE b.batch_id > 1000 ' .
              'GROUP BY b.batch_id ' .
              'ORDER BY `most recent transaction` DESC ' .
              'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
@@ -24,7 +25,8 @@ function upitt_workflow_object_status(array $form, array &$form_state) {
   $query = 'SELECT count(distinct b.batch_external_id) as `total` ' .
            'FROM batch b ' .
            'JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
-           'JOIN `transaction` t ON (t.item_id = bi.item_id)';
+           'JOIN `transaction` t ON (t.item_id = bi.item_id) ' .
+           'WHERE b.batch_id > 1000';
 
   $result = mysqli_query($link, $query, MYSQLI_USE_RESULT);
 
