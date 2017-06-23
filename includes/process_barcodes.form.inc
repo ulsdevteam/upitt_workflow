@@ -266,6 +266,10 @@ function upitt_workflow_do_publish_using_batchvalues($batch, $ingest_namespace) 
       upitt_workflow_set_status_for_batch($object_id, UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE, NULL);
       return 'Published "' . $object_id . '" to sites and collections.';
     }
+    else {
+      drupal_set_message('Could not load object ' . $pid, 'warning');
+    }
+  }
   else {
     drupal_set_message('There were no sites or collections related to the object "' . $object_id . '"', 'warning');
   }
