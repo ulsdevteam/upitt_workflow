@@ -63,9 +63,12 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
         $markup = upitt_workflow_do_copy_for_barcodes($form_state['values']['barcodes']);
       }
       elseif ($form_state['values']['mode'] == 'ingest_prepare') {
-        $markup = upitt_workflow_make_batch_records_from_barcodes($form_state['values']['barcodes'], $form_state['values']['mode']);
-      } elseif ($form_state['values']['mode'] == 'do_publish') {
+        $markup = upitt_workflow_ingest_preprocess_from_barcodes($form_state['values']['barcodes']);
+      }
+      elseif ($form_state['values']['mode'] == 'do_publish') {
         $markup = upitt_workflow_do_publish_for_barcodes($form_state['values']['barcodes']);
+      } elseif ($form_state['values']['mode'] == 'update' || $form_state['values']['mode'] == 'updateforce') {
+        upitt_workflow_make_batch_records_from_barcodes($form_state['values']['barcodes'], $form_state['values']['mode']);
       }
       break;
     
