@@ -253,14 +253,22 @@ function upitt_workflow_ingest_preprocess_from_barcodes($barcodes) {
   $markup .= '<h2>Islandora Ingest Preprocess for These Barcodes</h2><pre style="color:blue">' . implode("\n", $barcodes_arr) . '</pre><hr>';
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
-
     // Need to get the related batch record to determine whether or not the object
     // is ingested, the related model to use for ingest prepare call...
-    $batch = upitt_workflow_batch_of_item($barcode);
-    if (isset($batch['batch_id'])) {
-      // TODO -- can load the status transactions of this batch to see whether
-      // or not the object has been preprocessed or ingested already.
-      $markup .= upitt_workflow_drush_generic($batch);
+    $batch_id = upitt_workflow_get_batch_id($barcode, FALSE);
+    if ($batch_id) {
+      $batch = upitt_workflow_batch_load($batch_id);
+      if (isset($batch['batch_id'])) {
+        // TODO -- can load the status transactions of this batch to see whether
+        // or not the object has been preprocessed or ingested already.
+        $markup .= upitt_workflow_drush_generic($batch);
+      }
+      else {
+        $markup .= '<span class="bad">batch not found for $barcode</span><br>';
+      }
+    }
+    else {
+      $markup .= '<span class="bad">batch_id could not be found for ' . $barcode . '</span><br>';
     }
   }
   return $markup;

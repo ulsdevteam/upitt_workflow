@@ -153,15 +153,19 @@ function upitt_workflow_drush_generic($batch) {
   // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.
   $batch_default_depositor = $batch['default_depositor'];
   $fedora_model_name = $batch['default_type_of_resource'];
+
   if ($fedora_model_name == 'bookCModel') {
     $markup = upitt_workflow_drush_book($batch_path, $parent, $site, $ingest_namespace . $batch['batch_external_id']);
   } elseif ($fedora_model_name == 'manuscriptCModel') {
     $markup = upitt_workflow_drush_manuscript($batch_path, $parent, $site, $ingest_namespace . $batch['batch_external_id']);
   } elseif ($fedora_model_name == 'sp_large_image_cmodel') {
     $markup = upitt_workflow_drush_image_possible_csv2mods($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
+  } else {
+    $markup = "Model not supported " . $fedora_model_name . "<br>";
   }
   return $markup;
 }
+
 /**
  * This function will return the specific item file record that corresponds to a given `use` value, like the `TARGET` reference
  * would be whichever item_file record that had that value.
