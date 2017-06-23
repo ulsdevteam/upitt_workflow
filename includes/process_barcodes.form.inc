@@ -184,6 +184,7 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
     $markup .= "</div>";
 
 
+
     $sql = "REPLACE INTO `batch` (batch_external_id, " .
            "mapto_collections, " .
            "batch_description, " .
@@ -198,7 +199,7 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
            "'" . mysqli_real_escape_string($link, $model) . "', " .
            "'" . mysqli_real_escape_string($link, $sites) . "', " .
            $overwrite_if_exists . ", " .
-           "'/ingest/testing'," .
+           "'" . variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming') . "'," .
            $user->uid . ");";
     mysqli_query($link, $sql);
     $sqls[$barcode] = $sql;
