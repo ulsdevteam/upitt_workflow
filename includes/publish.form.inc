@@ -66,19 +66,22 @@ function upitt_workflow_do_publish_submit(array $form, array &$form_state) {
   $sites = $form_state['values']['sites'];
   $collections = $form_state['values']['collections'];
 
-  if (count($sites) > 0 || count($collections) > 0) {
+  $sites_arr = explode(",", $sites);
+  $collections_arr = explode(",", $collections);
+  
+  if (count($sites_arr) > 0 || count($collections_arr) > 0) {
     // 1. load the islandora_object - and loop through collections and sites to add
     // these relationships using the upitt_workflow_addRelationship - which will ensure
     // that duplicate relationships are not added.
     $pid = $ingest_namespace . $object_id;
     $object = islandora_object_load($pid);
 
-    foreach ($sites as $site) {
+    foreach ($sites_arr as $site) {
       $object->relationships->remove('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
       $object->relationships->add('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
     }
 
-    foreach ($collections as $collection) {
+    foreach ($collections_arr as $collection) {
       $object->relationships->remove(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
       $object->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
     }
@@ -90,7 +93,5 @@ function upitt_workflow_do_publish_submit(array $form, array &$form_state) {
     drupal_set_message('There were no sites or collections related to the object "' . $object_id . '"', 'warning');
   }
   $form_state['redirect'] = '/workflow/object/' . $object_id;
-
-
 }
 
