@@ -6,7 +6,8 @@ function upitt_workflow_object_status(array $form, array &$form_state) {
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
-  $records = 'SELECT b.batch_external_id, b.batch_id, t.timestamp `most recent transaction`, ' .
+  $records = 'SELECT b.batch_external_id, b.batch_id, ' .
+             ' (SELECT t.timestamp FROM `transaction` t WHERE (t.item_id = bi.item_id) ORDER BY t.timestamp DESC LIMIT 1) `most recent transaction`, ' .
              ' (SELECT GROUP_CONCAT(DISTINCT a.description SEPARATOR "<br>") ' .
              '  FROM `transaction_actions` a ' .
              '  JOIN `transaction` t2 ON (t2.transaction_action_id = a.id) ' .
@@ -16,9 +17,8 @@ function upitt_workflow_object_status(array $form, array &$form_state) {
              ' \'\' `operation` ' .
              'FROM batch b ' .
              'JOIN batch_item bi ON (bi.batch_id = b.batch_id) ' .
-             'JOIN `transaction` t ON (t.item_id = bi.item_id) ' .
              'GROUP BY b.batch_id ' .
-             'ORDER BY t.timestamp DESC ' .
+             'ORDER BY `most recent transaction` DESC ' .
              'LIMIT ' . (($page) ? $page * WF_OBJECTS_PER_PAGE . ', ' : '') . WF_OBJECTS_PER_PAGE;
 
   $query = 'SELECT count(distinct b.batch_external_id) as `total` ' .
