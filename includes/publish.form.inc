@@ -66,8 +66,8 @@ function upitt_workflow_do_publish_submit(array $form, array &$form_state) {
   $sites = $form_state['values']['sites'];
   $collections = $form_state['values']['collections'];
 
-  $sites_arr = explode(",", $sites);
-  $collections_arr = explode(",", $collections);
+  $sites_arr = explode(",", implode(",",$sites));
+  $collections_arr = explode(",", implode(",",$collections));
   
   if (count($sites_arr) > 0 || count($collections_arr) > 0) {
     // 1. load the islandora_object - and loop through collections and sites to add

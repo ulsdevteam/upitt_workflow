@@ -147,7 +147,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
  */
 function upitt_workflow_drush_generic($batch) {
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
-  $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch['batch_external_id'];
+  $batch_path = upitt_workflow_batch_path($batch);
   $parent = $batch['mapto_collections'];
   $site = $batch['mapto_site_id_values'];
   // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.
@@ -287,7 +287,7 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
       // TODO: make sure this row is not an empty line
       $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
-                       '--type=directory --overwrite_existing=1 ' .
+                       '--type=directory ' . // --overwrite_existing=1 ' .
                        '--assign_pid=' . $csv_file_source['identifier'] . ' ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
@@ -316,7 +316,7 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
     $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
                      '--content_models=islandora:' . $fedora_model_name . ' ' .
                      // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                     '--type=directory --overwrite_existing=1 ' .
+                     '--type=directory ' . // --overwrite_existing=1 ' .
                      '--assign_pid=' . $ingest_namespace . $batch_external_id . ' ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
@@ -362,7 +362,7 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
                    '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
-                   '--overwrite_existing=1 ' .
+//                   '--overwrite_existing=1 ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
@@ -407,7 +407,7 @@ function upitt_workflow_drush_manuscript($filepath, $parent, $site, $pid) {
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
                    '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
-                   '--overwrite_existing=1 ' .
+//                   '--overwrite_existing=1 ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
