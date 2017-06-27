@@ -680,7 +680,7 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
     }
   }
 
-  $temp_dest_file_uri = upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id);
+  $temp_dest_file_uri = upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id, $object->models);
 
   if (!$temp_dest_file_uri) {
     return FALSE;
@@ -742,7 +742,7 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
  * @param type $obj_ds
  * @return string
  */
-function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id) {
+function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id, $models) {
   module_load_include('inc', 'islandora_large_image', 'includes/derivatives');
   module_load_include('module', 'imagemagick', 'imagemagick');
   
@@ -755,8 +755,9 @@ function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id) {
   $obj_ds_file = drupal_realpath("temporary://{$thumbnail_id}_OBJ.{$ext}");
   $obj_ds->getContent($obj_ds_file);
 
+  $obj_is_pdf = !(array_search('islandora:sp_pdf', $islandora_object->models) === FALSE);
   // For the imagemagick call, a TIF source needs [0] at the end of the filename source.
-  if (islandora_large_image_is_tiff($obj_ds_file)) {
+  if (islandora_large_image_is_tiff($obj_ds_file) || $obj_is_pdf) {
     $im_obj_ds_file = $obj_ds_file . '[0]';
   } else {
     $im_obj_ds_file = $obj_ds_file;
