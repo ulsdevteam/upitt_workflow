@@ -8,7 +8,7 @@ function upitt_workflow_object_status(array $form, array &$form_state) {
 
   $records = 'SELECT b.batch_external_id, b.batch_id, ' .
              ' (SELECT t.timestamp FROM `transaction` t WHERE (t.item_id = bi.item_id) ORDER BY t.timestamp DESC LIMIT 1) `most recent transaction`, ' .
-             ' (SELECT GROUP_CONCAT(DISTINCT a.description SEPARATOR "<br>") ' .
+             ' (SELECT GROUP_CONCAT(a.description SEPARATOR "<br>") ' .
              '  FROM `transaction_actions` a ' .
              '  JOIN `transaction` t2 ON (t2.transaction_action_id = a.id) ' .
              '  WHERE bi.item_id = t2.item_id ' .

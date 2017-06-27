@@ -636,7 +636,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
  * @return array
  */
 function upitt_workflow_retrieve_TN_LARGE_applicable_cmodels() {
-  return array('islandora:manuscriptPageCModel','islandora:pageCModel','islandora:newspaperPageCModel','islandora:sp_large_image_cmodel','islandora:sp_basic_image');
+  return array('islandora:manuscriptPageCModel','islandora:pageCModel','islandora:newspaperPageCModel','islandora:sp_large_image_cmodel','islandora:sp_basic_image', 'islandora:sp_pdf');
 }
 
 /**
