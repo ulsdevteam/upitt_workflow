@@ -390,8 +390,6 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
                      (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
                      ' --target=' . $filepath;
-    $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code style="color:red">' . $drush_command . '</code>';
-    $retval .= $markup;
 
     $output = $return_var = array();
     exec($drush_command, $output, $return_var);
@@ -400,6 +398,9 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
       drupal_set_message('There was an error calling the drush command : ' . $drush_command);
       $alerted_on_err = TRUE;
     }
+    $color = (($return_var == -1 || $return_var == 255)) ? 'red' : 'green';
+    $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code style="color:' . $color . '">' . $drush_command . '</code>';
+    $retval .= $markup;
   }
   return $retval;
 }
