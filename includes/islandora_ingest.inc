@@ -147,7 +147,9 @@ function upitt_workflow_islandora_ingest($batch_id) {
  */
 function upitt_workflow_drush_generic($batch) {
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
-  $batch_path = upitt_workflow_batch_path($batch);
+  // $batch_path = upitt_workflow_batch_path($batch);
+  $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
+
   $parent = $batch['mapto_collections'];
   $site = $batch['mapto_site_id_values'];
   // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.
