@@ -427,6 +427,14 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     ),
   );
 
+  if(isset($form_state['storage'], $form_state['storage']['process_results'])) {
+    $tmp_form['myowntext_display'] = array(
+      '#markup' => $form_state['storage']['process_results'],
+      '#prefix' => '',
+      '#suffix' => '',
+    );
+    $form = array_merge($tmp_form, $form);
+  }
   return $form;
 }
 
@@ -501,8 +509,11 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
     upitt_workflow_update_batch_nid($batch_id, $node);
     drupal_set_message('New node created ' . $node->nid);
   }
-
-  $form_state['redirect'] = '/workflow/batch/' . $batch_id;
+  if ($markup) {
+    $form_state['rebuild'] = TRUE;
+    $markup = l('Return to batch', '/workflow/batch/' . $batch_id) . "<br>" . $markup;
+    $form_state['storage']['process_results'] = theme('upitt_simple_markup', array('markup' => $markup));
+  }
 }
 
 /**
@@ -525,7 +536,6 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
   }
 
   $model_filemasks = upitt_workflow_content_model_filemask($content_model);
-
   // with the folder of files, get the PID value from the {PID}.marcxml.xml file.
 
   // FOR sp_large_image_cmodel:
@@ -547,7 +557,13 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
   //
   // 3) make a subfolder for each page and copy the {page#}.tif to the folder as : {page#}/OBJ.tif
 
-  $tmp_files = upitt_workflow_file_scan_directory($incoming_folder, '', TRUE, FALSE);
+  // If the model is sp_pdf, then return folder names - and process each folder's files
+  if ($content_model == 'sp_pdf') {
+    $tmp_files = upitt_workflow_pdfs_get_directory($incoming_folder);
+  }
+  else {
+    $tmp_files = upitt_workflow_file_scan_directory($incoming_folder, '', TRUE, FALSE);
+  }
   $files = array();
   // FLATTEN this result
   foreach ($tmp_files as $key => $file) {
@@ -560,13 +576,21 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       $files[] = $file;
     }
   }
+
+  // Inspect the filemask that is related to the given content_model and keep the matching
+  // files in a new $move_files array -- also, calculate the size of the files being inspected.
   $move_files = array();
   $size = $filemove_size = 0;
   foreach ($files as $i => $file) {
     $this_size = filesize($incoming_folder . '/' . $file);
     $size += $this_size;
-    // If the file has a subfolder reference, skip it
-    if (strstr($file, '/')) {
+    // If the file has a subfolder reference, skip it UNLESS the content model is sp_pdf
+    if ($content_model == 'sp_pdf') {
+      if ($matched_model_filemask = upitt_workflow_filemask_comparison($file, $model_filemasks)) {
+        $move_files[$matched_model_filemask][] = $file;
+      }
+    }
+    elseif (strstr($file, '/')) {
       // SKIP
     }
     else {
@@ -574,6 +598,14 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       if ($matched_model_filemask = upitt_workflow_filemask_comparison($file, $model_filemasks)) {
         $move_files[$matched_model_filemask][] = $file;
       }
+    }
+  }
+
+  // Calculate the size of the files to be moved.
+  foreach ($move_files as $filemask => $matched_files) {
+    foreach ($matched_files as $filename) {
+      $this_size = filesize($incoming_folder . '/' . $filename);
+      $filemove_size += $this_size;
     }
   }
 
@@ -586,14 +618,16 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
 
     $markup .= "<div><div style='float:left;width:48%'>";
     $markup .= "<h4>Size of all files in incoming folder</h4>";
-    $markup .= '<pre>' . number_format($size) . " bytes</pre>";
-    $markup .= "  <pre>" . print_r($files, true) . "</pre>";
+    $markup .= '<pre>' . number_format($size) . " bytes<hr>";
+    $markup .= "  <ul><li>" . implode("</li><li>", $files) . "</li></ul></pre>";
     $markup .= "</div>";
 
     $markup .= "<div style='float:left;width:48%'>";
-    $markup .= "<h4>Size of all files to be moved</h4>";
-    $markup .= '<pre>' . number_format($filemove_size) . " bytes</pre>";
-    $markup .= "  <pre>" . print_r($move_files, true) . "</pre>";
+    $markup .= "<h4>Size of files to be moved</h4>";
+    $markup .= '<pre>' . number_format($filemove_size) . " bytes<hr>";
+    foreach ($move_files as $mask => $files) {
+      $markup .= "  <pre><b>" . $mask . "</b><hr><ul><li>" . implode("</li><li>", $files) . "</li></ul></pre>";
+    }
     $markup .= "</div></div><br style='clear:both'>";
   }
   else {
@@ -662,6 +696,14 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
             }
             break;
           default:
+            $obj_filename = $file;
+            if (strstr($file, '/') && $content_model == 'sp_pdf') {
+              // create subfolder if needed
+              $file_pathinfo = pathinfo($file);
+              mkdir($batch_path . '/' . $file_pathinfo['dirname']);
+            }
+            copy($incoming_folder . '/' . $file, $batch_path . '/' . $file);
+            $markup .= "Moved '$file' to '" . $batch_path . "/" . $file . "'<br>";
             break;
         }
       }
@@ -744,6 +786,11 @@ function upitt_workflow_content_model_filemask($content_model) {
       $discard_filemasks['*.thumb.jpg'] = 'old thumbnail file';
       $discard_filemasks['*.thumb_large.jpg'] = 'old large thumbnail file';
       $discard_filemasks['target.tif'] = 'graphics calibration';
+      break;
+
+    case 'sp_pdf':
+      $filemasks['*.mods.xml'] = 'MODS XML';
+      $filemasks['*.pdf'] = 'PDF file';
       break;
 
     default:

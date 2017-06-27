@@ -1,22 +1,5 @@
 <?php
 
-/**
- *  get_config_value
- */
-function get_config_value($section,$key) {
-  if ( file_exists('/usr/local/src/islandora_tools/uls-workflow.ini') ) {
-    $ini_array = parse_ini_file('/usr/local/src/islandora_tools/uls-workflow.ini', true);
-    if (isset($ini_array[$section][$key])) {
-      $value = $ini_array[$section][$key];
-      return ($value);
-    } else {
-      return ("");
-    }
-  } else {
-    return(0);
-  }
-}
-
 /** 
  * Simple lookup function to provide mapping between the legacy workflow "type_of_resource" to the Islandora fedora model name.
  */
@@ -29,6 +12,7 @@ function upitt_workflow_get_workflow_to_fedora_object_mappings() {
                'manuscriptCModel' => 'Manuscript',
                'newspaperIssueCModel' => 'Newspaper (pending development)',
                'oralhistoriesCModel' => 'Oral Histories (pending development)',
+               'sp_pdf' => 'PDF object',
                'sp_videoCModel' => 'Video (pending development)',
       /*
        *  LEGACY NAMING...
@@ -280,21 +264,22 @@ function upitt_workflow_drive_along_links($do_id, $status) {
   $links[] = (($files_moved) ? 'Batch files <b class="good">have been moved</b>' : 'Batch files <b class="bad">have not been moved</b>');
   $links[] = (($ingest_prepared) ? 'Batch is <b class="good">prepared</b>' : l('Islandora Ingest Preprocess', '/workflow/batch/' . $batch_id . '/islandora_ingest',
       ($item['path'] == 'workflow/batch/%/islandora_ingest') ? $active_attrib : array()));
+
   $links[] = (($ingested) ? 'Batch is <b class="good">ingested</b>' :
       (($ingest_prepared && $files_moved) ? l('Islandora Ingest Preprocess (batch)', '/workflow/batch/' . $batch_id . '/islandora_ingest',
-      ($item['path'] == 'workflow/batch/%/islandora_ingest') ? $active_attrib : array()) : ''));
+      ($item['path'] == 'workflow/batch/%/islandora_ingest') ? $active_attrib : array()) : ' - '));
 
   if (!$published_on_site) {
     // add a row to allow review of the batch in islandora
     if ($ingested) {
       $links[] = l('Review object', '/islandora/object/' . $pid,
         ($item['path'] == 'islandora/object/%') ? $active_attrib : array());
+      $links[] = l('Relate to Site(s) / collection(s)', '/workflow/object/' . $do_id . '/do_publish',
+        ($item['path'] == 'workflow/object/%/do_publish') ? $active_attrib : array());
     } elseif ($ingest_prepared) {
       $links[] = l('Ingest Now', '/workflow/object/' . $do_id . '/islandora_ingest_now',
         ($item['path'] == 'workflow/object/%/islandora_ingest_now') ? $active_attrib : array());
     }
-    $links[] = l('Relate to Site(s) / collection(s)', '/workflow/object/' . $do_id . '/do_publish',
-      ($item['path'] == 'workflow/object/%/do_publish') ? $active_attrib : array());
   }
   else {
     $links[] = 'Object is <b class="good">published on site</b>';
@@ -595,6 +580,28 @@ function upitt_workflow_get_object_fedora_sites($object_id) {
 
   mysqli_close($link);
   return $retval;
+}
+
+/**
+ * Used by sp_pdf processing to work with the subfolders as objects.  Given the folder,
+ * this will return all the files and folders in an associative array that sets each value
+ * as the relative file path (from the $incoming_folder).
+ *
+ * @param string $incoming_folder
+ * @return array
+ */
+function upitt_workflow_pdfs_get_directory($incoming_folder) {
+  $folders = upitt_workflow_file_scan_directory($incoming_folder, '', TRUE, TRUE);
+  $tmp_files = array();
+  foreach ($folders as $foldername => $contents) {
+    $folder = trim($foldername);
+    $subfolder = $incoming_folder . '/' . $folder;
+    $files = upitt_workflow_file_scan_directory($subfolder, '', TRUE, FALSE);
+    foreach ($files as $key => $file) {
+      $tmp_files[$file] = $folder . '/' . $file;
+    }
+  }
+  return $tmp_files;
 }
 
 /**

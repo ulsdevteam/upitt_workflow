@@ -147,8 +147,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
  */
 function upitt_workflow_drush_generic($batch) {
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
-  $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch['batch_external_id'];
-
+  $batch_path = upitt_workflow_batch_path($batch);
   $parent = $batch['mapto_collections'];
   $site = $batch['mapto_site_id_values'];
   // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.
@@ -161,6 +160,8 @@ function upitt_workflow_drush_generic($batch) {
     $markup = upitt_workflow_drush_manuscript($batch_path, $parent, $site, $ingest_namespace . $batch['batch_external_id']);
   } elseif ($fedora_model_name == 'sp_large_image_cmodel') {
     $markup = upitt_workflow_drush_image_possible_csv2mods($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
+  } elseif ($fedora_model_name == 'sp_pdf') {
+    $markup = upitt_workflow_drush_islandora_batch_folder_pids($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
   } else {
     $markup = "Model not supported " . $fedora_model_name . "<br>";
   }
@@ -253,6 +254,70 @@ function upitt_workflow_sp_large_image_cmodel_make_derivative($pid, $dsid) {
 }
 
 /**
+ * This will ingest the object in the folder using the fedora model provided and
+ * will use the islandora_batch ingest method "type=directory".  For each subfolder,
+ * the folder name is used as the pid value.
+ *
+ *  - ingested using the PID value ingest namespace + folder name.
+ *
+ * @global object $user
+ * @param string $batch_external_id
+ * @param string $filepath
+ * @param string $fedora_model_name
+ * @param string $parent
+ * @param string $site
+ * @param string $batch_default_depositor
+ * @return string
+ */
+function upitt_workflow_drush_islandora_batch_folder_pids($batch_external_id, $filepath, $fedora_model_name, $parent, $site, $batch_default_depositor) {
+  global $user;
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  $retval = '';
+
+  $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  $alerted_on_err = FALSE;
+
+  $files = upitt_workflow_pdfs_get_directory($filepath);
+  $drushed_folders = array();
+  foreach ($files as $filename => $relative_path) {
+    $file_pathinfo = pathinfo($filename);
+    $barcode_of_filename = $file_pathinfo['filename'];
+    $file_target = $filepath . '/' . $relative_path;
+    $file_target_pathinfo = pathinfo($file_target);
+    $folder_target = $file_target_pathinfo['dirname'];
+    if (array_search($folder_target, $drushed_folders) === FALSE) {
+      // TODO: make sure this row is not an empty line
+      $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
+                       '--content_models=islandora:' . $fedora_model_name . ' ' .
+                       '--type=directory ' . // --overwrite_existing=1 ' .
+                       '--assign_pid=' . $ingest_namespace . $barcode_of_filename . ' ' .
+              /*
+               * These relationships will be set after the batch-object has been reviewed.
+               *
+                       // assuming that only if the parent is set, than the parent_relationship_pred is needed
+                       (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
+                       (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
+               */
+                       ' --target=' . $folder_target;
+      $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
+      $retval .= $markup;
+
+      $output = $return_var = array();
+      exec($drush_command, $output, $return_var);
+
+      if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
+        drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+        $alerted_on_err = TRUE;
+      }
+      $drushed_folders[] = $folder_target;
+    }
+  }
+  return $retval;
+}
+
+/**
  * Helper function to generate MODS from a spreadsheet.  This will potentially
  * create the MODS from a spreadsheet reference, but if that is not included, the
  * image will be ingested using the PID value of ingest namespace + batch_external_id
@@ -272,9 +337,6 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $retval = '';
-  // First step, look for a "*.csv" file in the filepath.
-  // Get the path for the lib folder - a bit of a hack, but it's safe...
-  $module_lib_path =  str_replace('/includes', '/lib', dirname(__FILE__));
 
   $files = upitt_workflow_file_scan_directory($filepath, 'metadata.csv');
 
@@ -348,9 +410,6 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $retval = '';
-  // First step, look for a "*.csv" file in the filepath.
-  // Get the path for the lib folder - a bit of a hack, but it's safe...
-  $module_lib_path =  str_replace('/includes', '/lib', dirname(__FILE__));
 
   $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 
@@ -393,9 +452,6 @@ function upitt_workflow_drush_manuscript($filepath, $parent, $site, $pid) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $retval = '';
-  // First step, look for a "*.csv" file in the filepath.
-  // Get the path for the lib folder - a bit of a hack, but it's safe...
-  $module_lib_path =  str_replace('/includes', '/lib', dirname(__FILE__));
 
   $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 

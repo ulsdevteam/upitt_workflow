@@ -67,7 +67,8 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
       }
       elseif ($form_state['values']['mode'] == 'do_publish') {
         $markup = upitt_workflow_do_publish_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($form_state['values']['mode'] == 'update' || $form_state['values']['mode'] == 'updateforce') {
+      }
+      elseif ($form_state['values']['mode'] == 'update' || $form_state['values']['mode'] == 'updateforce') {
         upitt_workflow_make_batch_records_from_barcodes($form_state['values']['barcodes'], $form_state['values']['mode']);
       }
       break;
@@ -189,8 +190,6 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
     $markup .= 'sites = <b>' . $sites . "</b><br>";
     $markup .= "</div>";
 
-
-
     $sql = "REPLACE INTO `batch` (batch_external_id, " .
            "mapto_collections, " .
            "batch_description, " .
@@ -209,6 +208,13 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
            $user->uid . ");";
     mysqli_query($link, $sql);
     $sqls[$barcode] = $sql;
+
+    $item_id = upitt_workflow_insert_item_for_batch_external_id($barcode, $link);
+    if (!$batch_id) {
+      $batch_id = upitt_workflow_get_batch_id($barcode);
+    }
+
+    upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link);
   }
 
   mysqli_close($link);
