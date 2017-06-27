@@ -15,6 +15,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'checkobjects' => 'Check for Islandora Objects',
     'update' => 'Update batch records (no overwrite if islandora object exists)',
     'updateforce' => 'Update batch records (force overwrite)',
+    'make_tn_large' => 'Make TN_LARGE deriviative',
     'do_copy' => 'Copy files from incoming to ingest location',
     'ingest_prepare' => 'Islandora Ingest Preprocess',
     'do_publish' => 'Publish objects to site');
@@ -28,6 +29,9 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     ),
     'mode' => array(
       '#title' => 'Processing mode',
+      '#description' => 'These processes are not sequential.  Depending on what needs to be done, this form ' .
+        'allows for processing a set of barcodes for a specific processing mode operation.  In the case of "Make TN_LARGE ' .
+        'deriviative", this <b>does not</b> need to be done with most models, but was added for a special case.',
       '#type' => 'select',
       '#options' => $process_options,
       '#default_value' => isset($form_state['values']['mode']) ? $form_state['values']['mode'] : '',
@@ -51,25 +55,29 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
   $markup = '';
 
   $btn_id = $form_state['triggering_element']['#id'];
+  $mode = $form_state['values']['mode'];
   switch ($btn_id) {
     case 'edit-submit':
-      if ($form_state['values']['mode'] == 'checkobjects') {
+      if ($mode == 'checkobjects') {
         $markup = upitt_workflow_process_check_islandora_for_barcodes($form_state['values']['barcodes']);
       }
-      elseif ($form_state['values']['mode'] == 'ingest_prepare') {
+      elseif ($mode == 'ingest_prepare') {
         $markup = upitt_workflow_ingest_preprocess_from_barcodes($form_state['values']['barcodes']);
       }
-      elseif ($form_state['values']['mode'] == 'do_copy') {
+      elseif ($mode == 'do_copy') {
         $markup = upitt_workflow_do_copy_for_barcodes($form_state['values']['barcodes']);
       }
-      elseif ($form_state['values']['mode'] == 'ingest_prepare') {
+      elseif ($mode == 'ingest_prepare') {
         $markup = upitt_workflow_ingest_preprocess_from_barcodes($form_state['values']['barcodes']);
       }
-      elseif ($form_state['values']['mode'] == 'do_publish') {
+      elseif ($mode == 'make_tn_large') {
+        $markup = upitt_workflow_make_tn_large_for_barcodes($form_state['values']['barcodes']);
+      }
+      elseif ($mode == 'do_publish') {
         $markup = upitt_workflow_do_publish_for_barcodes($form_state['values']['barcodes']);
       }
-      elseif ($form_state['values']['mode'] == 'update' || $form_state['values']['mode'] == 'updateforce') {
-        upitt_workflow_make_batch_records_from_barcodes($form_state['values']['barcodes'], $form_state['values']['mode']);
+      elseif ($mode == 'update' || $mode == 'updateforce') {
+        upitt_workflow_make_batch_records_from_barcodes($form_state['values']['barcodes'], $mode);
       }
       break;
     
@@ -218,6 +226,33 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
   }
 
   mysqli_close($link);
+  return $markup;
+}
+
+function upitt_workflow_make_tn_large_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+
+  $missing_barcodes = array();
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $pid = $ingest_namespace . $barcode;
+    $islandora_object = islandora_object_load($pid);
+    if (is_object($islandora_object)) {
+      if (!upitt_workflow_make_tn_large($islandora_object, $islandora_object)) {
+        $missing_barcodes[] = $barcode;
+      }
+    }
+    else {
+      $missing_barcodes[] = $barcode;
+    }
+    $markup .= '<div>TN_LARGE created for ' . $pid . "</div>";
+  }
+  if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes could not be found ' . print_r($missing_barcodes, true), 'warning');
+  }
   return $markup;
 }
 

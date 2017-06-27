@@ -651,7 +651,6 @@ function upitt_workflow_retrieve_applicable_paged_content_cmodels() {
 
 function upitt_workflow_make_tn_large($object, $save_on_object) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
-
   $obj_ds = NULL;
   $thumbnail_id = str_replace(':', '_', $save_on_object->id);
   $is_paged = upitt_workflow_is_paged_object($object);
@@ -672,7 +671,12 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
     if (isset($object['OBJ'])) {
       $obj_ds = $object['OBJ'];
     }
+    else {
+      drupal_set_message("Could not create TN_LARGE datastream because there was no OBJ datastream found for " . $object->id, 'warning');
+      return FALSE;
+    }
   }
+
   $temp_dest_file_uri = upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id);
 
   if (!$temp_dest_file_uri) {
