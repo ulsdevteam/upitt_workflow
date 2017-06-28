@@ -18,6 +18,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'make_tn_large' => 'Make TN_LARGE deriviative',
     'do_copy' => 'Copy files from incoming to ingest location',
     'ingest_prepare' => 'Islandora Ingest Preprocess',
+    'links_to_objects' => 'Make links to objects',
     'do_publish' => 'Publish objects to site');
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
@@ -73,6 +74,9 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
       elseif ($mode == 'make_tn_large') {
         $markup = upitt_workflow_make_tn_large_for_barcodes($form_state['values']['barcodes']);
       }
+      elseif ($mode == 'links_to_objects') {
+        $markup = upitt_workflow_links_to_objects_for_barcodes($form_state['values']['barcodes']);
+      }
       elseif ($mode == 'do_publish') {
         $markup = upitt_workflow_do_publish_for_barcodes($form_state['values']['barcodes']);
       }
@@ -99,8 +103,8 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
  */
 function upitt_workflow_process_check_islandora_for_barcodes($barcodes) {
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
-  $markup = '<h3>Found in Islandora</h3><pre class="bad">' . implode("\n", $check_results['found_pids']) . '</pre><hr>' .
-            '<h3>NOT found in Islandora</h3><pre class="good">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
+  $markup = '<div class="text-report"><h3>Found in Islandora</h3><div class="found">' . implode("<br>", $check_results['found_pid_links']) . '</div><hr>' .
+            '<h3>NOT found in Islandora</h3><div class="not-found">' . implode("<br>", $check_results['not_found_pids']) . '</div></div>';
   return $markup;
 }
 
@@ -116,7 +120,7 @@ function upitt_workflow_process_check_islandora_for_barcodes($barcodes) {
 function upitt_workflow_check_islandora_for_barcodes($barcodes) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
-  $found_pids = $not_found_pids = array();
+  $found_pids = $found_pid_links = $not_found_pids = array();
   $barcodes_arr = explode("\n", $barcodes);
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
@@ -127,11 +131,14 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
         $not_found_pids[$barcode] = $pid;
       }
       else {
+        $found_pid_links[$barcode] = $pid . ' ' . l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid);
         $found_pids[$barcode] = $pid;
       }
     }
   }
-  return array('barcodes_arr' => $barcodes_arr, 'found_pids' => $found_pids, 'not_found_pids' => $not_found_pids);
+  return array('barcodes_arr' => $barcodes_arr, 'found_pids' => $found_pids, 
+      'found_pid_links' => $found_pid_links,
+      'not_found_pids' => $not_found_pids);
 }
 
 /**
@@ -163,7 +170,7 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
   global $user;
 
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
-  $markup = '';
+  $markup = '<div class="text-report">';
   if ($mode == 'updateforce') {
     $markup .= '<h2>Update batch records (force overwrite)</h2>';
     $use_pids = $check_results['found_pids'] + $check_results['not_found_pids']; // array_merge($check_results['found_pids'], $check_results['not_found_pids']);
@@ -225,6 +232,7 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
     upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link);
   }
 
+  $markup .= '</div>';
   mysqli_close($link);
   return $markup;
 }
@@ -234,7 +242,7 @@ function upitt_workflow_make_tn_large_for_barcodes($barcodes) {
 
   $missing_barcodes = array();
   $barcodes_arr = explode("\n", $barcodes);
-  $markup = '';
+  $markup = '<div class="text-report">';
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
@@ -251,7 +259,30 @@ function upitt_workflow_make_tn_large_for_barcodes($barcodes) {
     $markup .= '<div>TN_LARGE created for ' . $pid . "</div>";
   }
   if (count($missing_barcodes) > 0) {
-    drupal_set_message('Some barcodes could not be found ' . print_r($missing_barcodes, true), 'warning');
+    drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
+  }
+  $markup .= '</div>';
+  return $markup;
+}
+
+function upitt_workflow_links_to_objects_for_barcodes($barcodes) {
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '<div class="text-report"><h3>Links to ingested objects</h3>';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $pid = $ingest_namespace . $barcode;
+    $islandora_object = islandora_object_load($pid);
+    if (is_object($islandora_object)) {
+      $markup .= l($islandora_object->label, '/islandora/object/' . $islandora_object->id) . '<br>';
+    }
+    else {
+      $missing_barcodes[] = $barcode;
+    }
+  }
+  $markup .= '</div>';
+  if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes could not be found as islandora objects ' . implode(", ", $missing_barcodes), 'warning');
   }
   return $markup;
 }
@@ -262,7 +293,7 @@ function upitt_workflow_do_publish_for_barcodes($barcodes) {
 
   $missing_barcodes = array();
   $barcodes_arr = explode("\n", $barcodes);
-  $markup = '';
+  $markup = '<div class="text-report">';
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
@@ -274,8 +305,9 @@ function upitt_workflow_do_publish_for_barcodes($barcodes) {
     $markup .= '<div>' . upitt_workflow_do_publish_using_batchvalues($batch, $ingest_namespace) . "</div>";
   }
   if (count($missing_barcodes) > 0) {
-    drupal_set_message('Some barcodes could not be found ' . print_r($missing_barcodes, true), 'warning');
+    drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
   }
+  $markup .= '</div>';
   return $markup;
 }
 
@@ -325,7 +357,7 @@ function upitt_workflow_do_copy_for_barcodes($barcodes) {
 
   $missing_barcodes = array();
   $barcodes_arr = explode("\n", $barcodes);
-  $markup = '';
+  $markup = '<div class="text-report">';
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
     // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
@@ -353,8 +385,9 @@ function upitt_workflow_do_copy_for_barcodes($barcodes) {
     $markup .= '<div>' . upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id) . "</div>";
   }
   if (count($missing_barcodes) > 0) {
-    drupal_set_message('Some barcodes could not be found ' . print_r($missing_barcodes, true), 'warning');
+    drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
   }
+  $markup .= '</div>';
   return $markup;
 }
 
@@ -363,7 +396,7 @@ function upitt_workflow_ingest_preprocess_from_barcodes($barcodes) {
   $barcodes_arr = explode("\n", $barcodes);
 
   module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
-  $markup = '';
+  $markup = '<div class="text-report">';
   $markup .= '<h2>Islandora Ingest Preprocess for These Barcodes</h2><pre style="color:blue">' . implode("\n", $barcodes_arr) . '</pre><hr>';
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
@@ -385,6 +418,7 @@ function upitt_workflow_ingest_preprocess_from_barcodes($barcodes) {
       $markup .= '<span class="bad">batch_id could not be found for ' . $barcode . '</span><br>';
     }
   }
+  $markup .= '</div>';
   return $markup;
 }
 

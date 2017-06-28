@@ -405,7 +405,8 @@ function upitt_workflow_preprocess_page(&$vars) {
         dpm($vars);
       }
     }
-    elseif ($item['path'] == 'islandora/object/%/manage/audit_upitt_workflow') {
+    elseif ($item['path'] == 'islandora/object/%/manage/audit_upitt_workflow' ||
+            $item['path'] == 'workflow/workflowadmin/process_barcodes') {
       drupal_add_css($path . '/style/workflow.css');
     }
   }

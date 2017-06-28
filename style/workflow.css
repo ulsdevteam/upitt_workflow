@@ -30,6 +30,13 @@ h5 {
     color: red;
 }
 
+.found {
+    color: #0a0;
+}
+.not-found {
+    color: #c00;
+}
+
 .numeric {
     text-align: right;
 }
@@ -39,7 +46,20 @@ h5 {
     white-space: nowrap;
 }
 
-.report_table {
+.text-report {
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    padding: 16px;
+    background-color: white;
+    color: #258;
+    overflow: auto;
+}
+
+.text-report a {
+    color: #02b;
+}
+
+.text-report, .report_table {
     font-size: 0.825em;
     font-family: Andale Mono, monospace;
 }
