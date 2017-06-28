@@ -148,7 +148,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
 function upitt_workflow_drush_generic($batch) {
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   // $batch_path = upitt_workflow_batch_path($batch);
-  $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch['batch_external_id'];
+  $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
 
   $parent = $batch['mapto_collections'];
   $site = $batch['mapto_site_id_values'];
@@ -295,6 +295,8 @@ function upitt_workflow_drush_islandora_batch_folder_pids($batch_external_id, $f
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
                        '--type=directory ' . // --overwrite_existing=1 ' .
                        '--assign_pid=' . $ingest_namespace . $barcode_of_filename . ' ' .
+              // To prevent the parent relationship to islandora_repository_pid, pass empty value
+                       '--parent= ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
@@ -354,6 +356,8 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
                        '--type=directory ' . // --overwrite_existing=1 ' .
                        '--assign_pid=' . $csv_file_source['identifier'] . ' ' .
+              // To prevent the parent relationship to islandora_repository_pid, pass empty value
+                       '--parent= ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
@@ -383,6 +387,8 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
                      // assuming that only if the parent is set, than the parent_relationship_pred is needed
                      '--type=directory ' . // --overwrite_existing=1 ' .
                      '--assign_pid=' . $ingest_namespace . $batch_external_id . ' ' .
+              // To prevent the parent relationship to islandora_repository_pid, pass empty value
+                     '--parent= ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
@@ -425,6 +431,8 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
                    '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
+              // To prevent the parent relationship to islandora_repository_pid, pass empty value
+                   '--parent= ' .
 //                   '--overwrite_existing=1 ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
@@ -467,6 +475,8 @@ function upitt_workflow_drush_manuscript($filepath, $parent, $site, $pid) {
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
                    '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
+              // To prevent the parent relationship to islandora_repository_pid, pass empty value
+                   '--parent= ' .
 //                   '--overwrite_existing=1 ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
@@ -755,7 +765,7 @@ function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id, $models) {
   $obj_ds_file = drupal_realpath("temporary://{$thumbnail_id}_OBJ.{$ext}");
   $obj_ds->getContent($obj_ds_file);
 
-  $obj_is_pdf = !(array_search('islandora:sp_pdf', $models) === FALSE);
+  $obj_is_pdf = !(array_search('islandora:sp_pdf', $islandora_object->models) === FALSE);
   // For the imagemagick call, a TIF source needs [0] at the end of the filename source.
   if (islandora_large_image_is_tiff($obj_ds_file) || $obj_is_pdf) {
     $im_obj_ds_file = $obj_ds_file . '[0]';
