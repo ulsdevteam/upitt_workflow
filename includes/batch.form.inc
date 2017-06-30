@@ -793,6 +793,11 @@ function upitt_workflow_content_model_filemask($content_model) {
       $filemasks['*.pdf'] = 'PDF file';
       break;
 
+    case 'sp_videoCModel':
+      $filemasks['*.mods.xml'] = 'MODS XML';
+      $filemasks['*.mp4'] = 'Video file';
+      break;
+
     default:
       break;
 

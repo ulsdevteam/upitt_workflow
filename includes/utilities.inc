@@ -13,7 +13,7 @@ function upitt_workflow_get_workflow_to_fedora_object_mappings() {
                'newspaperIssueCModel' => 'Newspaper (pending development)',
                'oralhistoriesCModel' => 'Oral Histories (pending development)',
                'sp_pdf' => 'PDF object',
-               'sp_videoCModel' => 'Video (pending development)',
+               'sp_videoCModel' => 'Video',
       /*
        *  LEGACY NAMING...
                'cartographic (sp_large_image_cmodel)' => 'sp_large_image_cmodel',
@@ -583,14 +583,14 @@ function upitt_workflow_get_object_fedora_sites($object_id) {
 }
 
 /**
- * Used by sp_pdf processing to work with the subfolders as objects.  Given the folder,
- * this will return all the files and folders in an associative array that sets each value
- * as the relative file path (from the $incoming_folder).
+ * Used by sp_pdf and sp_videoCModel processing to work with the subfolders as objects.  Given
+ * the folder, this will return all the files and folders in an associative array that sets each
+ * value as the relative file path (from the $incoming_folder).
  *
  * @param string $incoming_folder
  * @return array
  */
-function upitt_workflow_pdfs_get_directory($incoming_folder) {
+function upitt_workflow_generic_get_directory($incoming_folder) {
   $folders = upitt_workflow_file_scan_directory($incoming_folder, '', TRUE, TRUE);
   $tmp_files = array();
   foreach ($folders as $foldername => $contents) {
