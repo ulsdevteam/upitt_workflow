@@ -557,7 +557,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
   //
   // 3) make a subfolder for each page and copy the {page#}.tif to the folder as : {page#}/OBJ.tif
 
-  // If the model is sp_pdf, then return folder names - and process each folder's files
+  // If the model is sp_pdf or sp_videoCModel, then return folder names - and process each folder's files
   if ($content_model == 'sp_pdf' || $content_model == 'sp_videoCModel') {
     $tmp_files = upitt_workflow_generic_get_directory($incoming_folder);
   }
@@ -584,8 +584,8 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
   foreach ($files as $i => $file) {
     $this_size = filesize($incoming_folder . '/' . $file);
     $size += $this_size;
-    // If the file has a subfolder reference, skip it UNLESS the content model is sp_pdf
-    if ($content_model == 'sp_pdf') {
+    // If the file has a subfolder reference, skip it UNLESS the content model is sp_pdf or sp_videoCModel
+    if ($content_model == 'sp_pdf' || $content_model == 'sp_videoCModel') {
       if ($matched_model_filemask = upitt_workflow_filemask_comparison($file, $model_filemasks)) {
         $move_files[$matched_model_filemask][] = $file;
       }
@@ -697,7 +697,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
             break;
           default:
             $obj_filename = $file;
-            if (strstr($file, '/') && $content_model == 'sp_pdf') {
+            if (strstr($file, '/') && ($content_model == 'sp_pdf' || $content_model == 'sp_videoCModel')) {
               // create subfolder if needed
               $file_pathinfo = pathinfo($file);
               mkdir($batch_path . '/' . $file_pathinfo['dirname']);
