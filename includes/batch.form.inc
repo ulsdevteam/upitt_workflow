@@ -771,6 +771,7 @@ function upitt_workflow_content_model_filemask($content_model) {
       $filemasks['*.mods.xml'] = 'MODS XML';
       $filemasks['*.tif'] = 'Image TIF';
       $filemasks['*.jpg'] = 'Image JPG';
+      $discard_filemasks['*.200dpi.jpg'] = '200 dpi jpg file';
       $discard_filemasks['*.thumb.jpg'] = 'old thumbnail file';
       $discard_filemasks['*.thumb_large.jpg'] = 'old large thumbnail file';
       $discard_filemasks['target.tif'] = 'graphics calibration';
