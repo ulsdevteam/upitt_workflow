@@ -763,8 +763,8 @@ function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id, $models) {
 
   $obj_ds_file = drupal_realpath("temporary://{$thumbnail_id}_OBJ.{$ext}");
   $obj_ds->getContent($obj_ds_file);
-  $obj_is_pdf = (is_array($islandora_object->models) ? !(array_search('islandora:sp_pdf', $islandora_object->models) === FALSE) : FALSE);
-  $obj_is_video = (is_array($islandora_object->models) ? !(array_search('islandora:sp_videoCModel', $islandora_object->models) === FALSE) : FALSE);
+  $obj_is_pdf = (is_array($models) ? !(array_search('islandora:sp_pdf', $models) === FALSE) : FALSE);
+  $obj_is_video = (is_array($models) ? !(array_search('islandora:sp_videoCModel', $models) === FALSE) : FALSE);
   // For the imagemagick call, a TIF source needs [0] at the end of the filename source.
   if (islandora_large_image_is_tiff($obj_ds_file) || $obj_is_pdf) {
     $im_obj_ds_file = $obj_ds_file . '[0]';
