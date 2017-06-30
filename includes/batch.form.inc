@@ -558,8 +558,8 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
   // 3) make a subfolder for each page and copy the {page#}.tif to the folder as : {page#}/OBJ.tif
 
   // If the model is sp_pdf, then return folder names - and process each folder's files
-  if ($content_model == 'sp_pdf') {
-    $tmp_files = upitt_workflow_pdfs_get_directory($incoming_folder);
+  if ($content_model == 'sp_pdf' || $content_model == 'sp_videoCModel') {
+    $tmp_files = upitt_workflow_generic_get_directory($incoming_folder);
   }
   else {
     $tmp_files = upitt_workflow_file_scan_directory($incoming_folder, '', TRUE, FALSE);
@@ -791,6 +791,11 @@ function upitt_workflow_content_model_filemask($content_model) {
     case 'sp_pdf':
       $filemasks['*.mods.xml'] = 'MODS XML';
       $filemasks['*.pdf'] = 'PDF file';
+      break;
+
+    case 'sp_videoCModel':
+      $filemasks['*.mods.xml'] = 'MODS XML';
+      $filemasks['*.mp4'] = 'Video file';
       break;
 
     default:

@@ -162,7 +162,7 @@ function upitt_workflow_drush_generic($batch) {
     $markup = upitt_workflow_drush_manuscript($batch_path, $parent, $site, $ingest_namespace . $batch['batch_external_id']);
   } elseif ($fedora_model_name == 'sp_large_image_cmodel') {
     $markup = upitt_workflow_drush_image_possible_csv2mods($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
-  } elseif ($fedora_model_name == 'sp_pdf') {
+  } elseif ($fedora_model_name == 'sp_pdf' || $fedora_model_name == 'sp_videoCModel') {
     $markup = upitt_workflow_drush_islandora_batch_folder_pids($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
   } else {
     $markup = "Model not supported " . $fedora_model_name . "<br>";
@@ -280,7 +280,7 @@ function upitt_workflow_drush_islandora_batch_folder_pids($batch_external_id, $f
   $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   $alerted_on_err = FALSE;
-  $files = upitt_workflow_pdfs_get_directory($filepath);
+  $files = upitt_workflow_generic_get_directory($filepath);
   $drushed_folders = array();
   foreach ($files as $filename => $relative_path) {
     $file_pathinfo = pathinfo($filename);
@@ -648,7 +648,7 @@ function upitt_workflow_prepare_csv2mods($input_filename, $default_depositor = '
  * @return array
  */
 function upitt_workflow_retrieve_TN_LARGE_applicable_cmodels() {
-  return array('islandora:manuscriptPageCModel','islandora:pageCModel','islandora:newspaperPageCModel','islandora:sp_large_image_cmodel','islandora:sp_basic_image', 'islandora:sp_pdf');
+  return array('islandora:manuscriptPageCModel','islandora:pageCModel','islandora:newspaperPageCModel','islandora:sp_large_image_cmodel','islandora:sp_basic_image', 'islandora:sp_pdf', 'islandora:sp_videoCModel');
 }
 
 /**
