@@ -291,6 +291,10 @@ function upitt_workflow_permission() {
       'title' => t('Manage Islandora Workflow Lookup Tables (such as the various pick list values, workflow sequences, etc)'),
       'description' => t('Manage Islandora Workflow lookup tables.'),
     ),
+    ISLANDORA_WORKFLOW_PROCESS_BARCODES => array()
+      'title' => t('Process workflow barcodes'),
+      'description' => t('Process workflow barcodes - ingest prepare, move ingest files, ' .
+          'test for islandora objects, publish ojects to site, etc.')
   );
 }
 
