@@ -9,6 +9,7 @@ define('UPITT_WORKFLOW_SOLR_LIMIT', 10000);
 // Permissions.
 define('ISLANDORA_WORKFLOW_MANAGE', 'manage upitt workflow');
 define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup tables');
+define('ISLANDORA_WORKFLOW_PROCESS_BARCODES', 'process workflow barcodes');
 
 // Constants for various workflow actions (transactions)
 define('UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY', 3); // ingest completed
@@ -210,7 +211,7 @@ function upitt_workflow_menu() {
       'page arguments' => array('upitt_workflow_process_barcodes_form'),
       'type' => MENU_CALLBACK,
       'file' => 'includes/process_barcodes.form.inc',
-      'access arguments' => array(ISLANDORA_MANAGE_PROPERTIES),
+      'access arguments' => array(ISLANDORA_WORKFLOW_PROCESS_BARCODES),
       'access callback' => 'upitt_workflow_workflowadmin_manage_access_callback',
     ),
     'workflow/workflowadmin' => array(

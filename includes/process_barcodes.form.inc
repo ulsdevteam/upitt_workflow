@@ -409,6 +409,14 @@ function upitt_workflow_ingest_preprocess_from_barcodes($barcodes) {
         // TODO -- can load the status transactions of this batch to see whether
         // or not the object has been preprocessed or ingested already.
         $markup .= upitt_workflow_drush_generic($batch);
+        $set = upitt_workflow_get_set($batch['batch_external_id']);
+
+        $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+        $ingest_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest';
+        $ingest_set_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=' . $set;
+        $markup .= '<h4>Subsequent call to actually ingest the queued object/s.</h4><code>' . $ingest_drush_command . '<br>' .
+                 '<i># or if only one set to be processed, supply the ingest_set option</i><br>' . $ingest_set_drush_command .
+                 '</code>';
       }
       else {
         $markup .= '<span class="bad">batch not found for $barcode</span><br>';
