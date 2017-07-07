@@ -1,5 +1,7 @@
 <?php
 
+set_time_limit(0);
+
 /**
  * @file
  * Form to create batch records from a set of barcode values -- will lookup
@@ -400,19 +402,18 @@ function upitt_workflow_do_copy_for_barcodes($barcodes) {
     $do_download = (strstr($batch['batch_host'], 'ftp:'));
     $content_model = isset($batch['default_type_of_resource']) ? $batch['default_type_of_resource'] : 'sp_large_image_cmodel';
     $batch_external_id = $batch['batch_external_id'];
-    $incoming_folder = $batch_external_id;
-
-    if (!$incoming_folder || !$batch_external_id) {
-      drupal_set_message('The batch name and a incoming folder must be set in order to save this batch', 'error');
-      return;
-    }
 
     // Now it is safe to make the full path to the specific incoming subfolder that has been selected.
     $incoming_folder = (isset($batch['batch_host']) && strstr($batch['batch_host'], 'ftp:')) ?
             $batch['batch_host'] :
-            rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $incoming_folder;
-    $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
+            (isset($batch['batch_host']) ? $batch['batch_host'] : 
+            rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $incoming_folder);
 
+    if ($incoming_folder == '' || $batch_external_id == '') {
+      drupal_set_message('The batch name and a incoming folder must be set in order to save this batch', 'error');
+      return;
+    }
+    $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
     $markup .= '<div>' . upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id) . "</div>";
   }
   if (count($missing_barcodes) > 0) {

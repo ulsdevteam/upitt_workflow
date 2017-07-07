@@ -741,8 +741,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
     if (!file_exists($marc_filename)) {
       // download the MARC file and save it... display / log the results.
       $markup .= '--METADATA--.xml did not exist<br>';
-      $barcode = str_replace(rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/', '', $incoming_folder);
-      $voystaff_uri = 'http://voystaff.library.pitt.edu/cgi-bin/barcode2marcxml.php?barcode=' . $barcode;
+      $voystaff_uri = 'http://voystaff.library.pitt.edu/cgi-bin/barcode2marcxml.php?barcode=' . $batch_external_id;
       $xml = @file_get_contents($voystaff_uri);
       if ($xml && (strstr($xml, 'BibID not found for barcode') == '')) {
         $markup .= '<pre>' . htmlspecialchars(print_r($xml, true)) . '</pre>';

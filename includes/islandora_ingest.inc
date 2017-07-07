@@ -295,7 +295,7 @@ function upitt_workflow_drush_islandora_batch_folder_pids($batch_external_id, $f
                        '--type=directory ' . // --overwrite_existing=1 ' .
                        '--assign_pid=' . $ingest_namespace . $barcode_of_filename . ' ' .
               // To prevent the parent relationship to islandora_repository_pid, pass empty value
-                       '--parent= ' .
+//                       '--parent= ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
@@ -356,7 +356,7 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
                        '--type=directory ' . // --overwrite_existing=1 ' .
                        '--assign_pid=' . $csv_file_source['identifier'] . ' ' .
               // To prevent the parent relationship to islandora_repository_pid, pass empty value
-                       '--parent= ' .
+//                       '--parent= ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
@@ -387,7 +387,7 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
                      '--type=directory ' . // --overwrite_existing=1 ' .
                      '--assign_pid=' . $ingest_namespace . $batch_external_id . ' ' .
               // To prevent the parent relationship to islandora_repository_pid, pass empty value
-                     '--parent= ' .
+//                     '--parent= ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
@@ -431,7 +431,7 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
                    '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
               // To prevent the parent relationship to islandora_repository_pid, pass empty value
-                   '--parent= ' .
+//                   '--parent= ' .
 //                   '--overwrite_existing=1 ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
@@ -475,7 +475,7 @@ function upitt_workflow_drush_manuscript($filepath, $parent, $site, $pid) {
                    '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
               // To prevent the parent relationship to islandora_repository_pid, pass empty value
-                   '--parent= ' .
+//                   '--parent= ' .
 //                   '--overwrite_existing=1 ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
