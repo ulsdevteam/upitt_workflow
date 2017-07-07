@@ -19,7 +19,8 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'do_copy' => 'Copy files from incoming to ingest location',
     'ingest_prepare' => 'Islandora Ingest Preprocess',
     'links_to_objects' => 'Make links to objects',
-    'do_publish' => 'Publish objects to site');
+    'do_publish' => 'Publish objects to site',
+    'purge_objects' => 'DELETE objects');
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
     'barcodes' => array(
@@ -61,24 +62,20 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
     case 'edit-submit':
       if ($mode == 'checkobjects') {
         $markup = upitt_workflow_process_check_islandora_for_barcodes($form_state['values']['barcodes']);
-      }
-      elseif ($mode == 'ingest_prepare') {
+      } elseif ($mode == 'ingest_prepare') {
         $markup = upitt_workflow_ingest_preprocess_from_barcodes($form_state['values']['barcodes']);
-      }
-      elseif ($mode == 'do_copy') {
+      } elseif ($mode == 'do_copy') {
         $markup = upitt_workflow_do_copy_for_barcodes($form_state['values']['barcodes']);
-      }
-      elseif ($mode == 'ingest_prepare') {
+      } elseif ($mode == 'ingest_prepare') {
         $markup = upitt_workflow_ingest_preprocess_from_barcodes($form_state['values']['barcodes']);
-      }
-      elseif ($mode == 'make_tn_large') {
+      } elseif ($mode == 'make_tn_large') {
         $markup = upitt_workflow_make_tn_large_for_barcodes($form_state['values']['barcodes']);
-      }
-      elseif ($mode == 'links_to_objects') {
+      } elseif ($mode == 'links_to_objects') {
         $markup = upitt_workflow_links_to_objects_for_barcodes($form_state['values']['barcodes']);
-      }
-      elseif ($mode == 'do_publish') {
+      } elseif ($mode == 'do_publish') {
         $markup = upitt_workflow_do_publish_for_barcodes($form_state['values']['barcodes']);
+      } elseif ($mode == 'purge_objects') {
+        $markup = upitt_workflow_purge_objects_for_barcodes($form_state['values']['barcodes']);
       }
       elseif ($mode == 'update' || $mode == 'updateforce') {
         upitt_workflow_make_batch_records_from_barcodes($form_state['values']['barcodes'], $mode);
@@ -284,6 +281,40 @@ function upitt_workflow_links_to_objects_for_barcodes($barcodes) {
   if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes could not be found as islandora objects ' . implode(", ", $missing_barcodes), 'warning');
   }
+  return $markup;
+}
+
+function upitt_workflow_purge_objects_for_barcodes($barcodes) {
+  module_load_include('inc', 'islandora', 'includes/manage_deleted_objects');
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+  $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
+  $pages_delete_statuses = array();
+  foreach ($check_results['found_pid_links'] as $key => $link) {
+    // take the link text apart at the first space... that is the PID value
+    @list($pid, $junk) = explode(" ", $link, 2);
+    $pid = trim($pid);
+    if ($pid) {
+      $islandora_object = islandora_object_load($pid);
+      if (is_object($islandora_object)) {
+        $is_paged = upitt_workflow_is_paged_object($islandora_object);
+        if ($is_paged) {
+          $child_pages = islandora_paged_content_get_pages_ri($islandora_object);
+          foreach ($child_pages as $child_page) {
+            if (isset($child_page['pid'])) {
+              $child = islandora_object_load($child_page['pid']);
+              $deleted = islandora_delete_object($child);
+              $pages_delete_statuses[] = $child_page['pid'] . ' ' . ($deleted ? 'deleted' : 'not deleted') ;
+            }
+          }
+        }
+        $deleted = islandora_delete_object($islandora_object);
+        $check_results['found_pid_links'][$key] = $link . ' ' . ($deleted ? 'deleted' : 'not deleted') ;
+      }
+    }
+  }
+  $markup = '<div class="text-report"><h3>Deleted objects</h3><div class="found">' . implode("<br>", $check_results['found_pid_links']) . '</div><hr>' .
+            '<h3>Deleted child objects</h3><div class="found">' . implode("<br>", $pages_delete_statuses) . '</div>' . 
+            '<h3>NOT found in Islandora</h3><div class="not-found">' . implode("<br>", $check_results['not_found_pids']) . '</div></div>';
   return $markup;
 }
 
