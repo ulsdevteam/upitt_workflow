@@ -21,6 +21,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'do_copy' => 'Copy files from incoming to ingest location',
     'ingest_prepare' => 'Islandora Ingest Preprocess',
     'links_to_objects' => 'Make links to objects',
+    'get_wf_paths' => 'Get Bigfoot paths',
     'do_publish' => 'Publish objects to site',
     'purge_objects' => 'DELETE objects');
   $form = array(
@@ -74,6 +75,8 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
         $markup = upitt_workflow_make_tn_large_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'links_to_objects') {
         $markup = upitt_workflow_links_to_objects_for_barcodes($form_state['values']['barcodes']);
+      } elseif ($mode == 'get_wf_paths') {
+        $markup = upitt_workflow_get_wf_paths_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'do_publish') {
         $markup = upitt_workflow_do_publish_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'purge_objects') {
@@ -283,6 +286,40 @@ function upitt_workflow_links_to_objects_for_barcodes($barcodes) {
   if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes could not be found as islandora objects ' . implode(", ", $missing_barcodes), 'warning');
   }
+  return $markup;
+}
+
+/**
+ * This will look in the item / item_file table to get the path for that barcode's workflow record.
+ *
+ * @param type $barcodes
+ * @return string HTML markup
+ */
+function upitt_workflow_get_wf_paths_for_barcodes($barcodes) {
+  $barcodes_arr = explode("\n", $barcodes);
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $markup = '<div class="text-report"><h3>Bigfoot paths for barcodes</h3>';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $sql = "SELECT itf.path FROM item i JOIN item_file itf ON (itf.item_id = i.id) WHERE i.do_id = '" . mysqli_real_escape_string($link, $barcode) . "'";
+    $result = mysqli_query($link, $sql);
+    if (!$result) {
+      upitt_workflow_sql_error_die($link, $sql);
+    }
+
+    $row = mysqli_fetch_assoc($result);
+    if (isset($row['path'])) {
+      $path = $row['path'];
+      $pathinfo = pathinfo($path);
+      $markup .= '<span class="good">' . $barcode . "\t" . $pathinfo['dirname'] . '</span><br>';
+    }
+    else {
+      $markup .= '<span class="bad">' . $barcode . ' not found in item table</span><br>';
+    }
+  }
+  $markup .= '</div>';
+
   return $markup;
 }
 
