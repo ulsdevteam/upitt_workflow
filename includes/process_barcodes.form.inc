@@ -17,6 +17,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'checkobjects' => 'Check for Islandora Objects',
     'update' => 'Update batch records (no overwrite if islandora object exists)',
     'updateforce' => 'Update batch records (force overwrite)',
+    'delete_batch' => 'Delete batch records',
     'make_tn_large' => 'Make TN_LARGE deriviative',
     'do_copy' => 'Copy files from incoming to ingest location',
     'ingest_prepare' => 'Islandora Ingest Preprocess',
@@ -71,6 +72,8 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
         $markup = upitt_workflow_do_copy_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'ingest_prepare') {
         $markup = upitt_workflow_ingest_preprocess_from_barcodes($form_state['values']['barcodes']);
+      } elseif ($mode == 'delete_batch') {
+        $markup = upitt_workflow_delete_batch_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'make_tn_large') {
         $markup = upitt_workflow_make_tn_large_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'links_to_objects') {
@@ -236,6 +239,52 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
 
   $markup .= '</div>';
   mysqli_close($link);
+  return $markup;
+}
+
+/** Delete all of those pesky islandora_batch_* records related to a set of PID
+ * values.
+ *
+ * @param string $barcodes
+ */
+function upitt_workflow_delete_batch_for_barcodes($barcodes) {
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '<div class="text-report">';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $pid = $ingest_namespace . $barcode;
+    $sql_sets = "select q.sid, q.id from islandora_batch_queue q join islandora_batch_set s ON (s.id = q.sid) where q.id = '" . $pid . "'";
+    $result = db_query($sql_sets);
+    $record = $result->fetchAssoc();
+    $result_set = $result_report_sets_processed = $result_queue = $result_queue_messages = $result_report_objects_processed = $result_resources = $result_state = 0;
+    if (isset($record['sid'])) {
+      $sid = $record['sid'];
+      $markup .= '<div>islandora_batch_set = ' . $sid . "</div>";
+      $result_set = db_delete('islandora_batch_set')->condition('id', $sid)->execute();
+      $result_report_sets_processed = db_delete('islandora_batch_report_sets_processed')->condition('sid', $sid)->execute();
+      $result_queue = db_delete('islandora_batch_queue')->condition('sid', $sid)->execute();
+    }
+    if (isset($record['id'])) {
+      // ->condition('id', '%' . db_like($pid) . '%', 'LIKE')
+      $result_queue_messages = db_delete('islandora_batch_queue_messages')->condition('id', '%' . db_like($pid) . '%', 'LIKE')->execute();
+      $result_report_objects_processed = db_delete('islandora_batch_report_objects_processed')->condition('pid', '%' . db_like($pid) . '%', 'LIKE')->execute();
+      $result_resources = db_delete('islandora_batch_resources')->condition('id', '%' . db_like($pid) . '%', 'LIKE')->execute();
+      $result_state = db_delete('islandora_batch_state')->condition('id', '%' . db_like($pid) . '%', 'LIKE')->execute();
+    }
+    $total = $result_set + $result_report_sets_processed + $result_queue + $result_queue_messages + $result_report_objects_processed + $result_resources + $result_state;
+    $class = ($total) ? 'good' : 'bad';
+    $markup .= '<div class="' . $class . '"><b>records deleted for ' . $pid . '</b><pre>islandora_batch_set = ' . $result_set . "<br>" .
+            'islandora_batch_set = ' . $result_set . "<br>" .
+            'islandora_batch_report_sets_processed = ' . $result_report_sets_processed . "<br>" .
+            'islandora_batch_queue = ' . $result_queue . "<br>" .
+            'islandora_batch_queue_messages = ' . $result_queue_messages . "<br>" .
+            'islandora_batch_report_objects_processed = ' . $result_report_objects_processed . "<br>" .
+            'islandora_batch_resources = ' . $result_resources . "<br>" .
+            'islandora_batch_state = ' . $result_state . "<br>" .
+            "</pre></div>";
+  }
+  $markup .= '</div>';
   return $markup;
 }
 
