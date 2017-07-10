@@ -8,4 +8,5 @@ dependencies[] = islandora_datastreams_io
 dependencies[] = islandora_paged_content
 dependencies[] = islandora_large_image
 dependencies[] = islandora_solr
+dependencies[] = islandora_wait_for_object
 configure = admin/islandora/workflow

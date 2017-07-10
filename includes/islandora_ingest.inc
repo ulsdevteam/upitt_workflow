@@ -680,6 +680,11 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
   }
   else {
     // if image, simply pass the $object['OBJ'] from the $object
+    if (module_exists('islandora_wait_for_object')) {
+      module_load_include('module', 'islandora_wait_for_object');
+      $proceed = islandora_wait_for_object_test($object, 'OBJ');
+      if (!$proceed) { return ''; }
+    }
     if (isset($object['OBJ'])) {
       $obj_ds = $object['OBJ'];
     }
