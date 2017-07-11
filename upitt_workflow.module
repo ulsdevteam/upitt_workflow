@@ -349,7 +349,7 @@ function upitt_workflow_theme() {
 /**
  * Helper function to connect to the bigfoot database using the site's settings.php file.
  */
-function upitt_workflow_get_databaselink($db_section = 'mysql') {
+function upitt_workflow_get_databaselink($db_section = 'default') {
   global $databases;
   // Use the settings.php file for this install.
 //  $script_base = str_replace('/index.php', '', $_SERVER['SCRIPT_FILENAME']);
@@ -366,7 +366,7 @@ function upitt_workflow_get_databaselink($db_section = 'mysql') {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   if (count($databases) < 1 || !array_key_exists($db_section, $databases['default'])) {
-    die('Database settings not found ' . $script_base . '/' . conf_path(TRUE) . '/settings.php');
+    die('Database settings not found at ' . $settings_file . '.');
   }
 
   $db_host = $databases['default'][$db_section]['host'];

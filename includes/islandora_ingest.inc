@@ -151,19 +151,27 @@ function upitt_workflow_drush_generic($batch) {
   $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch['batch_external_id'];
 
   $parent = $batch['mapto_collections'];
+  $collections_arr = explode(",", $parent);
+  $review_collections = array();
+  foreach ($collections_arr as $collection_pid) {
+    $review_collections[] = str_replace("_review", "", $collection_pid) . '_review';
+  }
+  upitt_workflow_create_review_collections($review_collections);
+  $parent_review = implode(",", $review_collections);
+  
   $site = $batch['mapto_site_id_values'];
   // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.
   $batch_default_depositor = $batch['default_depositor'];
   $fedora_model_name = $batch['default_type_of_resource'];
 
   if ($fedora_model_name == 'bookCModel') {
-    $markup = upitt_workflow_drush_book($batch_path, $parent, $site, $ingest_namespace . $batch['batch_external_id']);
+    $markup = upitt_workflow_drush_book($batch_path, $parent_review, $site, $ingest_namespace . $batch['batch_external_id']);
   } elseif ($fedora_model_name == 'manuscriptCModel') {
-    $markup = upitt_workflow_drush_manuscript($batch_path, $parent, $site, $ingest_namespace . $batch['batch_external_id']);
+    $markup = upitt_workflow_drush_manuscript($batch_path, $parent_review, $site, $ingest_namespace . $batch['batch_external_id']);
   } elseif ($fedora_model_name == 'sp_large_image_cmodel') {
-    $markup = upitt_workflow_drush_image_possible_csv2mods($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
+    $markup = upitt_workflow_drush_image_possible_csv2mods($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent_review, $site, $batch_default_depositor);
   } elseif ($fedora_model_name == 'sp_pdf' || $fedora_model_name == 'sp_videoCModel') {
-    $markup = upitt_workflow_drush_islandora_batch_folder_pids($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent, $site, $batch_default_depositor);
+    $markup = upitt_workflow_drush_islandora_batch_folder_pids($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent_review, $site, $batch_default_depositor);
   } else {
     $markup = "Model not supported " . $fedora_model_name . "<br>";
   }
@@ -294,13 +302,11 @@ function upitt_workflow_drush_islandora_batch_folder_pids($batch_external_id, $f
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
                        '--type=directory ' . // --overwrite_existing=1 ' .
                        '--assign_pid=' . $ingest_namespace . $barcode_of_filename . ' ' .
-              // To prevent the parent relationship to islandora_repository_pid, pass empty value
-//                       '--parent= ' .
+                       (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
                        // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                       (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                        (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
                        ' --target=' . $folder_target;
@@ -355,13 +361,11 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
                        '--type=directory ' . // --overwrite_existing=1 ' .
                        '--assign_pid=' . $csv_file_source['identifier'] . ' ' .
-              // To prevent the parent relationship to islandora_repository_pid, pass empty value
-//                       '--parent= ' .
+                       (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
                        // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                       (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                        (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
                        ' --target=' . $csv_file_source['path'];
@@ -430,13 +434,11 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
                    '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
-              // To prevent the parent relationship to islandora_repository_pid, pass empty value
-//                   '--parent= ' .
+                   (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
 //                   '--overwrite_existing=1 ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
-                   (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                    (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
                    ' --target=' . $filepath;
@@ -474,13 +476,11 @@ function upitt_workflow_drush_manuscript($filepath, $parent, $site, $pid) {
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
                    '--type=directory ' .
                    '--assign_pid=' . $pid . ' ' .
-              // To prevent the parent relationship to islandora_repository_pid, pass empty value
-//                   '--parent= ' .
+                   (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
 //                   '--overwrite_existing=1 ' .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
-                   (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                    (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
                    ' --target=' . $filepath;
@@ -829,4 +829,67 @@ The drush command was "' . $ingest_set_drush_command . '"');
   }
 
   drupal_goto('/workflow/object/' . $do_id);
+}
+
+/**
+ * This will create collection objects and return nothing.  The collections
+ * will be used as the --parent parameter for ingesting objects.
+ * 
+ * @param array $collection_pids
+ */
+function upitt_workflow_create_review_collections($collection_pids) {
+  $link = upitt_workflow_get_databaselink('default');
+
+  $connection = islandora_get_tuque_connection();
+  $repository = $connection->repository;
+  foreach ($collection_pids as $pid) {
+    $copy_from_pid = str_replace("_review", "", $pid);
+    $copy_from_object = islandora_object_load($copy_from_pid);
+    $use_label = (is_object($copy_from_object) ? $copy_from_object->label : 'unknown review collection');
+    $object_review = islandora_object_load($pid);
+    if (!is_object($object_review)) {
+      $object_review = $repository->constructObject($pid);
+      $object_review->label = $use_label;
+      $object_review->models = 'fedora-system:ContentModel-3.0,islandora:collectionCModel';
+      $repository->ingestObject($object_review);
+    }
+    else {
+      // copy the copy_from_object's pathauto record for this new object_review
+      $collection_source = 'islandora/search_collection/' . $copy_from_pid;
+      $sql = "SELECT * FROM url_alias WHERE source = '" . $collection_source . "' LIMIT 1";
+      $result = mysqli_query($link, $sql);
+      if (!$result) {
+        upitt_workflow_sql_error_die($link, $object_items);
+      }
+
+      if ($row = mysqli_fetch_assoc($result)) {
+        $alias = $row['alias'] . '-review';
+      }
+      else {
+        $alias = str_replace(array('[', ']', '"', "'"), '', str_replace(array(' ', ':', '_'), '-', strtolower($use_label)));
+      }
+      // Because pathauto can make multiple references using different routes, delete
+      // all possible source routes.
+      $source_object = 'islandora/object/' . $pid;
+      $source_search_collection = 'islandora/search_collection/' . $pid;
+      $sql_delete = "DELETE FROM url_alias WHERE source IN ('" . $source_object . "', '" . $source_search_collection . "')";
+      $result = mysqli_query($link, $sql_delete);
+
+      $sql_insert = "INSERT INTO url_alias (`alias`,`source`,`language`) VALUES ('" . $alias . "','" . $source . "','und')";
+      $result = mysqli_query($link, $sql_insert);
+    }
+
+    if (is_object($copy_from_object)) {
+      $object_review->relationships = $copy_from_object->relationships;
+      foreach ($copy_from_object as $copy_from_datastream) {
+        $datastream = $object_review->constructDatastream($copy_from_datastream->id);
+        $datastream->label = $copy_from_datastream->label . ' {review}';
+        $datastream->mimeType = $copy_from_datastream->mimeType;
+
+        $datastream->setContentFromString($copy_from_datastream->content);
+        $object_review->ingestDatastream($datastream);
+      }
+    }
+  }
+  return;
 }
