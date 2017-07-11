@@ -1779,3 +1779,49 @@ function upitt_workflow_addRelationship($object, $predicate_uri, $predicate, $re
   return !$existed;
 }
 
+/**
+ * Used by the process_barcodes form as well as the "do_publish" form to set the 
+ * relationships between the object and the collections / sites that are provided.
+ * 
+ * @param type $object_id
+ * @param type $sites_arr
+ * @param type $collections_arr
+ */
+function upitt_workflow_relate_object_to_collections_sites($object_id, $sites_arr, $collections_arr) {
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  if (count($sites_arr) > 0 || count($collections_arr) > 0) {
+    // 1. load the islandora_object - and loop through collections and sites to add
+    // these relationships using the upitt_workflow_addRelationship - which will ensure
+    // that duplicate relationships are not added.
+    $pid = $ingest_namespace . $object_id;
+    $object = islandora_object_load($pid);
+    if (is_object($object)) {
+      // additionally, remove this object from any review collection like "pitt:collection.##_review"
+      $isMemberOfCollection = $object->relationships->get(FEDORA_RELS_EXT_URI, 'isMemberOfCollection');
+      foreach ($isMemberOfCollection as $memberOfCollection) {
+        if (rtrim($memberOfCollection['object']['value'], '_review') <> $memberOfCollection['object']['value']) {
+          $object->relationships->remove(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $memberOfCollection['object']['value']);
+        }
+      }
+
+      foreach ($sites_arr as $site) {
+        $object->relationships->remove('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
+        $object->relationships->add('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
+      }
+
+      foreach ($collections_arr as $collection) {
+        $object->relationships->remove(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
+        $object->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
+      }
+
+      upitt_workflow_set_status_for_batch($object_id, UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE, NULL);
+      drupal_set_message('Published "' . $object_id . '" to sites and collections.');
+    }
+    else {
+      drupal_set_message('Could not load object ' . $pid, 'warning');
+    }
+  }
+  else {
+    drupal_set_message('There were no sites or collections related to the object "' . $object_id . '"', 'warning');
+  }
+}

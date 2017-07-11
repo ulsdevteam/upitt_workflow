@@ -15,15 +15,18 @@ set_time_limit(0);
 function upitt_workflow_process_barcodes_form($form, &$form_state) {
   $process_options = array(
     'checkobjects' => 'Check for Islandora Objects',
+    '0' => '-',
     'update' => 'Update batch records (no overwrite if islandora object exists)',
     'updateforce' => 'Update batch records (force overwrite)',
-    'delete_batch' => 'Delete batch records',
-    'make_tn_large' => 'Make TN_LARGE deriviative',
     'do_copy' => 'Copy files from incoming to ingest location',
     'ingest_prepare' => 'Islandora Ingest Preprocess',
-    'links_to_objects' => 'Make links to objects',
+    '1' => '-',
+    'make_tn_large' => 'Make TN_LARGE deriviative',
     'get_wf_paths' => 'Get Bigfoot paths',
+    '2' => '-',
+    'links_to_objects' => 'Admin links to objects',
     'do_publish' => 'Publish objects to site',
+    'delete_batch' => 'DELETE batch records',
     'purge_objects' => 'DELETE objects');
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
@@ -125,7 +128,7 @@ function upitt_workflow_process_check_islandora_for_barcodes($barcodes) {
 function upitt_workflow_check_islandora_for_barcodes($barcodes) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
-  $found_pids = $found_pid_links = $not_found_pids = array();
+  $found_pids = $found_pid_links = $found_pid_manage_links = $not_found_pids = array();
   $barcodes_arr = explode("\n", $barcodes);
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
@@ -136,13 +139,21 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
         $not_found_pids[$barcode] = $pid;
       }
       else {
-        $found_pid_links[$barcode] = $pid . ' ' . l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid);
+        $found_pid_manage_links[$barcode] = '"' . $pid . '": ' .
+                l('DELETE', 'islandora/object/' . $pid . '/delete') . ' | ' .
+                l('Manage', 'islandora/object/' . $pid . '/manage') . ' | ' .
+                l('Publish' , 'workflow/object/' . $barcode . '/do_publish') . ' | ' .
+                l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid);
+        $found_pid_links[$barcode] = '"' . $pid . '": ' .
+                l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid);
         $found_pids[$barcode] = $pid;
       }
     }
   }
-  return array('barcodes_arr' => $barcodes_arr, 'found_pids' => $found_pids, 
+  return array('barcodes_arr' => $barcodes_arr,
+      'found_pids' => $found_pids,
       'found_pid_links' => $found_pid_links,
+      'found_pid_manage_links' => $found_pid_manage_links,
       'not_found_pids' => $not_found_pids);
 }
 
@@ -317,24 +328,11 @@ function upitt_workflow_make_tn_large_for_barcodes($barcodes) {
 }
 
 function upitt_workflow_links_to_objects_for_barcodes($barcodes) {
-  $barcodes_arr = explode("\n", $barcodes);
+  $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
   $markup = '<div class="text-report"><h3>Links to ingested objects</h3>';
-  $ingest_namespace = upitt_workflow_get_ingest_namespace();
-  foreach ($barcodes_arr as $barcode) {
-    $barcode = trim($barcode);
-    $pid = $ingest_namespace . $barcode;
-    $islandora_object = islandora_object_load($pid);
-    if (is_object($islandora_object)) {
-      $markup .= l($islandora_object->label, '/islandora/object/' . $islandora_object->id) . '<br>';
-    }
-    else {
-      $missing_barcodes[] = $barcode;
-    }
-  }
+  $markup .= '<h2>Found in Islandora</h2><pre style="color:red">' . implode("\n", $check_results['found_pid_manage_links']) . '</pre>' .
+            '<h2>NOT found in Islandora</h2><pre style="color:green">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
   $markup .= '</div>';
-  if (count($missing_barcodes) > 0) {
-    drupal_set_message('Some barcodes could not be found as islandora objects ' . implode(", ", $missing_barcodes), 'warning');
-  }
   return $markup;
 }
 
@@ -439,35 +437,7 @@ function upitt_workflow_do_publish_using_batchvalues($batch, $ingest_namespace) 
 
   $sites_arr = explode(",", $sites);
   $collections_arr = explode(",", $collections);
-
-  if (count($sites_arr) > 0 || count($collections_arr) > 0) {
-    // 1. load the islandora_object - and loop through collections and sites to add
-    // these relationships using the upitt_workflow_addRelationship - which will ensure
-    // that duplicate relationships are not added.
-    $pid = $ingest_namespace . $object_id;
-    $object = islandora_object_load($pid);
-
-    if (is_object($object)) {
-      foreach ($sites_arr as $site) {
-        $object->relationships->remove('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
-        $object->relationships->add('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
-      }
-
-      foreach ($collections_arr as $collection) {
-        $object->relationships->remove(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
-        $object->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
-      }
-
-      upitt_workflow_set_status_for_batch($object_id, UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE, NULL);
-      return 'Published "' . $object_id . '" to sites and collections.';
-    }
-    else {
-      drupal_set_message('Could not load object ' . $pid, 'warning');
-    }
-  }
-  else {
-    drupal_set_message('There were no sites or collections related to the object "' . $object_id . '"', 'warning');
-  }
+  upitt_workflow_relate_object_to_collections_sites($object_id, $sites_arr, $collections_arr);
 }
 
 function upitt_workflow_do_copy_for_barcodes($barcodes) {

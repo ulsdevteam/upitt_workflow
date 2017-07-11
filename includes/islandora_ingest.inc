@@ -154,9 +154,14 @@ function upitt_workflow_drush_generic($batch) {
   $collections_arr = explode(",", $parent);
   $review_collections = array();
   foreach ($collections_arr as $collection_pid) {
-    $review_collections[] = str_replace("_review", "", $collection_pid) . '_review';
+    $collection_pid = trim($collection_pid);
+    if ($collection_pid) {
+      $review_collections[] = str_replace("_review", "", $collection_pid) . '_review';
+    }
   }
-  upitt_workflow_create_review_collections($review_collections);
+  if (count($review_collections) > 0) {
+    upitt_workflow_create_review_collections($review_collections);
+  }
   $parent_review = implode(",", $review_collections);
   
   $site = $batch['mapto_site_id_values'];
@@ -839,7 +844,10 @@ The drush command was "' . $ingest_set_drush_command . '"');
  */
 function upitt_workflow_create_review_collections($collection_pids) {
   $link = upitt_workflow_get_databaselink('default');
-
+  if (!$collection_pids) {
+    $collection_pids = array('pitt:root' => 'pitt:root');
+  }
+  $module_path = drupal_get_path('module', 'upitt_workflow');
   $connection = islandora_get_tuque_connection();
   $repository = $connection->repository;
   foreach ($collection_pids as $pid) {
@@ -850,7 +858,16 @@ function upitt_workflow_create_review_collections($collection_pids) {
     if (!is_object($object_review)) {
       $object_review = $repository->constructObject($pid);
       $object_review->label = $use_label;
-      $object_review->models = 'fedora-system:ContentModel-3.0,islandora:collectionCModel';
+      $object_review->models = 'islandora:collectionCModel';
+
+      // COLLECTION_POLICY Datastream.
+      $datastream = $object_review->constructDatastream('COLLECTION_POLICY', 'X');
+      $datastream->label = 'COLLECTION_POLICY';
+      $datastream->mimetype = 'application/xml';
+      error_log("$module_path/xml/islandora_basic_collection_ds_composite_model.xml");
+      $datastream->setContentFromFile("$module_path/xml/islandora_basic_collection_collection_policy.xml", FALSE);
+      $object_review->ingestDatastream($datastream);
+
       $repository->ingestObject($object_review);
     }
     else {

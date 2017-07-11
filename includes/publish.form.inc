@@ -62,40 +62,19 @@ function upitt_workflow_do_publish_submit(array $form, array &$form_state) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $object_id = $form_state['values']['do_id'];
-  $ingest_namespace = upitt_workflow_get_ingest_namespace();
   $sites = $form_state['values']['sites'];
   $collections = $form_state['values']['collections'];
 
   $sites_arr = explode(",", implode(",",$sites));
   $collections_arr = explode(",", implode(",",$collections));
-  
-  if (count($sites_arr) > 0 || count($collections_arr) > 0) {
-    // 1. load the islandora_object - and loop through collections and sites to add
-    // these relationships using the upitt_workflow_addRelationship - which will ensure
-    // that duplicate relationships are not added.
-    $pid = $ingest_namespace . $object_id;
-    $object = islandora_object_load($pid);
-    if (is_object($object)) {
-      foreach ($sites_arr as $site) {
-        $object->relationships->remove('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
-        $object->relationships->add('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
-      }
 
-      foreach ($collections_arr as $collection) {
-        $object->relationships->remove(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
-        $object->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
-      }
-
-      upitt_workflow_set_status_for_batch($object_id, UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE, NULL);
-      drupal_set_message('Published "' . $object_id . '" to sites and collections.');
-    }
-    else {
-      drupal_set_message('Could not load object ' . $pid, 'warning');
-    }
+  upitt_workflow_relate_object_to_collections_sites($object_id, $sites_arr, $collections_arr);
+  $batch_id = upitt_workflow_get_batch_id($object_id);
+  if ($batch_id) {
+    $form_state['redirect'] = '/workflow/batch/' . $batch_id;
   }
   else {
-    drupal_set_message('There were no sites or collections related to the object "' . $object_id . '"', 'warning');
+    $form_state['redirect'] = '/workflow/object/' . $object_id;
   }
-  $form_state['redirect'] = '/workflow/object/' . $object_id;
 }
 
