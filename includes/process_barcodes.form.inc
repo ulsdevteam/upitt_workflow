@@ -26,7 +26,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     '2' => '-',
     'links_to_objects' => 'Admin links to objects',
     'do_publish' => 'Publish objects to site',
-    'delete_batch' => 'DELETE batch records',
+    'delete_batch' => 'DELETE islandora_batch_* records',
     'purge_objects' => 'DELETE objects');
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
@@ -144,7 +144,7 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
                 l('Manage', 'islandora/object/' . $pid . '/manage') . ' | ' .
                 l('Publish' , 'workflow/object/' . $barcode . '/do_publish') . ' | ' .
                 l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid);
-        $found_pid_links[$barcode] = $pid . ' ' .
+        $found_pid_links[$barcode] = '"' . $pid . '": ' .
                 l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid);
         $found_pids[$barcode] = $pid;
       }
@@ -378,7 +378,7 @@ function upitt_workflow_purge_objects_for_barcodes($barcodes) {
   foreach ($check_results['found_pid_links'] as $key => $link) {
     // take the link text apart at the first space... that is the PID value
     @list($pid, $junk) = explode(" ", $link, 2);
-    $pid = str_replace(array(':"', '"'), "", trim($pid));
+    $pid = trim($pid);
     if ($pid) {
       $islandora_object = islandora_object_load($pid);
       if (is_object($islandora_object)) {
