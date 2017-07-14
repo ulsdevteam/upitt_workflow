@@ -892,7 +892,7 @@ function upitt_workflow_create_review_collections($collection_pids) {
       $sql_delete = "DELETE FROM url_alias WHERE source IN ('" . $source_object . "', '" . $source_search_collection . "')";
       $result = mysqli_query($link, $sql_delete);
 
-      $sql_insert = "INSERT INTO url_alias (`alias`,`source`,`language`) VALUES ('" . $alias . "','" . $source . "','und')";
+      $sql_insert = "INSERT INTO url_alias (`alias`,`source`,`language`) VALUES ('" . $alias . "','" . $source_search_collection . "','und')";
       $result = mysqli_query($link, $sql_insert);
     }
 
