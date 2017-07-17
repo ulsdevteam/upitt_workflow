@@ -280,7 +280,6 @@ function upitt_workflow_delete_batch_for_barcodes($barcodes) {
       $result_queue = db_delete('islandora_batch_queue')->condition('sid', $sid)->execute();
     }
     if (isset($record['id'])) {
-      // ->condition('id', '%' . db_like($pid) . '%', 'LIKE')
       $result_queue_messages = db_delete('islandora_batch_queue_messages')->condition('id', '%' . db_like($pid) . '%', 'LIKE')->execute();
       $result_report_objects_processed = db_delete('islandora_batch_report_objects_processed')->condition('pid', '%' . db_like($pid) . '%', 'LIKE')->execute();
       $result_resources = db_delete('islandora_batch_resources')->condition('id', '%' . db_like($pid) . '%', 'LIKE')->execute();
@@ -288,7 +287,7 @@ function upitt_workflow_delete_batch_for_barcodes($barcodes) {
     }
     $total = $result_set + $result_report_sets_processed + $result_queue + $result_queue_messages + $result_report_objects_processed + $result_resources + $result_state;
     $class = ($total) ? 'good' : 'bad';
-    $markup .= '<div class="' . $class . '"><b>records deleted for ' . $pid . '</b><pre>islandora_batch_set = ' . $result_set . "<br>" .
+    $markup .= '<div class="' . $class . '"><b>records deleted for ' . $pid . '</b><pre>' .
             'islandora_batch_set = ' . $result_set . "<br>" .
             'islandora_batch_report_sets_processed = ' . $result_report_sets_processed . "<br>" .
             'islandora_batch_queue = ' . $result_queue . "<br>" .
