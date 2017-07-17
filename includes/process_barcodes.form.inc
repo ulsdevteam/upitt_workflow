@@ -20,6 +20,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'updateforce' => 'Update batch records (force overwrite)',
     'do_copy' => 'Copy files from incoming to ingest location',
     'ingest_prepare' => 'Islandora Ingest Preprocess',
+    'aggregate' => 'Aggregate OCR and PDF, make TN_LARGE',
     '1' => '-',
     'make_tn_large' => 'Make TN_LARGE deriviative',
     'get_wf_paths' => 'Get Bigfoot paths',
@@ -87,6 +88,8 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
         $markup = upitt_workflow_do_publish_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'purge_objects') {
         $markup = upitt_workflow_purge_objects_for_barcodes($form_state['values']['barcodes']);
+      } elseif ($mode == 'aggregate') {
+        $markup = upitt_workflow_aggregate_for_barcodes($form_state['values']['barcodes']);
       }
       elseif ($mode == 'update' || $mode == 'updateforce') {
         upitt_workflow_make_batch_records_from_barcodes($form_state['values']['barcodes'], $mode);
@@ -631,4 +634,44 @@ function upitt_workflow_wf_item_get_site($barcode, $link) {
     }
   }
   return implode(",", $rows);
+}
+
+function upitt_workflow_aggregate_for_barcodes($barcodes) {
+  module_load_include('inc', 'islandora', 'includes/manage_deleted_objects');
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+  $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
+  $missing_pids = $pages_delete_statuses = array();
+  $markup = '<div class="text-report">';
+  foreach ($check_results['found_pids'] as $key => $pid) {
+    $ingested_object = islandora_object_load($pid);
+    if (is_object($ingested_object)) {
+      $markup .= '<div class="good"><b>' . $pid . '</b></div>';
+      // See whether or not this is a paged-content object in order to call the
+      // "aggregate PDF" and "aggregate OCR/HOCR" batch commands on it now.
+      if (upitt_workflow_is_paged_object($ingested_object)) {
+        upitt_workflow_aggregate_pdf_derivative($ingested_object);
+        $markup .= 'PDF aggregate created<br>';
+        upitt_workflow_aggregate_ocr_derivative($ingested_object);
+        $markup .= 'OCR aggregate created<br>';
+
+        $pages = islandora_paged_content_get_pages($ingested_object);
+        if (count($pages)) {
+          module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+          $page = array_shift($pages);
+          $page_object = islandora_object_load($page['pid']);
+          upitt_workflow_make_tn_large($page_object, $ingested_object);
+          $markup .= 'TN_LARGE created<br>';
+        }
+      }
+    }
+    else {
+      $markup .= '<div class="bad"><b>' . $pid . '</b> missing</div>';
+      $missing_pids[] = $pid;
+    }
+  }
+  if (count($missing_pids) > 0) {
+    drupal_set_message('Some PID values could not be found ' . implode(", ", $missing_pids), 'warning');
+  }
+  $markup .= '</div>';
+  return $markup;
 }
