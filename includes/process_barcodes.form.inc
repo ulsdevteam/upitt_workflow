@@ -375,10 +375,7 @@ function upitt_workflow_purge_objects_for_barcodes($barcodes) {
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
   $pages_delete_statuses = array();
-  foreach ($check_results['found_pid_links'] as $key => $link) {
-    // take the link text apart at the first space... that is the PID value
-    @list($pid, $junk) = explode(" ", $link, 2);
-    $pid = trim($pid);
+  foreach ($check_results['found_pids'] as $key => $pid) {
     if ($pid) {
       $islandora_object = islandora_object_load($pid);
       if (is_object($islandora_object)) {
@@ -394,7 +391,7 @@ function upitt_workflow_purge_objects_for_barcodes($barcodes) {
           }
         }
         $deleted = islandora_delete_object($islandora_object);
-        $check_results['found_pid_links'][$key] = $link . ' ' . ($deleted ? 'deleted' : 'not deleted') ;
+        $check_results['found_pid_links'][$key] = $pid . ' ' . ($deleted ? 'deleted' : 'not deleted') ;
       }
     }
   }
