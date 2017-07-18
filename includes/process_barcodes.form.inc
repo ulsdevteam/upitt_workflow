@@ -22,7 +22,8 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'ingest_prepare' => 'Islandora Ingest Preprocess',
     'aggregate' => 'Aggregate OCR and PDF, make TN_LARGE',
     '1' => '-',
-    'make_tn_large' => 'Make TN_LARGE deriviative',
+    'make_tn_large' => 'Make TN_LARGE derivative',
+    'make_page_pdfs' => '(Make page PDF derivatives)',
     'get_wf_paths' => 'Get Bigfoot paths',
     '2' => '-',
     'links_to_objects' => 'Admin links to objects',
@@ -41,7 +42,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       '#title' => 'Processing mode',
       '#description' => 'These processes are not sequential.  Depending on what needs to be done, this form ' .
         'allows for processing a set of barcodes for a specific processing mode operation.  In the case of "Make TN_LARGE ' .
-        'deriviative", this <b>does not</b> need to be done with most models, but was added for a special case.',
+        'derivative", this <b>does not</b> need to be done with most models, but was added for a special case.',
       '#type' => 'select',
       '#options' => $process_options,
       '#default_value' => isset($form_state['values']['mode']) ? $form_state['values']['mode'] : '',
@@ -80,6 +81,8 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
         $markup = upitt_workflow_delete_batch_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'make_tn_large') {
         $markup = upitt_workflow_make_tn_large_for_barcodes($form_state['values']['barcodes']);
+      } elseif ($mode == 'make_page_pdfs') {
+        $markup = upitt_workflow_make_page_pdf_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'links_to_objects') {
         $markup = upitt_workflow_links_to_objects_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'get_wf_paths') {
@@ -296,6 +299,45 @@ function upitt_workflow_delete_batch_for_barcodes($barcodes) {
             'islandora_batch_resources = ' . $result_resources . "<br>" .
             'islandora_batch_state = ' . $result_state . "<br>" .
             "</pre></div>";
+  }
+  $markup .= '</div>';
+  return $markup;
+}
+
+function upitt_workflow_make_page_pdf_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+
+  $missing_barcodes = array();
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '<div class="text-report">';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $pid = $ingest_namespace . $barcode;
+    $islandora_object = islandora_object_load($pid);
+    if (is_object($islandora_object)) {
+      $pages = islandora_paged_content_get_pages($islandora_object);
+      foreach ($pages as $child_page) {
+        if (isset($child_page['pid'])) {
+          $child_page_obj = islandora_object_load($child_page['pid']);
+          $obj_ds = $child_page_obj['OBJ'];
+          if (!upitt_workflow_make_page_pdf($child_page_obj)) {
+            $markup .= '<div class="bad">' . t('Failed to created PDF.') . '</div>';
+          }
+          else {
+            $markup .= '<div class="good">' . t('Successfully created PDF.') . '</div>';
+          }
+        }
+      }
+    } 
+    else {
+      $missing_barcodes[] = $barcode;
+    }
+    $markup .= '<div class="good"><b>PDF derivatives created for the pages of ' . $pid . "</b></div>";
+  }
+  if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
   }
   $markup .= '</div>';
   return $markup;

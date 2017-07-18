@@ -805,6 +805,24 @@ function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id, $models) {
   return $derivative_file;
 }
 
+function upitt_workflow_make_page_pdf($page_object) {
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+
+  $obj_ds = isset($page_object['OBJ']) ? $page_object['OBJ'] : NULL;
+  if (!$obj_ds) {
+    return FALSE;
+  }
+
+  $options = array(
+    '-density' => 300,
+    '-compress' => 'LZW',
+  );
+  if (islandora_paged_content_page_derive_pdf_datastream($page_object, $options)) {
+    drupal_set_message(t('Successfully created PDF.'), 'status');
+    return TRUE;
+  }
+}
+
 function upitt_workflow_ingest_now_redirect_detail_report($do_id) {
   // 1. look up the set that corresponds to this object and passthru the
   //    appropriate drush_command.
