@@ -323,10 +323,10 @@ function upitt_workflow_make_page_pdf_for_barcodes($barcodes) {
           $child_page_obj = islandora_object_load($child_page['pid']);
           $obj_ds = $child_page_obj['OBJ'];
           if (!upitt_workflow_make_page_pdf($child_page_obj)) {
-            $markup .= '<div class="bad">' . t('Failed to created PDF.') . '</div>';
+            $markup .= '<div class="bad">' . t('Failed to created PDF for ') . $child_page['pid'] . '.</div>';
           }
           else {
-            $markup .= '<div class="good">' . t('Successfully created PDF.') . '</div>';
+            $markup .= '<div class="good">' . t('Successfully created PDF for ') . $child_page['pid'] . '.</div>';
           }
         }
       }

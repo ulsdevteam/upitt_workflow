@@ -818,7 +818,6 @@ function upitt_workflow_make_page_pdf($page_object) {
     '-compress' => 'LZW',
   );
   if (islandora_paged_content_page_derive_pdf_datastream($page_object, $options)) {
-    drupal_set_message(t('Successfully created PDF.'), 'status');
     return TRUE;
   }
 }

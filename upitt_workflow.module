@@ -623,7 +623,6 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
 
 
   upitt_workflow_log('in hook upitt_workflow_islandora_batch_process_finished - ready to delete files for object');
-  //error_log('in hook upitt_workflow_islandora_batch_process_finished - ready to delete files for object' . "\n", 3, '/tmp/log');
 
   if (!empty($sets)) {
     module_load_include('inc', 'islandora_batch', 'includes/db');
@@ -749,9 +748,9 @@ function upitt_workflow_pages_pdf_temp_files($pages) {
   $page_pids = array_keys($pages);
   foreach ($page_pids as $page_pid) {
     $temp_name = drupal_realpath(drupal_tempnam("temporary://", "PDF_" . str_replace(":", "_", $page_pid) . ".txt"));
-    $page_pdf = islandora_datastream_load('PDF', $page_pid);
-    if (is_object($page_pdf)) {
-      file_put_contents($temp_name, $page_pdf->content, FILE_APPEND);
+    $page_obj = islandora_object_load($page_pid);
+    if (isset($page_obj['PDF'])) {
+      $page_obj['PDF']->getContent($temp_name);
       $files[] = $temp_name;
     }
   }
@@ -768,7 +767,6 @@ function upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 
   // Remove the PDF datastreams for all child pages if the PDF has been aggregated
   if (isset($islandora_object[$dsid])) {
      upitt_workflow_log('in upitt_workflow_purge_childpages_datastreams for ' . $dsid . ' on ' . $islandora_object->id);
-     // error_log('in upitt_workflow_purge_childpages_datastreams for ' . $dsid . ' on ' . $islandora_object->id . "\n", 3, '/tmp/log');
 
     foreach ($pages as $page) {
       $page_object = islandora_object_load($page['pid']);
@@ -795,25 +793,6 @@ function upitt_workflow_islandora_datastream_ingested(AbstractObject $object, Ab
       upitt_workflow_make_tn_large($object, $object);
     }
   }
-
-  /*
-  elseif ($datastream->id == 'RELS-EXT' && !isset($object['TN_LARGE']) &&
-      (array_intersect($applicable_paged_content_cmodels, $object->models))) {
-    module_load_include('inc', 'islandora_paged_content', 'includes/derivatives');
-
-    // Get the first page's PID and pass that as the page_object for generating the TN_LARGE.
-    $pages = islandora_paged_content_get_pages($object);
-    if (count($pages)) {
-      $page = array_shift($pages);
-      $page_object = islandora_object_load($page['pid']);
-      error_log('parent pid = ' . $page['pid']);
-      upitt_workflow_make_tn_large($page_object, $object);
-    }
-    else {
-      watchdog('upitt_workflow', 'Could not generate TN_LARGE for ' . $object->id .
-        ' because there are no pages related to this object, model ' . print_r($object->models, true), WATCHDOG_WARNING);
-    }
-  }*/
 }
 
 function upitt_workflow_log($string) {
