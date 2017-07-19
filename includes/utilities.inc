@@ -195,7 +195,7 @@ function upitt_workflow_sync_solr_collections($pids, $collection_options) {
 }
 
 function upitt_workflow_get_allowed_listnames() {
-  return array('action', 'collection', 'content_types', 'item_type', 'property_owner', 'wflocal_fedora_site', 'workflow_sequence', 'workflow_sequence_actions');
+  return array('action', 'collection', 'content_types', 'item_type', 'property_owner', 'transaction_actions', 'wflocal_fedora_site', 'workflow_sequence', 'workflow_sequence_actions');
 }
 
 function upitt_workflow_update_object_status($object_id, $action) {
@@ -244,7 +244,6 @@ function upitt_workflow_drive_along_links($do_id, $status) {
   $active_attrib = array('attributes' => array('class' => 'active'));
 
   $ingest_prepared = $ingested = $published_on_site = $files_moved = FALSE;
-
   foreach ($status as $a_status) {
     $ingest_prepared |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED);
     $ingested |= ($a_status['transaction_action_id'] == UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY);
@@ -1680,6 +1679,7 @@ function upitt_workflow_set_status_for_pid($ingested_object, $transaction_action
  */
 function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id, $islandora_object = NULL) {
   global $user;
+  $retval = TRUE; // Assume success, unless something something doesn't work, it'll set this to FALSE.
   upitt_workflow_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id);
   // error_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id . "\n", 3, '/tmp/log');
 
@@ -1691,7 +1691,6 @@ function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_ac
   else {
     $batch = array('type_id' => 0, 'batch_property_owner_id' => 0);
   }
-
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   // Get matching item record if there is one -- 
   $item_query = 'SELECT id FROM item i WHERE i.do_id = "' . upitt_workflow_safe_qstring($link, $batch_external_id) . '"';
@@ -1744,9 +1743,10 @@ function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_ac
   }
   else {
     upitt_workflow_log('item_id not found for ' . $item_query);
-//    error_log('item_id not found for ' . $item_query . "\n", 3, '/tmp/log');
+    $retval = FALSE;
   }
-  mysqli_close($link);      
+  mysqli_close($link);
+  return $retval;
 }
 
 // TODO - finish this function and call 

@@ -27,6 +27,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'get_wf_paths' => 'Get Bigfoot paths',
     '2' => '-',
     'links_to_objects' => 'Admin links to objects',
+    'set_status' => 'Set Status',
     'do_publish' => 'Publish objects to site',
     'delete_batch' => 'DELETE islandora_batch_* records',
     'purge_objects' => 'DELETE objects');
@@ -85,6 +86,8 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
         $markup = upitt_workflow_make_page_pdf_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'links_to_objects') {
         $markup = upitt_workflow_links_to_objects_for_barcodes($form_state['values']['barcodes']);
+      } elseif ($mode == 'set_status') {
+        $markup = upitt_workflow_set_status_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'get_wf_paths') {
         $markup = upitt_workflow_get_wf_paths_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'do_publish') {
@@ -148,6 +151,7 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
         $found_pid_manage_links[$barcode] = '"' . $pid . '": ' .
                 l('DELETE', 'islandora/object/' . $pid . '/delete') . ' | ' .
                 l('Manage', 'islandora/object/' . $pid . '/manage') . ' | ' .
+                l('Workflow' , 'workflow/object/' . $barcode) . ' | ' .
                 l('Publish' , 'workflow/object/' . $barcode . '/do_publish') . ' | ' .
                 l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid);
         $found_pid_links[$barcode] = '"' . $pid . '": ' .
@@ -204,8 +208,8 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
   }
   $markup .= '<h2>Process these Islandora PID values</h2><pre style="color:blue">' . implode("\n", $use_pids) . '</pre><hr>';
 
-  $markup .= '<h2>Found in Islandora</h2><pre style="color:red">' . implode("\n", $check_results['found_pids']) . '</pre>' .
-            '<h2>NOT found in Islandora</h2><pre style="color:green">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
+  $markup .= '<h2>Found in Islandora</h2><pre class="good">' . implode("\n", $check_results['found_pids']) . '</pre>' .
+            '<h2>NOT found in Islandora</h2><pre class="bad">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
 
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $toggle = FALSE;
@@ -371,11 +375,66 @@ function upitt_workflow_make_tn_large_for_barcodes($barcodes) {
   return $markup;
 }
 
+function upitt_workflow_set_status_for_barcodes($barcodes) {
+  $array = explode("\r\n", $barcodes);
+  $markup = '';
+  if (count($array) > 1) {
+    $status_line = array_shift($array);
+    if (!strstr($status_line, "=")) {
+      $markup .= '<h3 class="bad">Status line is not correct</h3><p class="bad">The first line in a set of barcodes for "set status" needs to be something like:<br><code class="good">status=145</code></p>';
+    }
+    else {
+      @list($junk, $status_id) = explode("=", $status_line, 2);
+      $status_id = trim($status_id);
+      if (!is_numeric($status_id)) {
+        $markup .= '<h3 class="bad">Status line is not correct</h3><div class="bad">The status line does not contain a value that is numeric.  Please provide a value like:<br><code class="good">status=145</code></div>';
+      }
+      else {
+        $markup .= "<h1>Set status to " . $status_id . "</h1>";
+        $barcodes = implode("\r\n", $array);
+        $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
+        $ingest_namespace = upitt_workflow_get_ingest_namespace();
+        foreach ($check_results['found_pids'] as $key => $pid) {
+          if ($pid) {
+            $barcode = str_replace($ingest_namespace, "", $pid);
+            if (upitt_workflow_set_status_for_batch($barcode, $status_id, NULL)) {
+              $markup .= '<div class="good">Status for ' . $pid . ' set to ' . $status_id . '.</div>';
+            }
+            else {
+              $markup .= '<div class="bad">Status for ' . $pid . ' could not be set to ' . $status_id . '.</div>';
+            }
+
+/* MAY NOT WANT TO SET STATUS ON PAGE OBJECTS
+            $islandora_object = islandora_object_load($pid);
+            if (is_object($islandora_object)) {
+
+              $is_paged = upitt_workflow_is_paged_object($islandora_object);
+              if ($is_paged) {
+                $child_pages = islandora_paged_content_get_pages_ri($islandora_object);
+                foreach ($child_pages as $child_page) {
+                  if (isset($child_page['pid'])) {
+                    $child = islandora_object_load($child_page['pid']);
+                  }
+                }
+              }
+            }
+*/
+          }
+        }
+      }
+    }
+  }
+  else {
+    $markup .= '<p class="bad">For a complete list of available status values, use the corresponding `id` value from this page: ' . l('Transaction Actions', '/workflow/workflowadmin/manage/transaction_actions') . '</p>';
+  }
+  return $markup;
+}
+
 function upitt_workflow_links_to_objects_for_barcodes($barcodes) {
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
   $markup = '<div class="text-report"><h3>Links to ingested objects</h3>';
-  $markup .= '<h2>Found in Islandora</h2><pre style="color:red">' . implode("\n", $check_results['found_pid_manage_links']) . '</pre>' .
-            '<h2>NOT found in Islandora</h2><pre style="color:green">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
+  $markup .= '<h2>Found in Islandora</h2><pre class="good">' . implode("\n", $check_results['found_pid_manage_links']) . '</pre>' .
+            '<h2>NOT found in Islandora</h2><pre class="bad">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
   $markup .= '</div>';
   return $markup;
 }
@@ -539,6 +598,9 @@ function upitt_workflow_ingest_preprocess_from_barcodes($barcodes) {
         // or not the object has been preprocessed or ingested already.
         $markup .= upitt_workflow_drush_generic($batch);
         $set = upitt_workflow_get_set($batch['batch_external_id']);
+        if ($set > 0) {
+          upitt_workflow_set_status_for_batch($batch['batch_external_id'], UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED, NULL);
+        }
 
         $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
         $ingest_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest';
