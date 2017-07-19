@@ -1840,3 +1840,8 @@ function upitt_workflow_relate_object_to_collections_sites($object_id, $sites_ar
     drupal_set_message('There were no sites or collections related to the object "' . $object_id . '"', 'warning');
   }
 }
+
+function upitt_workflow_object_isPage($islandora_object) {
+  $applicable_cmodels = array('islandora:manuscriptPageCModel','islandora:pageCModel','islandora:newspaperPageCModel');
+  return (is_object($islandora_object)) ? array_intersect($applicable_cmodels, $islandora_object->models) : FALSE;
+}

@@ -800,3 +800,21 @@ function upitt_workflow_log($string) {
   error_log($date . ' ' . $string . "\n", 3, '/tmp/log');
 }
 
+function upitt_workflow_islandora_batch_object_processed($ingest_object, $state) {
+  module_load_include('module', 'islandora_batch', 'islandora_batch');
+  module_load_include('inc', 'islandora', 'includes/utilities');
+
+  if ($state == ISLANDORA_BATCH_STATE__DONE) {
+    $paged_content = upitt_workflow_is_paged_object($ingested_object);
+    $is_page = upitt_workflow_object_isPage($ingested_object);
+    if ($is_page) {
+      $parents = islandora_get_parents_from_rels_ext($ingested_object);
+      $parent = is_array($parents) ? array_pop($parents) : NULL;
+    }
+    $page_parent = ($is_page) ? $ingested_object->parent : NULL;
+    upitt_workflow_log('islandora_batch_object_processed done for ' . $ingest_object->id .
+        (($paged_content) ? ' need to wait for children (paged content)' : '') .
+        (($is_page) ? ' (is page of ' . $parent->id . ')' : '') .
+      );
+  }
+}
