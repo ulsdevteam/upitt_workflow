@@ -814,7 +814,7 @@ function upitt_workflow_islandora_batch_object_processed($ingest_object, $state)
     $page_parent = ($is_page) ? $ingested_object->parent : NULL;
     upitt_workflow_log('islandora_batch_object_processed done for ' . $ingest_object->id .
         (($paged_content) ? ' need to wait for children (paged content)' : '') .
-        (($is_page) ? ' (is page of ' . $parent->id . ')' : '') .
+        (($is_page) ? ' (is page of ' . $parent->id . ')' : '') 
       );
   }
 }
