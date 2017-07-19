@@ -648,7 +648,7 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
           }
 
           // Update the batch status record for the matching batch record for this set's $ingested_pid
-          upitt_workflow_set_status_for_pid($ingested_object, UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY);
+          upitt_workflow_set_status_for_pid($ingested_object, UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY, TRUE);
         }
         else {
           $variables = array('@ingested_pid' => $ingested_pid, '@set' => $set);

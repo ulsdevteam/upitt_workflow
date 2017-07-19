@@ -397,7 +397,7 @@ function upitt_workflow_set_status_for_barcodes($barcodes) {
         foreach ($check_results['found_pids'] as $key => $pid) {
           if ($pid) {
             $barcode = str_replace($ingest_namespace, "", $pid);
-            if (upitt_workflow_set_status_for_batch($barcode, $status_id, NULL)) {
+            if (upitt_workflow_set_status_for_batch($barcode, $status_id, NULL, FALSE)) {
               $markup .= '<div class="good">Status for ' . $pid . ' set to ' . $status_id . '.</div>';
             }
             else {
@@ -599,7 +599,7 @@ function upitt_workflow_ingest_preprocess_from_barcodes($barcodes) {
         $markup .= upitt_workflow_drush_generic($batch);
         $set = upitt_workflow_get_set($batch['batch_external_id']);
         if ($set > 0) {
-          upitt_workflow_set_status_for_batch($batch['batch_external_id'], UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED, NULL);
+          upitt_workflow_set_status_for_batch($batch['batch_external_id'], UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED, NULL, TRUE);
         }
 
         $this_domain = 'http://' . $_SERVER['HTTP_HOST'];

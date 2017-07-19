@@ -1662,12 +1662,12 @@ function upitt_workflow_get_set($batch_external_id) {
  * @param object $ingested_object
  * @param integer $transaction_action_id
  */
-function upitt_workflow_set_status_for_pid($ingested_object, $transaction_action_id) {
+function upitt_workflow_set_status_for_pid($ingested_object, $transaction_action_id, $allow_duplicates = FALSE) {
   global $user;
   // Take the namespace off of the pid to get the "batch_external_id" a.k.a. the "barcode" -- for finding the record in the workflow's item table.
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   $batch_external_id = str_replace($ingest_namespace, "", $ingested_object->id);
-  return upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id, $ingested_object);
+  return upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id, $ingested_object, $allow_duplicates);
 }
 
 /**
@@ -1677,11 +1677,10 @@ function upitt_workflow_set_status_for_pid($ingested_object, $transaction_action
  * @param object $batch_external_id
  * @param integer $transaction_action_id
  */
-function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id, $islandora_object = NULL) {
+function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id, $islandora_object = NULL, $allow_duplicates = TRUE) {
   global $user;
   $retval = TRUE; // Assume success, unless something something doesn't work, it'll set this to FALSE.
-  upitt_workflow_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id);
-  // error_log('in upitt_workflow_set_status_for_pid, batch_external_id = ' . $batch_external_id . "\n", 3, '/tmp/log');
+  upitt_workflow_log('in upitt_workflow_set_status_for_batch, batch_external_id = ' . $batch_external_id);
 
   // will need the batch record for this object.
   $batch_id = upitt_workflow_get_batch_id($batch_external_id, FALSE);
@@ -1722,17 +1721,33 @@ function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_ac
     $item_id = $row['id'];
     upitt_workflow_log('item id = ' . $item_id);
     // error_log('item id = ' . $item_id . "\n", 3, '/tmp/log');
-    
-    // Two records for the transaction ... insert the transaction record -- and update the item_current_status table with a pointer to this transaction
-    $transaction_insert = 'INSERT INTO `transaction` (`item_id`, `user_id`, `transaction_action_id`, `timestamp`) ' . 
-                          'VALUES (' . $item_id . ', ' . $user->uid . ', ' . ($transaction_action_id + 0) . ', now())';
-    mysqli_query($link, $transaction_insert);
-    
-    $transaction_query = 'SELECT id FROM `transaction` WHERE `item_id` = ' . $item_id . ' ORDER BY id DESC LIMIT 1';
-    $result = mysqli_query($link, $transaction_query);
-    $row = mysqli_fetch_assoc($result);
-    if (isset($row['id'])) {
-      $transaction_id = $row['id'];
+
+    $transaction_id = FALSE;
+    $can_insert = TRUE;
+    if (!$allow_duplicates) {
+      // Look for an existing record - and set $can_insert based on whether or not the record existed.
+      $transaction_query = 'SELECT id FROM `transaction` WHERE `item_id` = ' . $item_id . ' ORDER BY id DESC LIMIT 1';
+      $result = mysqli_query($link, $transaction_query);
+      $row = mysqli_fetch_assoc($result);
+      if (isset($row['id'])) {
+        $can_insert = FALSE;
+        $transaction_id = $row['id'];
+      }
+    }
+    if ($can_insert) {
+      // Two records for the transaction ... insert the transaction record -- and update the item_current_status table with a pointer to this transaction
+      $transaction_insert = 'INSERT INTO `transaction` (`item_id`, `user_id`, `transaction_action_id`, `timestamp`) ' .
+                            'VALUES (' . $item_id . ', ' . $user->uid . ', ' . ($transaction_action_id + 0) . ', now())';
+      mysqli_query($link, $transaction_insert);
+
+      $transaction_query = 'SELECT id FROM `transaction` WHERE `item_id` = ' . $item_id . ' ORDER BY id DESC LIMIT 1';
+      $result = mysqli_query($link, $transaction_query);
+      $row = mysqli_fetch_assoc($result);
+      if (isset($row['id'])) {
+        $transaction_id = $row['id'];
+      }
+    }
+    if ($transaction_id) {
       upitt_workflow_log('transaction_id = ' . $transaction_id);
       // error_log('transaction_id = ' . $transaction_id . "\n", 3, '/tmp/log');
 
@@ -1814,7 +1829,7 @@ function upitt_workflow_relate_object_to_collections_sites($object_id, $sites_ar
         $object->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
       }
 
-      upitt_workflow_set_status_for_batch($object_id, UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE, NULL);
+      upitt_workflow_set_status_for_batch($object_id, UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE, NULL, TRUE);
       drupal_set_message('Published "' . $object_id . '" to sites and collections.');
     }
     else {

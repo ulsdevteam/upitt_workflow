@@ -730,7 +730,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       }
     }
     $markup .= "</pre>";
-    upitt_workflow_set_status_for_batch($batch_external_id, UPITT_WORKFLOW_ACTION_INCOMING_INGEST_FILES_MOVED, NULL);
+    upitt_workflow_set_status_for_batch($batch_external_id, UPITT_WORKFLOW_ACTION_INCOMING_INGEST_FILES_MOVED, NULL, TRUE);
   }
 
   // In either case, if the object is a book, and the --METADATA--.xml does not 
