@@ -417,7 +417,7 @@ function upitt_workflow_set_status_for_barcodes($barcodes) {
   return $markup;
 }
 
-function upitt_workflow_datastream_results($islandora_object, $ingest_namespace) {
+function upitt_workflow_datastream_results($islandora_object, $ingest_namespace, $is_child = FALSE) {
   $barcode = str_replace($ingest_namespace, "", $islandora_object->id);
   $markup = '<div class="good">' . $islandora_object->id . ': ' .
     l('DELETE', 'islandora/object/' . $islandora_object->id . '/delete') . ' | ' .
@@ -427,31 +427,50 @@ function upitt_workflow_datastream_results($islandora_object, $ingest_namespace)
     l('"' . $islandora_object->label . '"', 'islandora/object/' . $islandora_object->id) .
     '</div><div class="datastreams">';
   $ds_arr = $out_arr = array();
+  $pdf_lt_2193 = FALSE;
+  $has_OCR = $has_PDF = $has_TN_LARGE = FALSE;
+  $size_OCR = 0;
   foreach ($islandora_object as $ds) {
     $ds_arr[$ds->id]['id'] = $ds->id;
-    $ds_arr[$ds->id]['size'] = $ds->size;
+    if ($ds->id == 'OCR') {
+      $has_OCR = TRUE;
+      $size_OCR = $ds->size;
+    }
+    if ($ds->id == 'TN_LARGE') {
+      $has_TN_LARGE = TRUE;
+    }
+    if ($ds->id == 'PDF') {
+      $has_PDF = TRUE;
+    }
+    if ($ds->id == 'PDF') {
+      $pdf_lt_2193 = ($ds->size < 2193);
+    }
   }
   ksort($ds_arr);
   foreach ($ds_arr as $dsid => $ds) {
-    $out_arr[] = ' <div class="wide_200 fl pl_20">' . $ds['id'] . '</div><div class="fl">' . number_format($ds['size']) . ' bytes</div>';
+    $out_arr[] = ' <div class="wide_200 fl pl_20">' . $ds['id'] . '</div>';
   }
-  return $markup . implode("<br>", $out_arr) . '</div><br>';
+  return array('markup' => $markup . implode("<br>", $out_arr) . '</div><br>', 'OCR_size' => $size_OCR);
 }
 
 function upitt_workflow_child_object_results($object, $ingest_namespace) {
   // if paged object, then use the pages function to get the child page objects
   $markup = '';
   $object_members = upitt_workflow_get_object_members_solr_record($object->id,'PID');
+  $total_OCR_size = 0;
   foreach ($object_members as $member_solr_doc) {
     $member_object = islandora_object_load($member_solr_doc['PID']);
     if (is_object($member_object)) {
-      $markup .= upitt_workflow_datastream_results($member_object, $ingest_namespace) . "<br>";
+      $results = upitt_workflow_datastream_results($member_object, $ingest_namespace, TRUE);
+      $total_OCR_size += $results['OCR_size'];
+      $markup .= $results['markup'] . "<br>";
     }
     else {
       $markup .= '<i class="bad">' . $member_solr_doc['PID'] . ' could not load</i><hr>';
     }
   }
-  return ($markup ? '<br><div class="pl_20"><b>object members</b><br>' . $markup . '</div>' : '<i class="bad">no object members</i><br>');
+  return array('markup' => ($markup ? '<br><div class="pl_20"><b>object members</b><br>' . $markup . '</div>' : '<i class="bad">no object members</i><br>'),
+      'total_OCR_size' => $total_OCR_size);
 }
 
 function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
@@ -462,11 +481,17 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
 
   foreach ($check_results['found_pids'] as $barcode => $pid) {
     $islandora_object = islandora_object_load($pid);
+    $ocr_aggregate_size = (isset($islandora_object['OCR'])) ? $islandora_object['OCR']->size : 0;
     $requirements = islandora_get_datastreams_requirements_from_content_model($islandora_object);
-    $datastream_results = upitt_workflow_datastream_results($islandora_object, $ingest_namespace);
+    $datastream_results = upitt_workflow_datastream_results($islandora_object, $ingest_namespace, FALSE);
     $child_results = upitt_workflow_child_object_results($islandora_object, $ingest_namespace);
-    $markup .= $datastream_results;
-    $markup .= $child_results . "<hr>";
+    $markup .= $datastream_results['markup'];
+    // check the total OCR size of child objects - if this is 0, skip this step because aggregate OCR already occurred.
+    if ($child_results['total_OCR_size'] && $ocr_aggregate_size <> $child_results['total_OCR_size']) {
+      $markup .= '<div class="bad">OCR aggregate size not equal to total size of all member OCR</div>';
+      $markup .= '<div class="bad pl">OCR aggregate = ' . $ocr_aggregate_size . ', total size of all member OCR = ' . $child_results['total_OCR_size'] . '</div>';
+    }
+    $markup .= $child_results['markup'] . "<hr>";
   }
   $markup .= '<h2>Found in Islandora</h2><pre class="good">' . implode("\n", $check_results['found_pid_manage_links']) . '</pre>' .
             '<h2>NOT found in Islandora</h2><pre class="bad">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
