@@ -730,9 +730,9 @@ function upitt_workflow_pages_ocr_temp_files($pages) {
   $page_pids = array_keys($pages);
   foreach ($page_pids as $page_pid) {
     $temp_name = drupal_realpath(drupal_tempnam("temporary://", "OCR_" . str_replace(":", "_", $page_pid) . ".txt"));
-    $page_ocr = islandora_datastream_load('OCR', $page_pid);
-    if (is_object($page_ocr)) {
-      file_put_contents($temp_name, $page_ocr->content, FILE_APPEND);
+    $page_obj = islandora_object_load($page_pid);
+    if (isset($page_obj['OCR'])) {
+      $page_obj['OCR']->getContent($temp_name);
       $files[] = $temp_name;
     }
   }

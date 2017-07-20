@@ -27,6 +27,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'get_wf_paths' => 'Get Bigfoot paths',
     '2' => '-',
     'links_to_objects' => 'Admin links to objects',
+    'deep_info_on_objects' => 'Deep info on objects',
     'set_status' => 'Set Status',
     'do_publish' => 'Publish objects to site',
     'delete_batch' => 'DELETE islandora_batch_* records',
@@ -86,6 +87,8 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
         $markup = upitt_workflow_make_page_pdf_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'links_to_objects') {
         $markup = upitt_workflow_links_to_objects_for_barcodes($form_state['values']['barcodes']);
+      } elseif ($mode == 'deep_info_on_objects') {
+        $markup = upitt_workflow_deep_info_on_objects_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'set_status') {
         $markup = upitt_workflow_set_status_for_barcodes($form_state['values']['barcodes']);
       } elseif ($mode == 'get_wf_paths') {
@@ -427,6 +430,63 @@ function upitt_workflow_set_status_for_barcodes($barcodes) {
   else {
     $markup .= '<p class="bad">For a complete list of available status values, use the corresponding `id` value from this page: ' . l('Transaction Actions', '/workflow/workflowadmin/manage/transaction_actions') . '</p>';
   }
+  return $markup;
+}
+
+function upitt_workflow_datastream_results($islandora_object, $ingest_namespace) {
+  $barcode = str_replace($ingest_namespace, "", $islandora_object->id);
+  $markup = '<div class="good">' . $islandora_object->id . ': ' .
+    l('DELETE', 'islandora/object/' . $islandora_object->id . '/delete') . ' | ' .
+    l('Manage', 'islandora/object/' . $islandora_object->id . '/manage') . ' | ' .
+    l('Workflow' , 'workflow/object/' . $barcode) . ' | ' .
+    l('Publish' , 'workflow/object/' . $barcode . '/do_publish') . ' | ' .
+    l('"' . $islandora_object->label . '"', 'islandora/object/' . $islandora_object->id) .
+    '</div><div class="datastreams">';
+  $ds_arr = $out_arr = array();
+  foreach ($islandora_object as $ds) {
+    $ds_arr[$ds->id]['id'] = $ds->id;
+    $ds_arr[$ds->id]['size'] = $ds->size;
+  }
+  ksort($ds_arr);
+  foreach ($ds_arr as $dsid => $ds) {
+    $out_arr[] = ' <div class="wide_200 fl pl_20">' . $ds['id'] . '</div><div class="fl">' . number_format($ds['size']) . ' bytes</div>';
+  }
+  return $markup . implode("<br>", $out_arr) . '</div><br>';
+}
+
+function upitt_workflow_child_object_results($object, $ingest_namespace) {
+  // if paged object, then use the pages function to get the child page objects
+  $markup = '';
+  $object_members = upitt_workflow_get_object_members_solr_record($object->id,'PID');
+  foreach ($object_members as $member_solr_doc) {
+    $member_object = islandora_object_load($member_solr_doc['PID']);
+    if (is_object($member_object)) {
+      $markup .= upitt_workflow_datastream_results($member_object, $ingest_namespace) . "<br>";
+    }
+    else {
+      $markup .= '<i class="bad">' . $member_solr_doc['PID'] . ' could not load</i><hr>';
+    }
+  }
+  return ($markup ? '<br><div class="pl_20"><b>object members</b><br>' . $markup . '</div>' : '<i class="bad">no object members</i><br>');
+}
+
+function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
+  module_load_include('inc', 'islandora', 'includes/utilities');
+  $markup = '<div class="text-report"><h3>Deep info on objects</h3>';
+  $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+
+  foreach ($check_results['found_pids'] as $barcode => $pid) {
+    $islandora_object = islandora_object_load($pid);
+    $requirements = islandora_get_datastreams_requirements_from_content_model($islandora_object);
+    $datastream_results = upitt_workflow_datastream_results($islandora_object, $ingest_namespace);
+    $child_results = upitt_workflow_child_object_results($islandora_object, $ingest_namespace);
+    $markup .= $datastream_results;
+    $markup .= $child_results . "<hr>";
+  }
+  $markup .= '<h2>Found in Islandora</h2><pre class="good">' . implode("\n", $check_results['found_pid_manage_links']) . '</pre>' .
+            '<h2>NOT found in Islandora</h2><pre class="bad">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
+  $markup .= '</div>';
   return $markup;
 }
 

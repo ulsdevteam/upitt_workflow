@@ -382,6 +382,47 @@ function upitt_workflow_get_item_files($object_id) {
   return $rows;
 }
 
+
+/**
+ * This function will return the Solr records for members of the provided object PID;
+ */
+function upitt_workflow_get_object_members_solr_record($pid, $fl = '') {
+  module_load_include('inc', 'islandora_solr', 'includes/utilities');
+  $query_processor = new IslandoraSolrQueryProcessor();
+  $members = array();
+  // run two queries --
+  // 1) to get the datastreams available on this object
+  $query_processor->solrQuery = format_string('!field:!value', array(
+    '!field' => 'RELS_EXT_isMemberOf_uri_ms',
+    '!value' => '*' . str_replace(array("/", ":", "-", "+"), array("\/", "\:", "\-", "\+"), $pid),
+   ));
+  $query_processor->solrStart = 0;
+  $query_processor->solrLimit = 9999;
+  $query_processor->solrParams = ($fl ? array('fl' => $fl) : array());
+
+  $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
+  $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
+  $solr->setCreateDocuments(FALSE);
+  try {
+    $search_results = $solr->search($query_processor->solrQuery, $query_processor->solrStart, $query_processor->solrLimit, $query_processor->solrParams, 'GET');
+    $tmp = json_decode($search_results->getRawResponse(), TRUE);
+
+    $results = array();
+    $numFound = $tmp['response']['numFound'];
+    if ($tmp['response']['numFound'] > 0) {
+      foreach ($tmp['response']['docs'] as $k=>$rec) {
+        $members[] = $rec;
+      }
+    }
+  }
+  catch (Exception $e) {
+    error_log('EXCEPTION in _save_solr_search_session : called from ' . $_SERVER['SERVER_NAME'] .
+' - ' . $_SERVER['REQUEST_URI'] . '
+' . print_r($e, true));
+  }
+  return $members;
+}
+
 /**
  * This function will return the Solr record for this object so that it can be compared to the expected values from the workflow record;
  */

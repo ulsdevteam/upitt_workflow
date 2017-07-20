@@ -64,6 +64,18 @@ h5 {
     font-family: Andale Mono, monospace;
 }
 
+.pl_20 {
+    padding-left: 20px
+}
+
+.wide_200 {
+    width: 200px;
+}
+
+.fl {
+    float: left;
+}
+
 .report_table_wrapper {
     max-height: 330px;
     height: 330px;
