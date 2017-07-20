@@ -664,7 +664,7 @@ function upitt_workflow_check_all_page_datastreams($pages, $dsid) {
   $retval = TRUE;
   foreach ($pages as $page) {
     if (isset($page['pid'])) {
-      $page_obj = islandora_object_load($child_page['pid']);
+      $page_obj = islandora_object_load($page['pid']);
       $retval |= (isset($page_obj[$dsid]) && is_object($page_obj[$dsid]));
     }
   }

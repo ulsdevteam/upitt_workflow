@@ -406,22 +406,6 @@ function upitt_workflow_set_status_for_barcodes($barcodes) {
             else {
               $markup .= '<div class="bad">Status for ' . $pid . ' could not be set to ' . $status_id . '.</div>';
             }
-
-/* MAY NOT WANT TO SET STATUS ON PAGE OBJECTS
-            $islandora_object = islandora_object_load($pid);
-            if (is_object($islandora_object)) {
-
-              $is_paged = upitt_workflow_is_paged_object($islandora_object);
-              if ($is_paged) {
-                $child_pages = islandora_paged_content_get_pages_ri($islandora_object);
-                foreach ($child_pages as $child_page) {
-                  if (isset($child_page['pid'])) {
-                    $child = islandora_object_load($child_page['pid']);
-                  }
-                }
-              }
-            }
-*/
           }
         }
       }
