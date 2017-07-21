@@ -143,6 +143,7 @@ function upitt_workflow_process_check_islandora_for_barcodes($barcodes) {
  */
 function upitt_workflow_check_islandora_for_barcodes($barcodes) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   $found_pids = $found_pid_links = $found_pid_manage_links = $not_found_pids = array();
   $barcodes_arr = explode("\n", $barcodes);
@@ -155,7 +156,10 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
         $not_found_pids[$barcode] = $pid;
       }
       else {
+        $pages = islandora_paged_content_get_pages($islandora_object);
+        $page_count = count($pages);
         $found_pid_manage_links[$barcode] = '"' . $pid . '": ' .
+                ($page_count ? $page_count . ' pages' : '') .
                 l('DELETE', 'islandora/object/' . $pid . '/delete') . ' | ' .
                 l('Manage', 'islandora/object/' . $pid . '/manage') . ' | ' .
                 l('Workflow' , 'workflow/object/' . $barcode) . ' | ' .
