@@ -13,6 +13,10 @@ set_time_limit(0);
 //  2) create or update batch records
 
 function upitt_workflow_process_barcodes_form($form, &$form_state) {
+  if (!isset($form_state['values']['barcodes']) && isset($_GET['barcodes']) && isset($_GET['mode'])) {
+    $form_state['values']['barcodes'] = filter_xss($_GET['barcodes']);
+    $form_state['values']['mode'] = filter_xss($_GET['mode']);
+  }
   $process_options = array(
     'checkobjects' => 'Check for Islandora Objects',
     '0' => '-',
@@ -423,11 +427,12 @@ function upitt_workflow_datastream_results($islandora_object, $ingest_namespace,
     l('DELETE', 'islandora/object/' . $islandora_object->id . '/delete') . ' | ' .
     l('Manage', 'islandora/object/' . $islandora_object->id . '/manage') . ' | ' .
     l('Workflow' , 'workflow/object/' . $barcode) . ' | ' .
-    l('Publish' , 'workflow/object/' . $barcode . '/do_publish') . ' | ' .
+    ($is_child ? '' : l('Publish' , 'workflow/object/' . $barcode . '/do_publish') . ' | ') .
+    ($is_child ? '' : '<a href="/workflow/workflowadmin/process_barcodes/?barcodes=' . $barcode . '&mode=aggregate">Aggregate OCR PDF</a> | ') . 
     l('"' . $islandora_object->label . '"', 'islandora/object/' . $islandora_object->id) .
     '</div><div class="datastreams">';
-  $ds_arr = $out_arr = array();
-  $pdf_lt_2193 = FALSE;
+  $ds_arr = array();
+  $pdf_size = FALSE;
   $has_OCR = $has_PDF = $has_TN_LARGE = FALSE;
   $size_OCR = 0;
   foreach ($islandora_object as $ds) {
@@ -443,7 +448,7 @@ function upitt_workflow_datastream_results($islandora_object, $ingest_namespace,
       $has_PDF = TRUE;
     }
     if ($ds->id == 'PDF') {
-      $pdf_lt_2193 = ($ds->size < 2193);
+      $pdf_size = $ds->size;
     }
   }
   ksort($ds_arr);
@@ -451,9 +456,10 @@ function upitt_workflow_datastream_results($islandora_object, $ingest_namespace,
   foreach ($ds_arr as $dsid => $ds) {
     $ds_ids[] = $ds['id'];
   }
-  return array('markup' => $markup . 
-               '<div class="wide_200 fl pl_20">' . implode(", ", $ds_ids) . '</div>' .
-               '</div><br>', 'OCR_size' => $size_OCR);
+//  return array('markup' => $markup . 
+//               '<div class="wide_200 fl pl_20">' . implode(", ", $ds_ids) . '</div>' .
+//               '</div><br>', 'OCR_size' => $size_OCR);
+  return array('markup' => $markup . implode(", ", $ds_ids) . '</div>', 'OCR_size' => $size_OCR, 'pdf_size' => $pdf_size);
 }
 
 function upitt_workflow_child_object_results($object, $ingest_namespace) {
@@ -486,8 +492,19 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
     $islandora_object = islandora_object_load($pid);
     $ocr_aggregate_size = (isset($islandora_object['OCR'])) ? $islandora_object['OCR']->size : 0;
     $requirements = islandora_get_datastreams_requirements_from_content_model($islandora_object);
+    $markup .= '<div>' . implode($requirements) . '</div>';
     $datastream_results = upitt_workflow_datastream_results($islandora_object, $ingest_namespace, FALSE);
     $child_results = upitt_workflow_child_object_results($islandora_object, $ingest_namespace);
+    if ($datastream_results['pdf_size'] === FALSE) {
+      $markup .= '<div class="bad">There is no PDF datastream.</div>';
+    }
+    elseif ($datastream_results['pdf_size'] < 2193) {
+      $markup .= '<div class="bad">PDF file is less than 2,193 bytes -- size = ' . $datastream_results['pdf_size'] . '.</div>';
+    } 
+    else {
+      $markup .= '<div class="good">PDF file size is good - size = ' . $datastream_results['pdf_size'] . '.</div>';
+    }
+
     $markup .= $datastream_results['markup'];
     // check the total OCR size of child objects - if this is 0, skip this step because aggregate OCR already occurred.
     $ocr_size_ratio = (($ocr_aggregate_size) ? $child_results['total_OCR_size'] / $ocr_aggregate_size : FALSE);

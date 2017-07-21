@@ -733,10 +733,6 @@ function upitt_workflow_aggregate_ocr_derivative($islandora_object) {
       module_load_include('inc', 'islandora_paged_content', 'includes/derivatives');
       islandora_paged_content_update_datastream($islandora_object, $consolidated_ocr_temp_file, 'OCR', 'Consolidated OCR', 'text/plain');
     }
-    else {
-      error_log('page aggregation of OCR failed');
-      error_log(implode("\r\n", $ocr_files));
-    }
     @unlink($consolidated_ocr_temp_file);
     foreach ($ocr_files as $file) {
       upitt_workflow_log('delete temp file for pages ocr file "' . $file . '"');
