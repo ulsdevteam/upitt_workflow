@@ -447,10 +447,13 @@ function upitt_workflow_datastream_results($islandora_object, $ingest_namespace,
     }
   }
   ksort($ds_arr);
+  $ds_ids = array();
   foreach ($ds_arr as $dsid => $ds) {
-    $out_arr[] = ' <div class="wide_200 fl pl_20">' . $ds['id'] . '</div>';
+    $ds_ids[] = $ds['id'];
   }
-  return array('markup' => $markup . implode("<br>", $out_arr) . '</div><br>', 'OCR_size' => $size_OCR);
+  return array('markup' => $markup . 
+               '<div class="wide_200 fl pl_20">' . implode(", ", $ds_ids) . '</div>' .
+               '</div><br>', 'OCR_size' => $size_OCR);
 }
 
 function upitt_workflow_child_object_results($object, $ingest_namespace) {
@@ -487,6 +490,7 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
     $child_results = upitt_workflow_child_object_results($islandora_object, $ingest_namespace);
     $markup .= $datastream_results['markup'];
     // check the total OCR size of child objects - if this is 0, skip this step because aggregate OCR already occurred.
+    $ocr_size_ratio = (($ocr_aggregate_size) ? $child_results['total_OCR_size'] / $ocr_aggregate_size : FALSE);
     if ($child_results['total_OCR_size'] && $ocr_aggregate_size <> $child_results['total_OCR_size']) {
       $markup .= '<div class="bad">OCR aggregate size not equal to total size of all member OCR</div>';
       $markup .= '<div class="bad pl">OCR aggregate = ' . $ocr_aggregate_size . ', total size of all member OCR = ' . $child_results['total_OCR_size'] . '</div>';

@@ -396,9 +396,13 @@ function upitt_workflow_get_object_members_solr_record($pid, $fl = '') {
     '!field' => 'RELS_EXT_isMemberOf_uri_ms',
     '!value' => '*' . str_replace(array("/", ":", "-", "+"), array("\/", "\:", "\-", "\+"), $pid),
    ));
+  $params = array('sort' => 'PID ASC');
+  if ($fl) {
+    $params['fl'] = $fl;
+  }
   $query_processor->solrStart = 0;
   $query_processor->solrLimit = 9999;
-  $query_processor->solrParams = ($fl ? array('fl' => $fl) : array());
+  $query_processor->solrParams = $params;
 
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
   $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
