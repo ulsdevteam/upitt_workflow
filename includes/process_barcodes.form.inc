@@ -162,9 +162,10 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
         $pages = islandora_paged_content_get_pages($islandora_object);
         $page_count = count($pages);
         $found_pid_manage_links[$barcode] = '"' . $pid . '": ' .
-                ($page_count ? $page_count . ' pages' : '') .
+                ($page_count ? '(' . number_format($page_count) . ' pages) ' : '') .
                 l('DELETE', 'islandora/object/' . $pid . '/delete') . ' | ' .
                 l('Manage', 'islandora/object/' . $pid . '/manage') . ' | ' .
+                l('Datastreams', 'islandora/object/' . $pid . '/manage/datastreams') . ' | ' .
                 l('Workflow' , 'workflow/object/' . $barcode) . ' | ' .
                 l('Publish' , 'workflow/object/' . $barcode . '/do_publish') . ' | ' .
                 l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid);
@@ -462,6 +463,7 @@ function upitt_workflow_datastream_results($islandora_object, $ingest_namespace,
   $markup = '<div class="good">' . $islandora_object->id . ': ' .
     l('DELETE', 'islandora/object/' . $islandora_object->id . '/delete') . ' | ' .
     l('Manage', 'islandora/object/' . $islandora_object->id . '/manage') . ' | ' .
+    l('Datastreams', 'islandora/object/' . $islandora_object->id . '/manage/datastreams') . ' | ' .
     l('Workflow' , 'workflow/object/' . $barcode) . ' | ' .
     ($is_child ? '' : l('Publish' , 'workflow/object/' . $barcode . '/do_publish') . ' | ') .
     ($is_child ? '' : '<a href="/workflow/workflowadmin/process_barcodes/?barcodes=' . $barcode . '&mode=aggregate">Aggregate OCR PDF</a> | ') . 
