@@ -18,25 +18,25 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     $form_state['values']['mode'] = filter_xss($_GET['mode']);
   }
   $process_options = array(
-    'checkobjects' => 'Check for Islandora Objects',
-    '0' => '-',
-    'update' => 'Update batch records (no overwrite if islandora object exists)',
-    'updateforce' => 'Update batch records (force overwrite)',
-    'do_copy' => 'Copy files from incoming to ingest location',
-    'ingest_prepare' => 'Islandora Ingest Preprocess',
-    'aggregate' => 'Aggregate OCR and PDF, make TN_LARGE',
-    '1' => '-',
-    'make_tn_large' => 'Make TN_LARGE derivative',
-    'make_page_pdfs' => '(Make page PDF derivatives)',
-    'purge_OCR_PDF' => 'Purge page OCR and PDF derivative',
-    'get_wf_paths' => 'Get Bigfoot paths',
-    '2' => '-',
-    'links_to_objects' => 'Admin links to objects',
-    'deep_info_on_objects' => 'Deep info on objects',
-    'set_status' => 'Set Status',
-    'do_publish' => 'Publish objects to site',
-    'delete_batch' => 'DELETE islandora_batch_* records',
-    'purge_objects' => 'DELETE objects');
+    '0' => 'Standard Ingest Steps',
+    'update' => ' - Update batch records (no overwrite if islandora object exists)',
+    'updateforce' => ' - Update batch records (force overwrite)',
+    'do_copy' => ' - Copy files from incoming to ingest location',
+    'ingest_prepare' => ' - Islandora Ingest Preprocess',
+    'do_publish' => ' - Publish objects to site',
+    '1' => 'Special Functionality',
+    'make_tn_large' => ' - Make TN_LARGE derivative',
+    'make_page_pdfs' => ' - (Make page PDF derivatives)',
+    'aggregate' => ' - Aggregate OCR and PDF, make TN_LARGE',
+    'set_status' => ' - Set Status',
+    '2' => 'Info / Cleanup',
+    'checkobjects' => ' - Check for Islandora Objects',
+    'links_to_objects' => ' - Admin links to objects',
+    'deep_info_on_objects' => ' - Deep info on objects',
+    'get_wf_paths' => ' - Get Bigfoot paths',
+    'purge_OCR_PDF' => ' - Purge page OCR and PDF derivative',
+    'delete_batch' => ' - DELETE islandora_batch_* records',
+    'purge_objects' => ' - DELETE objects');
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
     'barcodes' => array(
@@ -162,10 +162,9 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
         $pages = islandora_paged_content_get_pages($islandora_object);
         $page_count = count($pages);
         $found_pid_manage_links[$barcode] = '"' . $pid . '": ' .
-                ($page_count ? '(' . number_format($page_count) . ' pages) ' : '') .
+                ($page_count ? $page_count . ' pages' : '') .
                 l('DELETE', 'islandora/object/' . $pid . '/delete') . ' | ' .
                 l('Manage', 'islandora/object/' . $pid . '/manage') . ' | ' .
-                l('Datastreams', 'islandora/object/' . $pid . '/manage/datastreams') . ' | ' .
                 l('Workflow' , 'workflow/object/' . $barcode) . ' | ' .
                 l('Publish' , 'workflow/object/' . $barcode . '/do_publish') . ' | ' .
                 l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid);
@@ -463,7 +462,6 @@ function upitt_workflow_datastream_results($islandora_object, $ingest_namespace,
   $markup = '<div class="good">' . $islandora_object->id . ': ' .
     l('DELETE', 'islandora/object/' . $islandora_object->id . '/delete') . ' | ' .
     l('Manage', 'islandora/object/' . $islandora_object->id . '/manage') . ' | ' .
-    l('Datastreams', 'islandora/object/' . $islandora_object->id . '/manage/datastreams') . ' | ' .
     l('Workflow' , 'workflow/object/' . $barcode) . ' | ' .
     ($is_child ? '' : l('Publish' , 'workflow/object/' . $barcode . '/do_publish') . ' | ') .
     ($is_child ? '' : '<a href="/workflow/workflowadmin/process_barcodes/?barcodes=' . $barcode . '&mode=aggregate">Aggregate OCR PDF</a> | ') . 

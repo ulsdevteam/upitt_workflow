@@ -635,8 +635,13 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
           // See whether or not this is a paged-content object in order to call the
           // "aggregate PDF" and "aggregate OCR/HOCR" batch commands on it now.
           if (upitt_workflow_is_paged_object($ingested_object)) {
-            upitt_workflow_aggregate_pdf_derivative($ingested_object);
-            upitt_workflow_aggregate_ocr_derivative($ingested_object);
+            // Calling the next two functions while gearman is being used does NOT
+            // work anymore because the derivatives needed to aggregate these objects
+            // are now deferred.  This step must be done after the pages have ALL been
+            // completely ingested and finished with making their OCR / PDF deriviatives.
+            //
+            // upitt_workflow_aggregate_pdf_derivative($ingested_object);
+            // upitt_workflow_aggregate_ocr_derivative($ingested_object);
 
             $pages = islandora_paged_content_get_pages($ingested_object);
             if (count($pages)) {
