@@ -352,8 +352,6 @@ function upitt_workflow_theme() {
 function upitt_workflow_get_databaselink($db_section = 'default') {
   global $databases;
   // Use the settings.php file for this install.
-//  $script_base = str_replace('/index.php', '', $_SERVER['SCRIPT_FILENAME']);
-//  require_once($script_base . '/' . conf_path(TRUE) . '/settings.php');
   $settings_file = variable_get('upitt_workflow_settings_file', '');
   if (!$settings_file) {
     drupal_set_message('The settings file value has not been set.  It is needed in order ' .

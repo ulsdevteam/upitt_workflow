@@ -19,6 +19,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
   }
   $process_options = array(
     '0' => 'Standard Ingest Steps',
+    'delete_update_copy_ingest' => ' - One step (delete, update, copy, ingest)',
     'update' => ' - Update batch records (no overwrite if islandora object exists)',
     'updateforce' => ' - Update batch records (force overwrite)',
     'do_copy' => ' - Copy files from incoming to ingest location',
@@ -76,39 +77,11 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
   $mode = $form_state['values']['mode'];
   switch ($btn_id) {
     case 'edit-submit':
-      if ($mode == 'checkobjects') {
-        $markup = upitt_workflow_process_check_islandora_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'ingest_prepare') {
-        $markup = upitt_workflow_ingest_preprocess_from_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'do_copy') {
-        $markup = upitt_workflow_do_copy_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'ingest_prepare') {
-        $markup = upitt_workflow_ingest_preprocess_from_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'delete_batch') {
-        $markup = upitt_workflow_delete_batch_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'make_tn_large') {
-        $markup = upitt_workflow_make_tn_large_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'make_page_pdfs') {
-        $markup = upitt_workflow_make_page_pdf_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'purge_OCR_PDF') {
-        $markup = upitt_workflow_purge_OCR_PDF_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'links_to_objects') {
-        $markup = upitt_workflow_links_to_objects_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'deep_info_on_objects') {
-        $markup = upitt_workflow_deep_info_on_objects_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'set_status') {
-        $markup = upitt_workflow_set_status_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'get_wf_paths') {
-        $markup = upitt_workflow_get_wf_paths_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'do_publish') {
-        $markup = upitt_workflow_do_publish_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'purge_objects') {
-        $markup = upitt_workflow_purge_objects_for_barcodes($form_state['values']['barcodes']);
-      } elseif ($mode == 'aggregate') {
-        $markup = upitt_workflow_aggregate_for_barcodes($form_state['values']['barcodes']);
-      }
-      elseif ($mode == 'update' || $mode == 'updateforce') {
-        upitt_workflow_make_batch_records_from_barcodes($form_state['values']['barcodes'], $mode);
+      if ($mode == 'update' || $mode == 'updateforce') {
+        $markup = upitt_workflow_make_batch_records_for_barcodes($form_state['values']['barcodes'], $mode);
+      } else {
+        $fn = 'upitt_workflow_' . $mode . '_for_barcodes';
+        $markup = $fn($form_state['values']['barcodes']);
       }
       break;
     
@@ -128,7 +101,7 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
  * @param string $barcodes - will be split into an array
  * @return markup HTML
  */
-function upitt_workflow_process_check_islandora_for_barcodes($barcodes) {
+function upitt_workflow_checkobjects_for_barcodes($barcodes) {
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
   $markup = '<div class="text-report"><h3>Found in Islandora</h3><div class="found">' . implode("<br>", $check_results['found_pid_links']) . '</div><hr>' .
             '<h3>NOT found in Islandora</h3><div class="not-found">' . implode("<br>", $check_results['not_found_pids']) . '</div></div>';
@@ -205,7 +178,7 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
  * @param string $mode
  * @return markup HTML
  */
-function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
+function upitt_workflow_make_batch_records_for_barcodes($barcodes, $mode) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   global $user;
@@ -228,7 +201,6 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
 
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $toggle = FALSE;
-  $sqls = array();
   $overwrite_if_exists = (($mode == 'updateforce') ? 1 : 0);
   foreach ($use_pids as $barcode => $pid) {
     $toggle = !$toggle;
@@ -237,6 +209,8 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
     $type = upitt_workflow_wf_item_get_type($barcode, $link);
     $model = upitt_workflow_wf_type_to_fedora_model($type);
     $batch_external_id_and_description = upitt_workflow_wf_item_get_name_and_desc($barcode, $link);
+    $batch_host_path = upitt_workflow_batch_file_path($barcode, $link);
+    $batch_host_path = str_replace("/usr/local/", "/ingest/", $batch_host_path);
     $description = $barcode . ' from legacy batch named `' . $batch_external_id_and_description['name'] . '` ' . $batch_external_id_and_description['description'];
     $collections = upitt_workflow_wf_item_get_collection($barcode, $link);
     $sites = upitt_workflow_wf_item_get_site($barcode, $link);
@@ -260,11 +234,11 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
            "'" . mysqli_real_escape_string($link, $model) . "', " .
            "'" . mysqli_real_escape_string($link, $sites) . "', " .
            $overwrite_if_exists . ", " .
-           "'" . variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming') . "'," .
+           "'" . (($batch_host_path) ? $batch_host_path : variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming')) . "'," .
            $user->uid . ");";
     mysqli_query($link, $sql);
-    $sqls[$barcode] = $sql;
 
+    $batch_id = upitt_workflow_get_batch_id($barcode , FALSE);
     $item_id = upitt_workflow_insert_item_for_batch_external_id($barcode, $link);
     if (!$batch_id) {
       $batch_id = upitt_workflow_get_batch_id($barcode);
@@ -275,6 +249,19 @@ function upitt_workflow_make_batch_records_from_barcodes($barcodes, $mode) {
 
   $markup .= '</div>';
   mysqli_close($link);
+  return $markup;
+}
+
+/** This will call the functions to delete, update, copy, and ingest barcodes in sequence.
+ * 
+ * @param type $barcodes
+ */
+function upitt_workflow_delete_update_copy_ingest_for_barcodes($barcodes) {
+  $markup = upitt_workflow_delete_batch_for_barcodes($barcodes);
+  $markup .= upitt_workflow_purge_objects_for_barcodes($barcodes);
+  $markup .= upitt_workflow_make_batch_records_for_barcodes($barcodes, 'update');
+  $markup .= upitt_workflow_do_copy_for_barcodes($barcodes);
+  $markup .= upitt_workflow_ingest_prepare_for_barcodes($barcodes);
   return $markup;
 }
 
@@ -568,6 +555,30 @@ function upitt_workflow_links_to_objects_for_barcodes($barcodes) {
 }
 
 /**
+ * Helper function that will just get the batch file path from the item_file record
+ * that matches this barcode.  Returns an empty string if no match was found;
+ *
+ * @param string $barcode
+ * @param type $link
+ * @return string
+ */
+function upitt_workflow_batch_file_path($barcode, $link) {
+  $sql = "SELECT itf.path FROM item i JOIN item_file itf ON (itf.item_id = i.id) WHERE i.do_id = '" . mysqli_real_escape_string($link, $barcode) . "' LIMIT 1";
+  $result = mysqli_query($link, $sql);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+
+  $path = '';
+  $row = mysqli_fetch_assoc($result);
+  if (isset($row['path'])) {
+    $pathinfo = pathinfo($row['path']);
+    $path = $pathinfo['dirname'];
+  }
+  return $path;
+}
+
+/**
  * This will look in the item / item_file table to get the path for that barcode's workflow record.
  *
  * @param type $barcodes
@@ -580,17 +591,9 @@ function upitt_workflow_get_wf_paths_for_barcodes($barcodes) {
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
-    $sql = "SELECT itf.path FROM item i JOIN item_file itf ON (itf.item_id = i.id) WHERE i.do_id = '" . mysqli_real_escape_string($link, $barcode) . "'";
-    $result = mysqli_query($link, $sql);
-    if (!$result) {
-      upitt_workflow_sql_error_die($link, $sql);
-    }
-
-    $row = mysqli_fetch_assoc($result);
-    if (isset($row['path'])) {
-      $path = $row['path'];
-      $pathinfo = pathinfo($path);
-      $markup .= '<span class="good">' . $barcode . "\t" . $pathinfo['dirname'] . '</span><br>';
+    $path = upitt_workflow_batch_file_path($barcode, $link);
+    if ($path) {
+      $markup .= '<span class="good">' . $barcode . "\t" . $path . '</span><br>';
     }
     else {
       $markup .= '<span class="bad">' . $barcode . ' not found in item table</span><br>';
@@ -707,7 +710,7 @@ function upitt_workflow_do_copy_for_barcodes($barcodes) {
   return $markup;
 }
 
-function upitt_workflow_ingest_preprocess_from_barcodes($barcodes) {
+function upitt_workflow_ingest_prepare_for_barcodes($barcodes) {
   global $user;
   $barcodes_arr = explode("\n", $barcodes);
 
