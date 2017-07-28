@@ -37,7 +37,10 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'get_wf_paths' => ' - Get Bigfoot paths',
     'purge_OCR_PDF' => ' - Purge page OCR and PDF derivative',
     'delete_batch' => ' - DELETE islandora_batch_* records',
-    'purge_objects' => ' - DELETE objects');
+    'purge_objects' => ' - DELETE objects',
+    'pid_to_barcode' => ' - Convert PIDs to barcodes',
+    'barcode_to_pid' => ' - Convert barcodes to PIDs',
+  );
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
     'barcodes' => array(
@@ -604,6 +607,50 @@ function upitt_workflow_get_wf_paths_for_barcodes($barcodes) {
   return $markup;
 }
 
+/**
+ * Simple function to convert the barcodes to pid values.
+ *
+ * @param type $vals
+ * @return HTML markup
+ */
+function upitt_workflow_barcode_to_pid_for_barcodes($vals) {
+  $barcodes_arr = explode("\n", $vals);
+  $markup = '<div class="text-report"><h3>PIDs to barcodes</h3>';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $pid = $ingest_namespace . trim($barcode);
+    $markup .= $pid . '<br>';
+  }
+  $markup .= '</div>';
+
+  return $markup;
+}
+
+/**
+ * Simple function to convert the pid values to barcodes.
+ *
+ * @param type $vals
+ * @return HTML markup
+ */
+function upitt_workflow_pid_to_barcode_for_barcodes($vals) {
+  $pids_arr = explode("\n", $vals);
+  $markup = '<div class="text-report"><h3>PIDs to barcodes</h3>';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($pids_arr as $pid) {
+    $barcode = str_replace($ingest_namespace, "", trim($pid));
+    $markup .= $barcode . '<br>';
+  }
+  $markup .= '</div>';
+
+  return $markup;
+}
+
+/**
+ * 
+ *
+ * @param type $barcodes
+ * @return string
+ */
 function upitt_workflow_purge_objects_for_barcodes($barcodes) {
   module_load_include('inc', 'islandora', 'includes/manage_deleted_objects');
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');

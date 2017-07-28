@@ -395,12 +395,10 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
                      // assuming that only if the parent is set, than the parent_relationship_pred is needed
                      '--type=directory ' . // --overwrite_existing=1 ' .
                      '--assign_pid=' . $ingest_namespace . $batch_external_id . ' ' .
-              // To prevent the parent relationship to islandora_repository_pid, pass empty value
-//                     '--parent= ' .
+                     (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
               /*
                * These relationships will be set after the batch-object has been reviewed.
                *
-                     (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '') .
                      (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
                      ' --target=' . $filepath;
