@@ -752,6 +752,145 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
   }
 }
 
+function upitt_workflow_make_tn($object, $save_on_object) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+  $obj_ds = NULL;
+  $thumbnail_id = str_replace(':', '_', $save_on_object->id);
+  $is_paged = upitt_workflow_is_paged_object($object);
+
+  if ($is_paged) {
+    module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+    // if paged_content, must use a couple functions to get the OBJ which is to be used
+    // for the thumbnail creation
+    if ($can_create = islandora_paged_content_can_update_paged_content_thumbnail($save_on_object)) {
+      $pages = islandora_paged_content_get_pages($save_on_object);
+      $page = array_shift($pages);
+      $page = islandora_object_load($page['pid']);
+      $obj_ds = $page['OBJ'];
+    }
+  }
+  else {
+    // if image, simply pass the $object['OBJ'] from the $object
+    if (module_exists('islandora_wait_for_object')) {
+      module_load_include('module', 'islandora_wait_for_object');
+      $proceed = islandora_wait_for_object_test($object, 'OBJ');
+      if (!$proceed) { return ''; }
+    }
+    if (isset($object['OBJ'])) {
+      $obj_ds = $object['OBJ'];
+    }
+    else {
+      drupal_set_message("Could not create TN datastream because there was no OBJ datastream found for " . $object->id, 'warning');
+      return FALSE;
+    }
+  }
+
+  $temp_dest_file_uri = upitt_workflow_create_TN_file($obj_ds, $thumbnail_id, $object->models);
+
+  if (!$temp_dest_file_uri) {
+    return FALSE;
+  }
+  try {
+    $ingest = !isset($save_on_object['TN']);
+    $mime_detector = new MimeDetect();
+    if ($ingest) {
+      $ds = $save_on_object->constructDatastream('TN', 'M');
+      $ds->label = 'Thumbnail';
+    }
+    else {
+      $ds = $save_on_object['TN'];
+    }
+    if ($ds->mimetype != $mime_detector->getMimetype($temp_dest_file_uri)) {
+      $ds->mimetype = $mime_detector->getMimetype($temp_dest_file_uri);
+    }
+    $ds->setContentFromFile(drupal_realpath($temp_dest_file_uri));
+
+    if ($ingest) {
+      $save_on_object->ingestDatastream($ds);
+    }
+    file_unmanaged_delete($temp_dest_file_uri);
+
+    return array(
+      'success' => TRUE,
+      'messages' => array(
+        array(
+          'message' => t('Created TN derivative for (@pid).'),
+          'message_sub' => array(
+            '@pid' => $object->id,
+          ),
+          'type' => 'dsm',
+        ),
+      ),
+    );
+  }
+  catch (exception $e) {
+    return array(
+      'success' => FALSE,
+      'messages' => array(
+        array(
+          'message' => t('Failed to create TN derivative for @pid.'),
+          'message_sub' => array(
+            '@pid' => $object->id,
+          ),
+          'type' => 'watchdog',
+          'severity' => WATCHDOG_ERROR,
+        ),
+      ),
+    );
+  }
+}
+
+/**
+ * This will take an OBJ datastream and make a TN JPG file derivative return
+ * value would be the name of the saved TN file.
+ *
+ * @param type $obj_ds
+ * @return string
+ */
+function upitt_workflow_create_TN_file($obj_ds, $thumbnail_id, $models) {
+  module_load_include('inc', 'islandora_large_image', 'includes/derivatives');
+  module_load_include('module', 'imagemagick', 'imagemagick');
+  
+  $dest_file = drupal_realpath("temporary://{$thumbnail_id}_TN.JPG");
+
+  // redundant - -this will be a TIF file or JPG file
+  $mime_detector = new MimeDetect();
+  $ext = $mime_detector->getExtension($obj_ds->mimeType);
+
+  $obj_ds_file = drupal_realpath("temporary://{$thumbnail_id}_OBJ.{$ext}");
+  $obj_ds->getContent($obj_ds_file);
+  $obj_is_pdf = (is_array($models) ? !(array_search('islandora:sp_pdf', $models) === FALSE) : FALSE);
+  $obj_is_video = (is_array($models) ? !(array_search('islandora:sp_videoCModel', $models) === FALSE) : FALSE);
+  // For the imagemagick call, a TIF source needs [0] at the end of the filename source.
+  if (islandora_large_image_is_tiff($obj_ds_file) || $obj_is_pdf) {
+    $im_obj_ds_file = $obj_ds_file . '[0]';
+  } elseif ($obj_is_video) {
+    $im_obj_ds_file = $obj_ds_file . '[1]'; // use first frame
+  } else {
+    $im_obj_ds_file = $obj_ds_file;
+  }
+
+  $args = array();
+  $args[] = '-quality ' . escapeshellarg(variable_get('imagemagick_quality', 75));
+  $args[] = '-resize ' . escapeshellarg("200 x 200");
+
+  $command = escapeshellarg($im_obj_ds_file) . ' ' . implode(' ', $args) . ' ' . escapeshellarg($dest_file);
+  $output = array();
+  $ret = -1;
+  if (_imagemagick_convert_exec($command, $output, $ret) !== TRUE) {
+    $variables = array(
+      '@ret' => $ret,
+      '@command' => $command,
+      '!output' => implode('<br/>', $output),
+    );
+    watchdog('islandora_large_image', 'ImageMagick failed to convert.<br/>Error: @ret<br/>Command: @command <br/>Output !output', $variables, WATCHDOG_ERROR);
+    return FALSE;
+  }
+  file_unmanaged_delete($obj_ds_file);
+  $derivative_file = $dest_file;
+  return $derivative_file;
+}
+
 /**
  * This will take an OBJ datastream and make a TN_LARGE JPG file derivative return
  * value would be the name of the saved TN_LARGE file.
@@ -762,7 +901,7 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
 function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id, $models) {
   module_load_include('inc', 'islandora_large_image', 'includes/derivatives');
   module_load_include('module', 'imagemagick', 'imagemagick');
-  
+
   $dest_file = drupal_realpath("temporary://{$thumbnail_id}_TN_LARGE.JPG");
 
   // redundant - -this will be a TIF file or JPG file

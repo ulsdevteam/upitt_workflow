@@ -26,6 +26,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     'ingest_prepare' => ' - Islandora Ingest Preprocess',
     'do_publish' => ' - Publish objects to site',
     '1' => 'Special Functionality',
+    'make_tn' => ' - Make TN derivative',
     'make_tn_large' => ' - Make TN_LARGE derivative',
     'make_page_pdfs' => ' - (Make page PDF derivatives)',
     'aggregate' => ' - Aggregate OCR and PDF, make TN_LARGE',
@@ -373,6 +374,34 @@ function upitt_workflow_make_page_pdf_for_barcodes($barcodes) {
       $missing_barcodes[] = $barcode;
     }
     $markup .= '<div class="good"><b>PDF derivatives created for the pages of ' . $pid . "</b></div>";
+  }
+  if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
+  }
+  $markup .= '</div>';
+  return $markup;
+}
+
+function upitt_workflow_make_tn_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+
+  $missing_barcodes = array();
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '<div class="text-report">';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $pid = $ingest_namespace . $barcode;
+    $islandora_object = islandora_object_load($pid);
+    if (is_object($islandora_object)) {
+      if (!upitt_workflow_make_tn($islandora_object, $islandora_object)) {
+        $missing_barcodes[] = $barcode;
+      }
+    }
+    else {
+      $missing_barcodes[] = $barcode;
+    }
+    $markup .= '<div>TN created for ' . $pid . "</div>";
   }
   if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
