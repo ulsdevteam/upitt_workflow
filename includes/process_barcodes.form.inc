@@ -609,6 +609,7 @@ function upitt_workflow_purge_objects_for_barcodes($barcodes) {
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
   $pages_delete_statuses = array();
+  $deleted = FALSE;
   foreach ($check_results['found_pids'] as $key => $pid) {
     if ($pid) {
       $islandora_object = islandora_object_load($pid);
@@ -626,6 +627,20 @@ function upitt_workflow_purge_objects_for_barcodes($barcodes) {
         }
         $deleted = islandora_delete_object($islandora_object);
         $check_results['found_pid_links'][$key] = $pid . ' ' . ($deleted ? 'deleted' : 'not deleted') ;
+      }
+    }
+  }
+  foreach ($check_results['not_found_pids'] as $key => $pid) {
+    if ($pid) {
+      // Try a SOLR query to get child PID values that are not attached to the book (orphans)
+      $solr_query = "PID:" . str_replace(":", "\:", $pid) . "*";
+      $child_pids = upitt_workflow_get_solr_options($solr_query, 'PID', 'PID');
+      foreach ($child_pids as $k => $child_pid) {
+        if (isset($child_pid)) {
+          $child = islandora_object_load($child_pid);
+          $deleted = islandora_delete_object($child);
+          $pages_delete_statuses[] = $child_pid . ' ' . ($deleted ? 'deleted' : 'not deleted') ;
+        }
       }
     }
   }
