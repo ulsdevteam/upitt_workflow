@@ -757,7 +757,6 @@ function upitt_workflow_make_tn($object, $save_on_object) {
   $obj_ds = NULL;
   $thumbnail_id = str_replace(':', '_', $save_on_object->id);
   $is_paged = upitt_workflow_is_paged_object($object);
-
   if ($is_paged) {
     module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
     // if paged_content, must use a couple functions to get the OBJ which is to be used
@@ -767,6 +766,12 @@ function upitt_workflow_make_tn($object, $save_on_object) {
       $page = array_shift($pages);
       $page = islandora_object_load($page['pid']);
       $obj_ds = $page['OBJ'];
+    }
+    else {
+      // HACK - 
+      $hack_page_pid = $object->id . '-0001';
+      $page_obj = islandora_object_load($hack_page_pid);
+      $obj_ds = isset($page_obj['OBJ']) ? $page_obj['OBJ'] : NULL;
     }
   }
   else {
