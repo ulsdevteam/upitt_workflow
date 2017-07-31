@@ -826,8 +826,8 @@ function upitt_workflow_ingest_prepare_for_barcodes($barcodes) {
         }
 
         $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
-        $ingest_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest';
-        $ingest_set_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=' . $set;
+        $ingest_drush_command = 'sudo -u apache drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest';
+        $ingest_set_drush_command = 'sudo -u apache drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=' . $set;
         $markup .= '<h4>Subsequent call to actually ingest the queued object/s.</h4><code>' . $ingest_drush_command . '<br>' .
                  '<i># or if only one set to be processed, supply the ingest_set option</i><br>' . $ingest_set_drush_command .
                  '</code>';

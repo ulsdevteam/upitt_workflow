@@ -122,8 +122,8 @@ function upitt_workflow_islandora_ingest($batch_id) {
                    'the subsequent call to ingest the queued object/s has been executed.</h4><code>' . $ingest_set_drush_command . '</code>';
       }
     } else {
-      $markup .= '<h4>Subsequent call to actually ingest the queued object/s.</h4><code>' . $ingest_drush_command . '<br>' .
-                 '<i># or if only one set to be processed, supply the ingest_set option</i><br>' . $ingest_set_drush_command .
+      $markup .= '<h4>Subsequent call to actually ingest the queued object/s.</h4><code>sudo -u apache ' . $ingest_drush_command . '<br>' .
+                 '<i># or if only one set to be processed, supply the ingest_set option</i><br>sudo -u apache ' . $ingest_set_drush_command .
                  '</code>';
 
       $markup .= '<h3>Batch values</h3>';
