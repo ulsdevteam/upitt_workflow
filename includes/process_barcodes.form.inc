@@ -813,6 +813,7 @@ function upitt_workflow_ingest_prepare_for_barcodes($barcodes) {
     // Need to get the related batch record to determine whether or not the object
     // is ingested, the related model to use for ingest prepare call...
     $batch_id = upitt_workflow_get_batch_id($barcode, FALSE);
+
     if ($batch_id) {
       $batch = upitt_workflow_batch_load($batch_id);
       if (isset($batch['batch_id'])) {

@@ -10,20 +10,10 @@ function upitt_workflow_get_workflow_to_fedora_object_mappings() {
                'findingAidCModel' => 'Finding Aids (pending development)',
                'sp_large_image_cmodel' => 'Large Images',
                'manuscriptCModel' => 'Manuscript',
-               'newspaperIssueCModel' => 'Newspaper (pending development)',
+               'newspaperIssueCModel' => 'Newspaper',
                'oralhistoriesCModel' => 'Oral Histories (pending development)',
                'sp_pdf' => 'PDF object',
                'sp_videoCModel' => 'Video',
-      /*
-       *  LEGACY NAMING...
-               'cartographic (sp_large_image_cmodel)' => 'sp_large_image_cmodel',
-               'finding aid (findingAidCModel)' => 'findingAidCModel',
-               'manuscript (manuscriptCModel)' => 'manuscriptCModel',
-               'newspaper (newspaperCModel)' => 'newspaperCModel',
-               'photograph (sp_large_image_cmodel)' => 'sp_large_image_cmodel',
-               'still image (sp_large_image_cmodel)' => 'sp_large_image_cmodel',
-               'text (bookCModel)' => 'bookCModel',
-      */
               );
 }
 
@@ -42,10 +32,7 @@ function upitt_workflow_wf_type_to_fedora_model($type) {
       'map' => 'sp_large_image_cmodel',
       'pdf' => 'sp_pdf',
       'georeferenced map' => 'sp_large_image_cmodel',
-      'newspaper - cataloged' => 'bookCModel');
-  // The newspaper objects will be ingested to islandora as books, but a later
-  // process will need to create Newspaper objects and the "books" objects would
-  // be converted to Newspaper Issue objects.
+      'newspaper - cataloged' => 'newspaperCModel');
   return isset($mapping[$type]) ? $mapping[$type] : '';
 }
 
@@ -642,6 +629,10 @@ function upitt_workflow_generic_get_directory($incoming_folder) {
     $subfolder = $incoming_folder . '/' . $folder;
     $files = upitt_workflow_file_scan_directory($subfolder, '', TRUE, FALSE);
     foreach ($files as $key => $file) {
+      if (is_array($file)) {
+        $file = $file[0];
+      }
+
       $tmp_files[$file] = $folder . '/' . $file;
     }
   }

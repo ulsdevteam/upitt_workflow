@@ -77,7 +77,6 @@ function upitt_workflow_islandora_ingest($batch_id) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $batch = upitt_workflow_batch_load($batch_id);
-
   $markup = '<p>Attempt to ingest batch #' . $batch_id;
 
   if ($batch) {
@@ -97,7 +96,6 @@ function upitt_workflow_islandora_ingest($batch_id) {
     if ($requirements) {
       $markup  .= '<h3>Requirements for "' . $fedora_model_name . '"</h3><pre>' . print_r($requirements, true) . '</pre>';
     } */
-
     $markup .= upitt_workflow_drush_generic($batch);
 
     // Update the batch status record for the matching batch record for this batch_external_id
@@ -150,19 +148,23 @@ function upitt_workflow_drush_generic($batch) {
   // $batch_path = upitt_workflow_batch_path($batch);
   $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch['batch_external_id'];
 
-  $parent = $batch['mapto_collections'];
-  $collections_arr = explode(",", $parent);
-  $review_collections = array();
-  foreach ($collections_arr as $collection_pid) {
-    $collection_pid = trim($collection_pid);
-    if ($collection_pid) {
-      $review_collections[] = str_replace("_review", "", $collection_pid) . '_review';
+  if ($batch['default_type_of_resource'] == 'newspaperCModel') {
+    $parent_review = $batch['mapto_collections'];
+  } else {
+    $parent = $batch['mapto_collections'];
+    $collections_arr = explode(",", $parent);
+    $review_collections = array();
+    foreach ($collections_arr as $collection_pid) {
+      $collection_pid = trim($collection_pid);
+      if ($collection_pid) {
+        $review_collections[] = str_replace("_review", "", $collection_pid) . '_review';
+      }
     }
+    if (count($review_collections) > 0) {
+      upitt_workflow_create_review_collections($review_collections);
+    }
+    $parent_review = implode(",", $review_collections);
   }
-  if (count($review_collections) > 0) {
-    upitt_workflow_create_review_collections($review_collections);
-  }
-  $parent_review = implode(",", $review_collections);
   
   $site = $batch['mapto_site_id_values'];
   // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.
@@ -177,6 +179,8 @@ function upitt_workflow_drush_generic($batch) {
     $markup = upitt_workflow_drush_image_possible_csv2mods($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent_review, $site, $batch_default_depositor);
   } elseif ($fedora_model_name == 'sp_pdf' || $fedora_model_name == 'sp_videoCModel') {
     $markup = upitt_workflow_drush_islandora_batch_folder_pids($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent_review, $site, $batch_default_depositor);
+  } elseif ($fedora_model_name == 'newspaperCModel') {
+    $markup = upitt_workflow_drush_newspaper_issue($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent_review, $site, $batch_default_depositor);
   } else {
     $markup = "Model not supported " . $fedora_model_name . "<br>";
   }
@@ -330,6 +334,45 @@ function upitt_workflow_drush_islandora_batch_folder_pids($batch_external_id, $f
   }
   return $retval;
 }
+
+function upitt_workflow_drush_newspaper_issue($batch_external_id, $filepath, $fedora_model_name, $parent, $site, $batch_default_depositor) {
+  global $user;
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  $retval = '';
+
+  $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  $ingest_namespace_nocolon = rtrim($ingest_namespace, ":");
+
+  $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_newspaper_batch_preprocess ' .
+                   '--content_models=islandora:' . $fedora_model_name . ' ' .
+                   ' --namespace=' . $ingest_namespace_nocolon . ' ' .
+                   // assuming that only if the parent is set, than the parent_relationship_pred is needed
+                   '--type=directory ' . // --overwrite_existing=1 ' .
+//                   '--assign_pid=' . $ingest_namespace . $batch_external_id . ' ' .
+                   (($parent) ? '--parent=' . $parent . ' ' : '') . // ' --parent_relationship_pred=isMemberOfCollection ' : '') .
+            /*
+             * These relationships will be set after the batch-object has been reviewed.
+             *
+                   (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
+             */
+                   ' --target=' . $filepath;
+
+  $output = $return_var = array();
+  exec($drush_command, $output, $return_var);
+
+  if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
+    drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+    $alerted_on_err = TRUE;
+  }
+  $color = (($return_var == -1 || $return_var == 255)) ? 'red' : 'green';
+  $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code style="color:' . $color . '">' . $drush_command . '</code>';
+  $retval .= $markup;
+  return $retval;
+}
+
 
 /**
  * Helper function to generate MODS from a spreadsheet.  This will potentially

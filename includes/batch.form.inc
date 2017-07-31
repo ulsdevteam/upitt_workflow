@@ -609,7 +609,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
     }
   }
 
-  if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
+  if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel') {
     $paged_object_folder = ($content_model == 'manuscriptCModel') ? $batch_path . '/manuscript' : $batch_path . '/book';
   }
   $mods_file = '';
@@ -639,7 +639,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       exec($command);
     }
     mkdir($batch_path);
-    if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
+    if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel') {
       mkdir($paged_object_folder);
     }
     $obj_filename = '';
@@ -648,7 +648,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       foreach ($files as $file) {
         switch ($file_mask_match) {
           case '*.tif'; case '*.jpg';
-            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
+            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel') {
               // for Book, make directory, move file into that directory, rename OBJ.tif
               $file_baseName = str_replace(str_replace("*", "", $file_mask_match), "", $file);
               $this_fileinfo = pathinfo($file);
@@ -672,7 +672,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
             $mods_file = $file;
             break;
           case '*.marcxml.xml':
-            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
+            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel') {
               copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file);
               rename($paged_object_folder . '/' . $file, $paged_object_folder . '/--METADATA--.xml');
               $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
@@ -684,7 +684,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
             }
             break;
           case '*.mets.xml':
-            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
+            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel') {
               copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file);
               rename($paged_object_folder . '/' . $file, $paged_object_folder . '/METS.xml');
               $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . "/METS.xml'<br>";
@@ -709,7 +709,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       }
     }
     if ($mods_file) {
-      if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') {
+      if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel') {
         copy($incoming_folder . '/' . $mods_file, $paged_object_folder . '/' . $mods_file);
         rename($paged_object_folder . '/' . $mods_file, $paged_object_folder . '/--METADATA--.xml');
         $markup .= "Moved and renamed '$mods_file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
@@ -736,7 +736,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
   // In either case, if the object is a book, and the --METADATA--.xml does not 
   // exist in the batch path, download the XML from voystaff.  This is only needed
   // if there is not a MODS file.
-  if (($content_model == 'bookCModel' || $content_model == 'manuscriptCModel') && !$mods_file) {
+  if (($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel') && !$mods_file) {
     $marc_filename = $paged_object_folder . '/--METADATA--.xml';
     if (!file_exists($marc_filename)) {
       // download the MARC file and save it... display / log the results.
@@ -776,7 +776,7 @@ function upitt_workflow_content_model_filemask($content_model) {
       $discard_filemasks['target.tif'] = 'graphics calibration';
       break;
 
-    case 'bookCModel'; case 'manuscriptCModel';
+    case 'bookCModel'; case 'manuscriptCModel'; case 'newspaperCModel';
       $filemasks['*.mods.xml'] = 'MODS XML';
       $filemasks['*.marcxml.xml'] = 'MARC XML';
       $filemasks['*.mets.xml'] = 'METS XML';
