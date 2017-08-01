@@ -82,7 +82,7 @@ function upitt_workflow_get_solr_options($solr_query, $key_field, $value_field, 
   }
   $query_processor->solrStart = 0;
   $query_processor->solrLimit = 40000;
-  $query_processor->solrParams = array('fl' => $key_field . ',' . $value_field);
+  $query_processor->solrParams = array('fl' => $key_field . (($value_field <> $key_field) ? ',' . $value_field : ''));
 
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
   $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
@@ -690,6 +690,46 @@ function upitt_workflow_XMLtoMODS($xml_filename) {
   echo "<h3>after XSL transform</h3><blockquote><pre style='color:#28f'>" . htmlspecialchars(print_r($MODS, true)) . "</pre></blockquote>";
 
   return ($bytes_written) ? $xml_filename : '';
+}
+
+function upitt_workflow_MARCtoMODS($pid, $marcxml_filename) {
+  $marc_file = file_get_contents($marcxml_filename);
+  // Get the DC by transforming from MODS.
+  $new_MODS = ($marc_file) ? upitt_workflow_runXslTransform(
+            array(
+              'xsl' => drupal_get_path('module', 'islandora_marcxml') . '/xsl/MARC21slim2MODS3-5.xsl',
+              'input' => $marc_file,
+            )
+          ) : '';
+  if ($new_MODS) {
+    $filename = tempnam("/tmp", str_replace(":", "_", $pid) . "_MODS_xml_derived");
+    // This file must be deleted in the process function that called this.
+    file_put_contents($filename, $new_MODS);
+    return $filename;
+  }
+  else {
+    return '';
+  }
+}
+
+function upitt_workflow_MODStoDC($pid, $modsxml_filename) {
+  $mods_file = file_get_contents($modsxml_filename);
+  // Get the DC by transforming from MODS.
+  $new_DC = ($mods_file) ? upitt_workflow_runXslTransform(
+            array(
+              'xsl' => drupal_get_path('module', 'islandora_batch') . '/transforms/mods_to_dc.xsl',
+              'input' => $mods_file,
+            )
+          ) : '';
+  if ($new_DC) {
+    $filename = tempnam("/tmp", str_replace(":", "_", $pid) . "_DC_xml_derived");
+    // This file must be deleted in the process function that called this.
+    file_put_contents($filename, $new_DC);
+    return $filename;
+  }
+  else {
+    return '';
+  }
 }
 
 function upitt_workflow_runXslTransform($info) {
@@ -1838,13 +1878,18 @@ function upitt_workflow_addRelationship($object, $predicate_uri, $predicate, $re
  * @param type $sites_arr
  * @param type $collections_arr
  */
-function upitt_workflow_relate_object_to_collections_sites($object_id, $sites_arr, $collections_arr) {
+function upitt_workflow_relate_object_to_collections_sites($object_id, $sites_arr, $collections_arr, $raw_pid = FALSE) {
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   if (count($sites_arr) > 0 || count($collections_arr) > 0) {
     // 1. load the islandora_object - and loop through collections and sites to add
     // these relationships using the upitt_workflow_addRelationship - which will ensure
     // that duplicate relationships are not added.
-    $pid = $ingest_namespace . $object_id;
+    if (!$raw_pid) {
+      $pid = $ingest_namespace . $object_id;
+    }
+    else {
+      $pid = $object_id;
+    }
     $object = islandora_object_load($pid);
     if (is_object($object)) {
       // additionally, remove this object from any review collection like "pitt:collection.##_review"
@@ -1880,4 +1925,48 @@ function upitt_workflow_relate_object_to_collections_sites($object_id, $sites_ar
 function upitt_workflow_object_isPage($islandora_object) {
   $applicable_cmodels = array('islandora:manuscriptPageCModel','islandora:pageCModel','islandora:newspaperPageCModel');
   return (is_object($islandora_object)) ? array_intersect($applicable_cmodels, $islandora_object->models) : FALSE;
+}
+
+/**
+ * This will return the node values that match the xpath query -- and potentially
+ * filter to return results that match a given string value.
+ *
+ * @param type $xml_filename
+ * @param type $xpath_query
+ * @param type $dom_namespaces
+ * @param type $matching_value_filter
+ * @return array
+ */
+function upitt_workflow_get_xpath_node_values_from_xml($xml_filename, $xpath_query, $dom_namespaces, $matching_value_filter = '') {
+  $f = file_get_contents($xml_filename);
+  $doc = new DOMDocument();
+  $doc->loadXML($f);
+  $xpath = new DOMXPath($doc);
+  foreach ($dom_namespaces as $ns_name => $ns) {
+    $xpath->registerNamespace($ns_name, $ns);
+  }
+
+  $ret = array();
+  $results = $xpath->query($xpath_query);
+  $nodeValue = '';
+  foreach ($results as $result) {
+    $nodeValue = htmlspecialchars(trim($result->nodeValue));
+    if ($matching_value_filter && strstr($nodeValue, $matching_value_filter)) {
+      $ret[] = $nodeValue;
+    } elseif (!$matching_value_filter) {
+      $ret[] = $nodeValue;
+    }
+  }
+  return $ret;
+}
+
+/**
+ * This will query Solr to find the PID of any object that has this OCoLC value
+ * for the mods_identifier_oclc_s field.
+ *
+ * @param type $OCoLC
+ */
+function upitt_workflow_get_PID_of_oclc($OCoLC) {
+  $ret = upitt_workflow_get_solr_options('mods_identifier_oclc_s:' . $OCoLC, 'PID', 'PID');
+  return array_pop($ret);
 }

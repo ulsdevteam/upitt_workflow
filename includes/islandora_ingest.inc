@@ -149,7 +149,11 @@ function upitt_workflow_drush_generic($batch) {
   $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch['batch_external_id'];
 
   if ($batch['default_type_of_resource'] == 'newspaperCModel') {
-    $parent_review = $batch['mapto_collections'];
+    // The parent will be determined in the upitt_workflow_drush_newspaper_issue function
+    // call by looking up the current marcxml.xml (OCoLC) value.
+    $parent_review = '';
+    // Change any newspaperCModel over to newspaperIssueCModel
+    $batch['default_type_of_resource'] = 'newspaperIssueCModel';
   } else {
     $parent = $batch['mapto_collections'];
     $collections_arr = explode(",", $parent);
@@ -179,8 +183,8 @@ function upitt_workflow_drush_generic($batch) {
     $markup = upitt_workflow_drush_image_possible_csv2mods($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent_review, $site, $batch_default_depositor);
   } elseif ($fedora_model_name == 'sp_pdf' || $fedora_model_name == 'sp_videoCModel') {
     $markup = upitt_workflow_drush_islandora_batch_folder_pids($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent_review, $site, $batch_default_depositor);
-  } elseif ($fedora_model_name == 'newspaperCModel') {
-    $markup = upitt_workflow_drush_newspaper_issue($batch['batch_external_id'], $batch_path, $fedora_model_name, $parent_review, $site, $batch_default_depositor);
+  } elseif ($fedora_model_name == 'newspaperCModel' || $fedora_model_name == 'newspaperIssueCModel') {
+    $markup = upitt_workflow_drush_newspaper_issue($batch['batch_external_id'], $batch_path, $fedora_model_name, $site, $batch_default_depositor);
   } else {
     $markup = "Model not supported " . $fedora_model_name . "<br>";
   }
@@ -335,40 +339,74 @@ function upitt_workflow_drush_islandora_batch_folder_pids($batch_external_id, $f
   return $retval;
 }
 
-function upitt_workflow_drush_newspaper_issue($batch_external_id, $filepath, $fedora_model_name, $parent, $site, $batch_default_depositor) {
+function upitt_workflow_drush_newspaper_issue($batch_external_id, $filepath, $fedora_model_name, $site, $batch_default_depositor) {
   global $user;
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
-
   $retval = '';
+  $newspaper_parent_pid = FALSE;
+  // Get the parent by looking up the (OCoLC) value in the related marcxml.xml file
+  $files = upitt_workflow_file_scan_directory($filepath . '/newspaper_parent', '--METADATA--.xml');
+  $marcxml_filename = array_pop($files);
+  $markup = '';
 
-  $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
-
-  $ingest_namespace = upitt_workflow_get_ingest_namespace();
-  $ingest_namespace_nocolon = rtrim($ingest_namespace, ":");
-
-  $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_newspaper_batch_preprocess ' .
-                   '--content_models=islandora:' . $fedora_model_name . ' ' .
-                   ' --namespace=' . $ingest_namespace_nocolon . ' ' .
-                   // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                   '--type=directory ' . // --overwrite_existing=1 ' .
-//                   '--assign_pid=' . $ingest_namespace . $batch_external_id . ' ' .
-                   (($parent) ? '--parent=' . $parent . ' ' : '') . // ' --parent_relationship_pred=isMemberOfCollection ' : '') .
-            /*
-             * These relationships will be set after the batch-object has been reviewed.
-             *
-                   (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
-             */
-                   ' --target=' . $filepath;
-
-  $output = $return_var = array();
-  exec($drush_command, $output, $return_var);
-
-  if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
-    drupal_set_message('There was an error calling the drush command : ' . $drush_command);
-    $alerted_on_err = TRUE;
+  if (!$marcxml_filename) {
+    $markup .= '<div class="bad">Could not find the (OCoLC) in the newspaper parent\'s MARC xml file.</div>';
   }
-  $color = (($return_var == -1 || $return_var == 255)) ? 'red' : 'green';
-  $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code style="color:' . $color . '">' . $drush_command . '</code>';
+  else {
+    $marcxml_filename = $filepath . '/newspaper_parent/' . $marcxml_filename;
+    $xpath_query = '//marc:collection/marc:record/marc:datafield[@tag="035"]/marc:subfield[@code="a"]';
+    $dom_namespaces = array('marc' => 'http://www.loc.gov/MARC21/slim');
+    $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '(OCoLC)');
+    $OCoLC = array_pop($node_values);
+    if (!$OCoLC) {
+      $markup .= '<div class="bad"><b>tag 035 @a did not return any OCoLC value</b></div>';
+    }
+    
+    // If this object was just created inline before a newspaper issue is ingested,
+    // it needs to wait a few seconds for the result to get into Solr.
+    sleep(5);
+    // Strip out the (OCoLC) from the value so it can be used as a PID value.
+    $OCoLC = str_replace("(OCoLC)", "", $OCoLC);
+    // given the OCoLC value, look for this with Solr query now to find the parent newspaper if it exists
+    $newspaper_parent_pid = upitt_workflow_get_PID_of_oclc($OCoLC);
+    // It is now safe to remove the /newspaper_parent folder and all of its contents.
+    $pi = pathinfo($marcxml_filename);
+    exec('rm -rf ' . $pi['dirname']);
+  }
+  if (!$newspaper_parent_pid) {
+    $markup .= '<div class="bad">Could not derive the newspaper parent PID value using the (OCoLC) value ' .
+            $OCoLC . ' from the newspaper parent\'s MARC xml file.</div>';
+  }
+  else {
+    $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+
+    $ingest_namespace = upitt_workflow_get_ingest_namespace();
+    $ingest_namespace_nocolon = rtrim($ingest_namespace, ":");
+
+    $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_newspaper_batch_preprocess ' .
+                     '--content_models=islandora:' . $fedora_model_name . ' ' .
+                     ' --namespace=' . $ingest_namespace_nocolon . ' ' .
+                     // assuming that only if the parent is set, than the parent_relationship_pred is needed
+                     '--type=directory ' . // --overwrite_existing=1 ' .
+                     '--assign_pid=' . $ingest_namespace . $batch_external_id . ' ' .
+                     (($newspaper_parent_pid) ? '--parent=' . $newspaper_parent_pid . ' ' : '') . // ' --parent_relationship_pred=isMemberOfCollection ' : '') .
+              /*
+               * These relationships will be set after the batch-object has been reviewed.
+               *
+                     (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
+               */
+                     ' --target=' . $filepath;
+
+    $output = $return_var = array();
+    exec($drush_command, $output, $return_var);
+
+    if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
+      drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+      $alerted_on_err = TRUE;
+    }
+    $color = (($return_var == -1 || $return_var == 255)) ? 'red' : 'green';
+    $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code style="color:' . $color . '">' . $drush_command . '</code>';
+  }
   $retval .= $markup;
   return $retval;
 }
