@@ -372,40 +372,41 @@ function upitt_workflow_drush_newspaper_issue($batch_external_id, $filepath, $fe
     // It is now safe to remove the /newspaper_parent folder and all of its contents.
     $pi = pathinfo($marcxml_filename);
     exec('rm -rf ' . $pi['dirname']);
-  }
-  if (!$newspaper_parent_pid) {
-    $markup .= '<div class="bad">Could not derive the newspaper parent PID value using the (OCoLC) value ' .
-            $OCoLC . ' from the newspaper parent\'s MARC xml file.</div>';
-  }
-  else {
-    $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 
-    $ingest_namespace = upitt_workflow_get_ingest_namespace();
-    $ingest_namespace_nocolon = rtrim($ingest_namespace, ":");
-
-    $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_newspaper_batch_preprocess ' .
-                     '--content_models=islandora:' . $fedora_model_name . ' ' .
-                     ' --namespace=' . $ingest_namespace_nocolon . ' ' .
-                     // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                     '--type=directory ' . // --overwrite_existing=1 ' .
-                     '--assign_pid=' . $ingest_namespace . $batch_external_id . ' ' .
-                     (($newspaper_parent_pid) ? '--parent=' . $newspaper_parent_pid . ' ' : '') . // ' --parent_relationship_pred=isMemberOfCollection ' : '') .
-              /*
-               * These relationships will be set after the batch-object has been reviewed.
-               *
-                     (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
-               */
-                     ' --target=' . $filepath;
-
-    $output = $return_var = array();
-    exec($drush_command, $output, $return_var);
-
-    if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
-      drupal_set_message('There was an error calling the drush command : ' . $drush_command);
-      $alerted_on_err = TRUE;
+    if (!$newspaper_parent_pid) {
+      $markup .= '<div class="bad">Could not derive the newspaper parent PID value using the (OCoLC) value ' .
+              $OCoLC . ' from the newspaper parent\'s MARC xml file.</div>';
     }
-    $color = (($return_var == -1 || $return_var == 255)) ? 'red' : 'green';
-    $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code style="color:' . $color . '">' . $drush_command . '</code>';
+    else {
+      $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+
+      $ingest_namespace = upitt_workflow_get_ingest_namespace();
+      $ingest_namespace_nocolon = rtrim($ingest_namespace, ":");
+
+      $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_newspaper_batch_preprocess ' .
+                       '--content_models=islandora:' . $fedora_model_name . ' ' .
+                       ' --namespace=' . $ingest_namespace_nocolon . ' ' .
+                       // assuming that only if the parent is set, than the parent_relationship_pred is needed
+                       '--type=directory ' . // --overwrite_existing=1 ' .
+                       '--assign_pid=' . $ingest_namespace . $batch_external_id . ' ' .
+                       (($newspaper_parent_pid) ? '--parent=' . $newspaper_parent_pid . ' ' : '') . // ' --parent_relationship_pred=isMemberOfCollection ' : '') .
+                /*
+                 * These relationships will be set after the batch-object has been reviewed.
+                 *
+                       (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
+                 */
+                       ' --target=' . $filepath;
+
+      $output = $return_var = array();
+      exec($drush_command, $output, $return_var);
+
+      if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
+        drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+        $alerted_on_err = TRUE;
+      }
+      $color = (($return_var == -1 || $return_var == 255)) ? 'red' : 'green';
+      $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code style="color:' . $color . '">' . $drush_command . '</code>';
+    }
   }
   $retval .= $markup;
   return $retval;

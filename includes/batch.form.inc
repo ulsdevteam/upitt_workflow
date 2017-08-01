@@ -849,7 +849,7 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
           $markup .= '<div class="bad">Could not derive DC from the MODS xml file "' . $mods_temp_filename . '"</div>';
         }
         else {
-          $datastream = $newspaper_parent->constructDatastream('MODS');
+          $datastream = $newspaper_parent->constructDatastream('DC');
           $datastream->label = 'DC Record';
           $datastream->mimetype = 'application/xml';
           $datastream->setContentFromFile($dc_temp_filename, FALSE);
