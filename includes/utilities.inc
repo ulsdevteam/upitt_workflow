@@ -1901,13 +1901,17 @@ function upitt_workflow_relate_object_to_collections_sites($object_id, $sites_ar
       }
 
       foreach ($sites_arr as $site) {
-        $object->relationships->remove('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
-        $object->relationships->add('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
+        if (trim($site)) {
+          $object->relationships->remove('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
+          $object->relationships->add('http://digital.library.pitt.edu/ontology/relations#', 'isMemberOfSite', $site);
+        }
       }
 
       foreach ($collections_arr as $collection) {
-        $object->relationships->remove(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
-        $object->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
+        if (trim($collection)) {
+          $object->relationships->remove(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
+          $object->relationships->add(FEDORA_RELS_EXT_URI, 'isMemberOfCollection', $collection);
+        }
       }
 
       upitt_workflow_set_status_for_batch($object_id, UPITT_WORKFLOW_ACTION_OBJECT_PUBLISHED_ON_SITE, NULL, TRUE);

@@ -640,7 +640,8 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       exec($command);
     }
     mkdir($batch_path);
-    if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
+    if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
+            $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
       mkdir($paged_object_folder);
     }
     $obj_filename = '';
@@ -649,7 +650,8 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       foreach ($files as $file) {
         switch ($file_mask_match) {
           case '*.tif'; case '*.jpg';
-            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
+            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
+                    $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
               // for Book, make directory, move file into that directory, rename OBJ.tif
               $file_baseName = str_replace(str_replace("*", "", $file_mask_match), "", $file);
               $this_fileinfo = pathinfo($file);
@@ -674,7 +676,8 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
             break;
           case '*.marcxml.xml':
             $marcxml_file = $file;
-            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
+            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
+                    $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
               copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file);
               rename($paged_object_folder . '/' . $file, $paged_object_folder . '/--METADATA--.xml');
               $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
@@ -686,7 +689,8 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
             }
             break;
           case '*.mets.xml':
-            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
+            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
+                    $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
               copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file);
               rename($paged_object_folder . '/' . $file, $paged_object_folder . '/METS.xml');
               $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . "/METS.xml'<br>";
@@ -711,7 +715,8 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       }
     }
     if ($mods_file) {
-      if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
+      if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
+              $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
         copy($incoming_folder . '/' . $mods_file, $paged_object_folder . '/' . $mods_file);
         rename($paged_object_folder . '/' . $mods_file, $paged_object_folder . '/--METADATA--.xml');
         $markup .= "Moved and renamed '$mods_file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
@@ -749,7 +754,8 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
   // In either case, if the object is a book, and the --METADATA--.xml does not 
   // exist in the batch path, download the XML from voystaff.  This is only needed
   // if there is not a MODS file.
-  if (($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' || $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') && !$mods_file) {
+  if (($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
+          $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') && !$mods_file) {
     $marc_filename = $paged_object_folder . '/--METADATA--.xml';
     if (!file_exists($marc_filename)) {
       // download the MARC file and save it... display / log the results.
@@ -812,7 +818,8 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
   else {
     $newspaper_parent_pid = $ingest_namespace . $OCoLC;
     // Create the newspaper parent object here
-    $markup .= '<div>Solr query did not find an existing parent newspaper object with the OCoLC value of ' . $OCoLC . '... creating it inline now.</div>';
+    $markup .= '<div>Solr query did not find an existing parent newspaper object with the OCoLC value of ' .
+            $OCoLC . '... creating it inline now.</div>';
 
     $module_path = drupal_get_path('module', 'upitt_workflow');
     $connection = islandora_get_tuque_connection();
@@ -821,7 +828,8 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
     $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '');
     $use_label = array_pop($node_values);
     if (!$use_label) {
-      $markup .= '<div class="bad">The title could not be pulled from the marcxml file from tag 222[@code=a]<pre> ' . htmlspecialchars(file_get_contents($xml_filename)) . '</pre></div>';
+      $markup .= '<div class="bad">The title could not be pulled from the marcxml file from tag 222[@code=a]<pre> ' .
+              htmlspecialchars(file_get_contents($xml_filename)) . '</pre></div>';
     }
 
     $newspaper_parent = islandora_object_load($newspaper_parent_pid);
@@ -841,8 +849,8 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
         $datastream->mimetype = 'application/xml';
         $datastream->setContentFromFile($mods_temp_filename, FALSE);
         $newspaper_parent->ingestDatastream($datastream);
+        @unlink($mods_temp_filename);
 
-        // @unlink($mods_temp_filename);
         // now with the MODS, make the DC
         $dc_temp_filename = upitt_workflow_MODStoDC($newspaper_parent_pid, $mods_temp_filename);
         if (!$dc_temp_filename) {
@@ -854,7 +862,7 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
           $datastream->mimetype = 'application/xml';
           $datastream->setContentFromFile($dc_temp_filename, FALSE);
           $newspaper_parent->ingestDatastream($datastream);
-          // @unlink($dc_temp_filename);
+          @unlink($dc_temp_filename);
         }
       }
 
