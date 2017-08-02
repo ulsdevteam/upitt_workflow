@@ -333,16 +333,29 @@ function upitt_workflow_theme() {
       'render_element' => 'form',
       'template' => 'theme/upitt-workflow-batchmove-report',
     ),
-/*
-    'page__workflow_batch' => array(
-      'template' => 'theme/page--workflow-batch',
-      'variables' => array(
-        'results' => NULL,
-        'elements' => array(),
-      ),
-    ),
-*/
+  );
+}
 
+/**
+ * Implements hook_islandora_job_register_jobs().
+ */
+function upitt_workflow_islandora_job_register_jobs() {
+  return array(
+    'islandora_job_test_job' => array(
+      'type' => 'test',
+      'module' => 'islandora_job',
+      'name' => 'test/islandora_job',
+    ),
+    'upitt_workflow_aggregate_ocr_pdf' => array(
+      'type' => 'inc',
+      'module' => 'upitt_workflow',
+      'name' => 'includes/jobs',
+    ),
+    'upitt_workflow_generate_ocr_datastreams' => array(
+      'type' => 'inc',
+      'module' => 'upitt_workflow',
+      'name' => 'includes/jobs',
+    ),
   );
 }
 
@@ -456,22 +469,6 @@ function upitt_workflow_workflowadmin_manage_access_callback($perm, $which_looku
   else {
     return user_access($perm, $user);
   }
-}
-
-/**
- * Implements hook_register_jobs().
- *
- * This will be triggered via the islandora_job/includes/utilites function islandora_job_start_worker($pidfile)
- */
-function upitt_workflow_islandora_job_register_jobs() {
-  $jobs = array(
-    'islandora_job_test_job' => array(
-      'type' => 'test',
-      'module' => 'islandora_job',
-      'name' => 'test/islandora_job',
-    ),
-  );
-  return $jobs;
 }
 
 /** 

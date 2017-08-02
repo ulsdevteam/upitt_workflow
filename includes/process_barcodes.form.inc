@@ -19,28 +19,29 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
   }
   $process_options = array(
     '0' => 'Standard Ingest Steps',
-    'delete_update_copy_ingest' => ' - One step (delete, update, copy, ingest)',
-    'update' => ' - Update batch records (no overwrite if islandora object exists)',
-    'updateforce' => ' - Update batch records (force overwrite)',
-    'do_copy' => ' - Copy files from incoming to ingest location',
-    'ingest_prepare' => ' - Islandora Ingest Preprocess',
-    'do_publish' => ' - Publish objects to site',
+      'delete_update_copy_ingest' => ' - One step (delete, update, copy, ingest)',
+      'update' => ' - Update batch records (no overwrite if islandora object exists)',
+      'updateforce' => ' - Update batch records (force overwrite)',
+      'do_copy' => ' - Copy files from incoming to ingest location',
+      'ingest_prepare' => ' - Islandora Ingest Preprocess',
+      'gen_OCR' => ' - Generate OCR',
+      'do_publish' => ' - Publish objects to site',
     '1' => 'Special Functionality',
-    'make_tn' => ' - Make TN derivative',
-    'make_tn_large' => ' - Make TN_LARGE derivative',
-    'make_page_pdfs' => ' - (Make page PDF derivatives)',
-    'aggregate' => ' - Aggregate OCR and PDF, make TN_LARGE',
-    'set_status' => ' - Set Status',
+      'make_tn' => ' - Make TN derivative',
+      'make_tn_large' => ' - Make TN_LARGE derivative',
+      'make_page_pdfs' => ' - (Make page PDF derivatives)',
+      'aggregate' => ' - Aggregate OCR and PDF, make TN_LARGE',
+      'set_status' => ' - Set Status',
     '2' => 'Info / Cleanup',
-    'checkobjects' => ' - Check for Islandora Objects',
-    'links_to_objects' => ' - Admin links to objects',
-    'deep_info_on_objects' => ' - Deep info on objects',
-    'get_wf_paths' => ' - Get Bigfoot paths',
-    'purge_OCR_PDF' => ' - Purge page OCR and PDF derivative',
-    'delete_batch' => ' - DELETE islandora_batch_* records',
-    'purge_objects' => ' - DELETE objects',
-    'pid_to_barcode' => ' - Convert PIDs to barcodes',
-    'barcode_to_pid' => ' - Convert barcodes to PIDs',
+      'checkobjects' => ' - Check for Islandora Objects',
+      'links_to_objects' => ' - Admin links to objects',
+      'deep_info_on_objects' => ' - Deep info on objects',
+      'get_wf_paths' => ' - Get Bigfoot paths',
+      'purge_OCR_PDF' => ' - Purge page OCR and PDF derivative',
+      'delete_batch' => ' - DELETE islandora_batch_* records',
+      'purge_objects' => ' - DELETE objects',
+      'pid_to_barcode' => ' - Convert PIDs to barcodes',
+      'barcode_to_pid' => ' - Convert barcodes to PIDs',
   );
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
@@ -796,6 +797,47 @@ function upitt_workflow_do_copy_for_barcodes($barcodes) {
   }
   if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
+  }
+  $markup .= '</div>';
+  return $markup;
+}
+
+
+function upitt_workflow_gen_OCR_for_barcodes($barodes) {
+  $markup = upitt_workflow_purge_OCR_PDF_for_barcodes($barcodes);
+  global $user;
+  $barcodes_arr = explode("\n", $barcodes);
+
+  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+  $markup .= '<div class="text-report">';
+  $markup .= '<h2>Generate OCR derivatives for These Barcodes</h2><pre style="color:blue">' . implode("\n", $barcodes_arr) . '</pre><hr>';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $markup .= upitt_workflow_drush_generic($batch);
+
+    $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+
+    $pid = $ingest_namespace . $barcode;
+    $islandora_object = islandora_object_load($pid);
+    if (!is_object($islandora_object)) {
+      $markup .= '<div class="bad">Object not found ' . $pid . '</div>';
+    }
+    if (!upitt_workflow_is_paged_object($islandora_object)) {
+      $markup .= '<div class="bad">Object found ' . $pid . ', but it is not a paged content object.</div>';
+    }
+    $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' upitt_workflow_generate_ocr_datastreams ' .
+                     '--page_object_pid=islandora:bookCModel';
+    $markup = '<h4>Called upitt_workflow_generate_ocr_datastreams</h4><code>' . $drush_command . '</code>';
+    $retval .= $markup;
+
+    $output = $return_var = array();
+    exec($drush_command, $output, $return_var);
+
+    if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
+      drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+      $alerted_on_err = TRUE;
+    }
   }
   $markup .= '</div>';
   return $markup;
