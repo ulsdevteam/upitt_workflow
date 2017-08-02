@@ -900,6 +900,7 @@ function upitt_workflow_content_model_filemask($content_model) {
       $discard_filemasks['*.thumb.jpg'] = 'old thumbnail file';
       $discard_filemasks['*.thumb_large.jpg'] = 'old large thumbnail file';
       $discard_filemasks['target.tif'] = 'graphics calibration';
+      $discard_filemasks['aiim.tif'] = 'graphics calibration';
       break;
 
     case 'bookCModel'; case 'manuscriptCModel'; case 'newspaperCModel'; case 'newspaperIssueCModel';
@@ -912,6 +913,7 @@ function upitt_workflow_content_model_filemask($content_model) {
       $discard_filemasks['*.thumb.jpg'] = 'old thumbnail file';
       $discard_filemasks['*.thumb_large.jpg'] = 'old large thumbnail file';
       $discard_filemasks['target.tif'] = 'graphics calibration';
+      $discard_filemasks['aiim.tif'] = 'graphics calibration';
       break;
 
     case 'sp_pdf':
