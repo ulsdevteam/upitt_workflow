@@ -805,7 +805,7 @@ function upitt_workflow_do_copy_for_barcodes($barcodes) {
 }
 
 
-function upitt_workflow_gen_OCR_for_barcodes($barodes) {
+function upitt_workflow_gen_OCR_for_barcodes($barcodes) {
   $markup = upitt_workflow_purge_OCR_PDF_for_barcodes($barcodes);
   global $user;
   $barcodes_arr = explode("\n", $barcodes);
@@ -814,6 +814,7 @@ function upitt_workflow_gen_OCR_for_barcodes($barodes) {
   $markup .= '<div class="text-report">';
   $markup .= '<h2>Generate OCR derivatives for These Barcodes</h2><pre style="color:blue">' . implode("\n", $barcodes_arr) . '</pre><hr>';
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
+
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
     $markup .= upitt_workflow_drush_generic($batch);
