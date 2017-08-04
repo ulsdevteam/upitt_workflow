@@ -482,11 +482,12 @@ function upitt_workflow_set_status_for_barcodes($barcodes) {
 function upitt_workflow_datastream_results($islandora_object, $ingest_namespace, $is_child = FALSE) {
   $barcode = str_replace($ingest_namespace, "", $islandora_object->id);
   $markup = '<div class="good">' . $islandora_object->id . ': ' .
-    l('DELETE', 'islandora/object/' . $islandora_object->id . '/delete') . ' | ' .
-    l('Manage', 'islandora/object/' . $islandora_object->id . '/manage') . ' | ' .
-    l('Datastreams', 'islandora/object/' . $islandora_object->id . '/manage/datastreams') . ' | ' .
-    l('Workflow' , 'workflow/object/' . $barcode) . ' | ' .
-    ($is_child ? '' : l('Publish' , 'workflow/object/' . $barcode . '/do_publish') . ' | ') .
+    l('DELETE', 'islandora/object/' . $islandora_object->id . '/delete', array('attributes' => array('title' => 'DELETE object', 'class' => 'bad'))) . ' | ' .
+    l('Regen', 'islandora/object/' . $islandora_object->id . '/regenerate', array('attributes' => array('title' => 'Regenerate all derivatives', 'class' => 'bad'))) . ' | ' .
+    l('Manage', 'islandora/object/' . $islandora_object->id . '/manage', array('attributes' => array('title' => 'Manage object'))) . ' | ' .
+    l('Datastreams', 'islandora/object/' . $islandora_object->id . '/manage/datastreams', array('attributes' => array('title' => 'Manage | Datastreams'))) . ' | ' .
+    l('Workflow' , 'workflow/object/' . $barcode, array('attributes' => array('title' => 'View workflow record for this object'))) . ' | ' .
+    ($is_child ? '' : l('Publish' , 'workflow/object/' . $barcode . '/do_publish', array('attributes' => array('title' => 'Publish object to sites and relate to collections'))) . ' | ') .
     ($is_child ? '' : '<a href="/workflow/workflowadmin/process_barcodes/?barcodes=' . $barcode . '&mode=aggregate">Aggregate OCR PDF</a> | ') . 
     l('"' . $islandora_object->label . '"', 'islandora/object/' . $islandora_object->id) .
     '</div><div class="datastreams">';
