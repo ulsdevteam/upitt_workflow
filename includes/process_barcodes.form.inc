@@ -817,11 +817,9 @@ function upitt_workflow_gen_OCR_for_barcodes($barcodes) {
 
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
-    $markup .= upitt_workflow_drush_generic($batch);
-
     $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
-
     $pid = $ingest_namespace . $barcode;
+
     $islandora_object = islandora_object_load($pid);
     if (!is_object($islandora_object)) {
       $markup .= '<div class="bad">Object not found ' . $pid . '</div>';
@@ -830,17 +828,16 @@ function upitt_workflow_gen_OCR_for_barcodes($barcodes) {
       $markup .= '<div class="bad">Object found ' . $pid . ', but it is not a paged content object.</div>';
     }
     $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' upitt_workflow_generate_ocr_datastreams ' .
-                     '--page_object_pid=' . $pid;
+                     '--paged_object_pid=' . $pid;
     $markup = '<h4>Called upitt_workflow_generate_ocr_datastreams</h4><code>' . $drush_command . '</code>';
-    $retval .= $markup;
 
     $output = $return_var = array();
     exec($drush_command, $output, $return_var);
 
     if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
       drupal_set_message('There was an error calling the drush command : ' . $drush_command);
-      $alerted_on_err = TRUE;
     }
+    $markup .= "<hr>drush command return = " . $return_var . "<br>drush command output = " . print_r($output, true) . "</pre>";
   }
   $markup .= '</div>';
   return $markup;

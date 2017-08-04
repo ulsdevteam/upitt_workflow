@@ -48,5 +48,5 @@ function drush_upitt_workflow_generate_ocr_datastreams() {
     drush_print('Object ' . $parameters['paged_object_pid'] . ' does not exist');
     return;
   }
-  islandora_job_submit_background('islandora_job_jobs_islandora_do_derivatives', $paged_content->id, array());
+  islandora_job_submit_background('upitt_workflow_generate_ocr_datastreams', $paged_content->id, array());
 }
