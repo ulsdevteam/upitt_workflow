@@ -141,12 +141,13 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
         $page_count = count($pages);
         $found_pid_manage_links[$barcode] = '"' . $pid . '": ' .
                 ($page_count ? '(' . number_format($page_count) . ' pages) ' : '') .
-                l('DELETE', 'islandora/object/' . $pid . '/delete') . ' | ' .
-                l('Manage', 'islandora/object/' . $pid . '/manage') . ' | ' .
-                l('Datastreams', 'islandora/object/' . $pid . '/manage/datastreams') . ' | ' .
-                l('Workflow' , 'workflow/object/' . $barcode) . ' | ' .
-                l('Publish' , 'workflow/object/' . $barcode . '/do_publish') . ' | ' .
-                l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid);
+                l('DELETE', 'islandora/object/' . $pid . '/delete', array('attributes' => array('title' => 'DELETE object', 'class' => 'bad'))) . ' | ' .
+                l('Regen', 'islandora/object/' . $pid . '/regenerate', array('attributes' => array('title' => 'Regenerate all derivatives', 'class' => 'bad'))) . ' | ' .
+                l('Manage', 'islandora/object/' . $pid . '/manage', array('attributes' => array('title' => 'Manage object'))) . ' | ' .
+                l('Datastreams', 'islandora/object/' . $pid . '/manage/datastreams', array('attributes' => array('title' => 'Manage | Datastreams'))) . ' | ' .
+                l('Workflow' , 'workflow/object/' . $barcode, array('attributes' => array('title' => 'View workflow record for this object'))) . ' | ' .
+                l('Publish' , 'workflow/object/' . $barcode . '/do_publish', array('attributes' => array('title' => 'Publish object to sites and relate to collections'))) . ' | ' .
+                l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid, array('attributes' => array('title' => 'Navigate to "' . htmlspecialchars($islandora_object->label) . '"')));
         $found_pid_links[$barcode] = '"' . $pid . '": ' .
                 l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid);
         $found_pids[$barcode] = $pid;
