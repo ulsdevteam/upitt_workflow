@@ -829,7 +829,7 @@ function upitt_workflow_gen_OCR_for_barcodes($barodes) {
       $markup .= '<div class="bad">Object found ' . $pid . ', but it is not a paged content object.</div>';
     }
     $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' upitt_workflow_generate_ocr_datastreams ' .
-                     '--page_object_pid=islandora:bookCModel';
+                     '--page_object_pid=' . $pid;
     $markup = '<h4>Called upitt_workflow_generate_ocr_datastreams</h4><code>' . $drush_command . '</code>';
     $retval .= $markup;
 
