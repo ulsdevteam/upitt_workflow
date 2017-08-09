@@ -843,3 +843,26 @@ function upitt_workflow_islandora_batch_object_processed($ingest_object, $state)
       );
   }
 }
+
+function upitt_workflow_islandora_paged_content_OCR_batch_operation_finished($page_pid) {
+  if ($page_pid) {
+    // Remove the page part
+    $last_dash = strrpos($page_pid, '-');
+    $pid = substr($page_pid, 0, $last_dash);
+    error_log('deleting gearman record for ' . $pid);
+
+    global $databases;
+    $db_host = $databases['default'][$db_section]['host'];
+    
+    $link = mysqli_connect($db_host, 'gearman', 'ulsgearman', 'gearman_prod');
+    if (mysqli_connect_errno()) {
+      error_log("Connect failed: %s\n", mysqli_connect_error());
+      exit();
+    }
+
+    $delete_sql = "DELETE from gearman_queue WHERE data like '%\"" . $pid . "\",[]]}%' AND data like '%\"upitt_workflow_generate_ocr_datastreams\"%';"
+    $result = mysqli_query($link, $delete_sql);
+
+    @mysqli_close($link);  
+  }
+}
