@@ -844,6 +844,11 @@ function upitt_workflow_islandora_batch_object_processed($ingest_object, $state)
   }
 }
 
+/**
+ * Bit of cleanup and process control needed for gearman to no longer process this object.
+ *   1) delete the gearman_queue record 
+ *   2) delete any temp files for the OCR derivative
+ */
 function upitt_workflow_islandora_paged_content_OCR_batch_operation_finished($page_pid) {
   if ($page_pid) {
     // Remove the page part
@@ -856,7 +861,7 @@ function upitt_workflow_islandora_paged_content_OCR_batch_operation_finished($pa
     
     $link = mysqli_connect($db_host, 'gearman', 'ulsgearman', 'gearman_prod');
     if (mysqli_connect_errno()) {
-      error_log("Connect failed: %s\n", mysqli_connect_error());
+      printf("Connect failed: %s\n", mysqli_connect_error());
       exit();
     }
 
@@ -864,5 +869,11 @@ function upitt_workflow_islandora_paged_content_OCR_batch_operation_finished($pa
     $result = mysqli_query($link, $delete_sql);
 
     @mysqli_close($link);  
+
+    $filefriendly_pid = str_replace(":", "_", $pid);
+    $v = file_directory_temp();
+    $rm_temp_command = 'rm -rf ' . $filefriendly_pid . '*';
+    $output = array();
+    exec($rm_temp_command, $output, $ret);
   }
 }
