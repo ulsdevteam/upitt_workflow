@@ -871,8 +871,8 @@ function upitt_workflow_islandora_paged_content_OCR_batch_operation_finished($pa
     @mysqli_close($link);  
 
     $filefriendly_pid = str_replace(":", "_", $pid);
-    $v = file_directory_temp();
-    $rm_temp_command = 'rm -rf ' . $filefriendly_pid . '*';
+    $v = file_directory_temp() . '/';
+    $rm_temp_command = 'rm -rf ' . $v . $filefriendly_pid . '*';
     $output = array();
     exec($rm_temp_command, $output, $ret);
   }
