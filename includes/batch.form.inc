@@ -819,7 +819,7 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
     $newspaper_parent_pid = $ingest_namespace . $OCoLC;
     // Create the newspaper parent object here
     $markup .= '<div>Solr query did not find an existing parent newspaper object with the OCoLC value of ' .
-            l($OCoLC, '/islandora/object/' . $OCoLC) . '... creating it inline now.</div>';
+            l($OCoLC, '/islandora/object/' . $newspaper_parent_pid) . '... creating it inline now.</div>';
 
     $module_path = drupal_get_path('module', 'upitt_workflow');
     $connection = islandora_get_tuque_connection();
