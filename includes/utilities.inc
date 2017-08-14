@@ -702,7 +702,7 @@ function upitt_workflow_MARCtoMODS($pid, $marcxml_filename) {
             )
           ) : '';
   if ($new_MODS) {
-    $filename = tempnam("/tmp", str_replace(":", "_", $pid) . "_MODS_xml_derived");
+    $filename = tempnam(file_directory_temp(), str_replace(":", "_", $pid) . "_MODS_xml_derived");
     // This file must be deleted in the process function that called this.
     file_put_contents($filename, $new_MODS);
     return $filename;
@@ -722,7 +722,7 @@ function upitt_workflow_MODStoDC($pid, $modsxml_filename) {
             )
           ) : '';
   if ($new_DC) {
-    $filename = tempnam("/tmp", str_replace(":", "_", $pid) . "_DC_xml_derived");
+    $filename = tempnam(file_directory_temp(), str_replace(":", "_", $pid) . "_DC_xml_derived");
     // This file must be deleted in the process function that called this.
     file_put_contents($filename, $new_DC);
     return $filename;
