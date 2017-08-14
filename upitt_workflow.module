@@ -857,7 +857,7 @@ function upitt_workflow_islandora_paged_content_OCR_batch_operation_finished($pa
     error_log('deleting gearman record for ' . $pid);
 
     global $databases;
-    $db_host = $databases['default'][$db_section]['host'];
+    $db_host = $databases['default']['default']['host'];
     
     $link = mysqli_connect($db_host, 'gearman', 'ulsgearman', 'gearman_prod');
     if (mysqli_connect_errno()) {
