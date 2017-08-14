@@ -697,7 +697,7 @@ function upitt_workflow_MARCtoMODS($pid, $marcxml_filename) {
   // Get the DC by transforming from MODS.
   $new_MODS = ($marc_file) ? upitt_workflow_runXslTransform(
             array(
-              'xsl' => drupal_get_path('module', 'islandora_marcxml') . '/xsl/MARC21slim2MODS3-5.xsl',
+              'xsl' => drupal_get_path('module', 'upitt_workflow') . '/transforms/MARC21slim2MODS3-5.xsl',
               'input' => $marc_file,
             )
           ) : '';

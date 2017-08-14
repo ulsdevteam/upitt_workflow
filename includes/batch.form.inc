@@ -819,7 +819,7 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
     $newspaper_parent_pid = $ingest_namespace . $OCoLC;
     // Create the newspaper parent object here
     $markup .= '<div>Solr query did not find an existing parent newspaper object with the OCoLC value of ' .
-            $OCoLC . '... creating it inline now.</div>';
+            l($OCoLC, '/islandora/object/' . $OCoLC) . '... creating it inline now.</div>';
 
     $module_path = drupal_get_path('module', 'upitt_workflow');
     $connection = islandora_get_tuque_connection();
@@ -844,12 +844,12 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
         $markup .= '<div class="bad">Could not derive MODS from the MARC xml file "' . $marcxml_filename . '"</div>';
       }
       else {
+        $markup .= '<div class="good">derived MODS from MARC.  Temp file saved as ' . $mods_temp_filename . '</div>';
         $datastream = $newspaper_parent->constructDatastream('MODS');
         $datastream->label = 'MODS Record';
         $datastream->mimetype = 'application/xml';
-        $datastream->setContentFromFile($mods_temp_filename, FALSE);
+        $datastream->setContentFromFile($mods_temp_filename, TRUE);
         $newspaper_parent->ingestDatastream($datastream);
-        @unlink($mods_temp_filename);
 
         // now with the MODS, make the DC
         $dc_temp_filename = upitt_workflow_MODStoDC($newspaper_parent_pid, $mods_temp_filename);
@@ -857,15 +857,16 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
           $markup .= '<div class="bad">Could not derive DC from the MODS xml file "' . $mods_temp_filename . '"</div>';
         }
         else {
+          $markup .= '<div class="good">derived DC from MODS.  Temp file saved as ' . $dc_temp_filename . '</div>';
           $datastream = $newspaper_parent->constructDatastream('DC');
           $datastream->label = 'DC Record';
           $datastream->mimetype = 'application/xml';
-          $datastream->setContentFromFile($dc_temp_filename, FALSE);
+          $datastream->setContentFromFile($dc_temp_filename, TRUE);
           $newspaper_parent->ingestDatastream($datastream);
           @unlink($dc_temp_filename);
         }
+        @unlink($mods_temp_filename);
       }
-
       $repository->ingestObject($newspaper_parent);
     }
     else {
@@ -875,9 +876,9 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
 
   // In the event that this newspaper is not related to the collection that is
   // specified by this newspaper issue ingest, relate it.
-  $collections_arr = explode(",", $mapto_collections);
-  $sites_arr = array();
-  upitt_workflow_relate_object_to_collections_sites($newspaper_parent_pid, $sites_arr, $collections_arr, TRUE);
+//  $collections_arr = explode(",", $mapto_collections);
+//  $sites_arr = array();
+//  upitt_workflow_relate_object_to_collections_sites($newspaper_parent_pid, $sites_arr, $collections_arr, TRUE);
   $markup .= "</div>";
   return array('markup' => $markup, 'newspaper_parent_pid' => $newspaper_parent_pid);
 }
