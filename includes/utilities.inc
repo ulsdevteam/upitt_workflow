@@ -1350,34 +1350,35 @@ function upitt_workflow_save_batch($values, $collection_options) {
  */
 function upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link) {
   // 1. Look for a batch_item record that has the wrong batch associated with it...
-
-  $sql = "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id <> $batch_id";
-  $result = mysqli_query($link, $sql);
-  if (!$result) {
-    upitt_workflow_sql_error_die($link, $sql);
-  }
-  $row = mysqli_fetch_assoc($result);
-  if (isset($row['id'])) {
-    $deleted = mysqli_query($link, "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id <> $batch_id");
-    if (!$deleted) {
-      $variables = array('@batch_id' => $batch_id, '@item_id' => $item_id);
-      watchdog('upitt_workflow', 'There was a problem trying to delete the `batch_item` record for ' .
-               'batch_id = @batch_id and item_id = @item_id.', $variables, WATCHDOG_NOTICE);
-    }
-  }
-
-  // 2. Look for the record with the correct values already, and add it if not found.
-  $sql = "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id = $batch_id LIMIT 1";
-  $result = mysqli_query($link, $sql);
-  if (!$result) {
-    upitt_workflow_sql_error_die($link, $sql);
-  }
-  $row = mysqli_fetch_assoc($result);
-  if (!isset($row['id'])) {
-    $sql = "INSERT INTO batch_item (item_id, batch_id) VALUES (" . $item_id . ", " . $batch_id . ")";
+  if ($item_id && $batch_id) {
+    $sql = "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id <> $batch_id";
     $result = mysqli_query($link, $sql);
     if (!$result) {
       upitt_workflow_sql_error_die($link, $sql);
+    }
+    $row = mysqli_fetch_assoc($result);
+    if (isset($row['id'])) {
+      $deleted = mysqli_query($link, "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id <> $batch_id");
+      if (!$deleted) {
+        $variables = array('@batch_id' => $batch_id, '@item_id' => $item_id);
+        watchdog('upitt_workflow', 'There was a problem trying to delete the `batch_item` record for ' .
+                 'batch_id = @batch_id and item_id = @item_id.', $variables, WATCHDOG_NOTICE);
+      }
+    }
+
+    // 2. Look for the record with the correct values already, and add it if not found.
+    $sql = "SELECT id FROM batch_item WHERE item_id = $item_id AND batch_id = $batch_id LIMIT 1";
+    $result = mysqli_query($link, $sql);
+    if (!$result) {
+      upitt_workflow_sql_error_die($link, $sql);
+    }
+    $row = mysqli_fetch_assoc($result);
+    if (!isset($row['id'])) {
+      $sql = "INSERT INTO batch_item (item_id, batch_id) VALUES (" . $item_id . ", " . $batch_id . ")";
+      $result = mysqli_query($link, $sql);
+      if (!$result) {
+        upitt_workflow_sql_error_die($link, $sql);
+      }
     }
   }
 }
