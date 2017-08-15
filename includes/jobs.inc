@@ -85,7 +85,7 @@ function upitt_workflow_do_ocr(AbstractObject $islandora_object, $options) {
   $time_start = microtime_float();
 
   if (!is_object($islandora_object) || (get_class($islandora_object) <> 'IslandoraFedoraObject')){
-    drush_set_error(dt('Could not load object for PID:').$pid);
+    drush_set_error(dt('Object provided is not an islandora object.'));
     return false;
   }
   else {
