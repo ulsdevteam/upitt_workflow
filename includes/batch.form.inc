@@ -742,6 +742,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       copy($incoming_folder . '/' . $marcxml_file, $newspaper_parent_folder . '/' . $marcxml_file);
       rename($newspaper_parent_folder . '/' . $marcxml_file, $newspaper_parent_folder . '/--METADATA--.xml');
       $markup .= "Moved and renamed '$marcxml_file' to '" . $newspaper_parent_folder . "/--METADATA--.xml'<br>";
+
       $newspaper_parent_results = upitt_workflow_make_newspaper_parent_now($newspaper_parent_folder . '/--METADATA--.xml', $batch_external_id);
       $markup_result = $newspaper_parent_results['markup'];
       $newspaper_parent_pid = $newspaper_parent_results['newspaper_parent_pid'];
@@ -799,11 +800,30 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
   $markup .= "<i>marcxml = " . $marcxml_filename . "<br>";
   $markup .= "batch_external_id = " . $batch_external_id . "<br>";
   $markup .= "collection = " . $mapto_collections . "</i><hr>";
-
   $xpath_query = '//marc:collection/marc:record/marc:datafield[@tag="035"]/marc:subfield[@code="a"]';
   $dom_namespaces = array('marc' => 'http://www.loc.gov/MARC21/slim');
   $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '(OCoLC)');
   $OCoLC = array_pop($node_values);
+  // if the OCoLC is not in the /collection/record/datafield[@tag="035"]/subfield[@code="a"] then the marcxml
+  // may not have a collection wrapper around it.  This will look at the /record/datafield[@tag="035"]/subfield[@code="a"]
+  // in the marcxml file.
+  if (!$OCoLC) {
+    $xpath_query = '//marc:record/marc:datafield[@tag="035"]/marc:subfield[@code="a"]';
+    $dom_namespaces = array('marc' => 'http://www.loc.gov/MARC21/slim');
+    $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '(OCoLC)');
+    $OCoLC = array_pop($node_values);
+  }
+  /* 
+  if (!$OCoLC) {
+    // Get the bibid value from tag 001 value
+    $xpath_query = '//marc:record/marc:controlfield[@tag="001"]';
+    $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '');
+    $bibid = array_pop($node_values);
+    $voystaff_uri = 'http://voystaff.library.pitt.edu/cgi-bin/barcode2marcxml.php?barcode=' . $bibid;
+    $xml = @file_get_contents($voystaff_uri);
+  }
+  */
+
   $markup .= "<h3>found OCoLC = ".$OCoLC."</h3>";
 
   if (!$OCoLC) {
@@ -828,8 +848,13 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
     $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '');
     $use_label = array_pop($node_values);
     if (!$use_label) {
-      $markup .= '<div class="bad">The title could not be pulled from the marcxml file from tag 222[@code=a]<pre> ' .
-              htmlspecialchars(file_get_contents($xml_filename)) . '</pre></div>';
+      $xpath_query = '//marc:record/marc:datafield[@tag="245"]/marc:subfield[@code="a"]';
+      $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '');
+      $use_label = array_pop($node_values);
+      if (!$use_label) {
+        $markup .= '<div class="bad">The title could not be pulled from the marcxml file from tag 222[@code=a] or in tag 245[@code=a]<pre> ' .
+              htmlspecialchars(file_get_contents($marcxml_filename)) . '</pre></div>';
+      }
     }
 
     $newspaper_parent = islandora_object_load($newspaper_parent_pid);
