@@ -22,6 +22,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'delete_update_copy_ingest' => ' - One step (delete, update, copy, ingest)',
       'update' => ' - Update batch records (no overwrite if islandora object exists)',
       'updateforce' => ' - Update batch records (force overwrite)',
+      'checksize' => ' - Check file size of ingest files',
       'do_copy' => ' - Copy files from incoming to ingest location',
       'ingest_prepare' => ' - Islandora Ingest Preprocess',
       'gen_OCR' => ' - Generate OCR',
@@ -84,11 +85,14 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
     case 'edit-submit':
       if ($mode == 'update' || $mode == 'updateforce') {
         $markup = upitt_workflow_make_batch_records_for_barcodes($form_state['values']['barcodes'], $mode);
+      } elseif ($mode == 'checksize') {
+        $markup = upitt_workflow_do_copy_for_barcodes($form_state['values']['barcodes'], TRUE);
       } else {
         $fn = 'upitt_workflow_' . $mode . '_for_barcodes';
         $markup = $fn($form_state['values']['barcodes']);
       }
       break;
+
     
     default:
       drupal_set_message('Triggering element "' . $btn_id . '" is not supported.');
@@ -263,12 +267,14 @@ function upitt_workflow_make_batch_records_for_barcodes($barcodes, $mode) {
  * @param type $barcodes
  */
 function upitt_workflow_delete_update_copy_ingest_for_barcodes($barcodes) {
-  $markup = upitt_workflow_delete_batch_for_barcodes($barcodes);
-  $markup .= upitt_workflow_purge_objects_for_barcodes($barcodes);
-  $markup .= upitt_workflow_make_batch_records_for_barcodes($barcodes, 'update');
-  $markup .= upitt_workflow_do_copy_for_barcodes($barcodes);
-  $markup .= upitt_workflow_ingest_prepare_for_barcodes($barcodes);
-  return $markup;
+  $checksize_markup = upitt_workflow_do_copy_for_barcodes($barcodes, TRUE);
+  return  (strstr($checksize_markup, 'Not enough space') == '') ?
+    upitt_workflow_delete_batch_for_barcodes($barcodes) .
+    upitt_workflow_purge_objects_for_barcodes($barcodes) .
+    upitt_workflow_make_batch_records_for_barcodes($barcodes, 'update') .
+    upitt_workflow_do_copy_for_barcodes($barcodes) .
+    upitt_workflow_ingest_prepare_for_barcodes($barcodes) :
+    $checksize_markup;
 }
 
 /** Delete all of those pesky islandora_batch_* records related to a set of PID
@@ -765,7 +771,7 @@ function upitt_workflow_do_publish_using_batchvalues($batch, $ingest_namespace) 
   upitt_workflow_relate_object_to_collections_sites($object_id, $sites_arr, $collections_arr);
 }
 
-function upitt_workflow_do_copy_for_barcodes($barcodes) {
+function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FALSE) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('inc', 'upitt_workflow', 'includes/batch.form');
 
@@ -795,7 +801,7 @@ function upitt_workflow_do_copy_for_barcodes($barcodes) {
       return;
     }
     $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
-    $markup .= '<div>' . upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id) . "</div>";
+    $markup .= '<div>' . upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, $measure_size_only) . "</div>";
   }
   if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');

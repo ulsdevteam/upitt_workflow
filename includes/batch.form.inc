@@ -39,6 +39,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
 
   $incoming_filepath = rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/');
   $tmp_incoming_folders = upitt_workflow_file_scan_directory($incoming_filepath, '', FALSE, TRUE);
+  $incoming_folders = array();
   // need the key to be the value as well
   foreach ($tmp_incoming_folders as $k => $incoming_folder) {
     $incoming_folders[$incoming_folder] = $incoming_folder;
@@ -440,17 +441,32 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
 
 /**
  * This will perform the various checks to see whether or not the batch can be saved.
+ * It will not make any drush commands, change any batch info, or create drupal
+ * nodes corresponding to this submission.  It will only run the
+ * upitt_workflow_copyfiles_incoming_folder_to_batch function with the "measure"
+ * option and fail/succeed based on how much space remains in the temp folder partition.
  *
  * @param array $elements
  * @param array $form_state
  * @param string $form_id
  */
 function upitt_workflow_new_batch_form_validate(&$elements, &$form_state, $form_id = NULL) {
+  // Set up an array to hold multiple errors
+  $error_messages = array();
   if ($elements['default_type_of_resource']['#value'] == '') {
-    form_set_error('default_type_of_resource', t('You have added an invalid Model.'));
+    $error_messages["default_type_of_resource"][] = t('You have added an invalid Model.');
   }
+
   // Now, if there is a file attached, the CSV validation can be performed
-  
+  // ???
+
+  foreach ($error_messages as $element => $messages) {
+      form_set_error($element, theme('item_list', array('items' => $messages)));
+  }
+
+  // Validate the input values for the files related to this batch to see if it has enough space
+  $markup = ''; // upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, TRUE);
+  return (strstr($markup, 'Not enough space') == '');
 }
 
 function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
@@ -472,7 +488,7 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   $batch_external_id = $form_state['values']['batch_external_id'];
 
   if (!$incoming_folder || !$batch_external_id) {
-    drupal_set_message('The batch name and a incoming folder must be set in order to save this batch', 'error');
+    drupal_set_message('The batch name and an incoming folder must be set in order to save this batch', 'error');
     return;
   }
 
@@ -482,18 +498,21 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
           rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $incoming_folder;
   $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
 
-  $markup = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id);
+  $markup = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, FALSE);
 
-  // If these values are still set in the form_state, the save_batch code will not know what to do with them.
-  unset($form_state['values']['source_incoming_folder']);
-  unset($form_state['values']['do_copy']);
-  unset($form_state['values']['do_download']);
-  unset($form_state['values']['box_selector']);
-  unset($form_state['values']['initial_ftp_path']);
-  unset($form_state['values']['loading']);
-  unset($form_state['values']['loading']);
+  // If these values are still set in the form_state, the save_batch code will 
+  // not know what to do with them, so copy the variable and trim off the values
+  // that are not intended for the batch record.
+  $form_values = $form_state['values'];
+  unset($form_values['source_incoming_folder']);
+  unset($form_values['do_copy']);
+  unset($form_values['do_download']);
+  unset($form_values['box_selector']);
+  unset($form_values['initial_ftp_path']);
+  unset($form_values['loading']);
+  unset($form_values['loading']);
 
-  $batch_id = upitt_workflow_save_batch($form_state['values'], $collection_options);
+  $batch_id = upitt_workflow_save_batch($form_values, $collection_options);
 
   drupal_set_message('Updated "' . $batch_external_id . '" batch record.');
 
@@ -517,6 +536,53 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
 }
 
 /**
+ * Will create the directory specified by $folder based on whether or not 
+ * "upitt_workflow_copyfiles_incoming_folder_to_batch" is running in "measure_space" mode.
+ * 
+ * @param type $folder
+ * @param type $measure_space
+ */
+function upitt_workflow_mkdir($folder, $measure_space) {
+  if (!$measure_space) {
+    mkdir($folder);
+  }
+}
+
+/**
+ * Will rename file specified by $rename_from and $rename_to based on whether or not
+ * "upitt_workflow_copyfiles_incoming_folder_to_batch" is running in "measure_space" mode.
+ *
+ * @param type $rename_from
+ * @param type $rename_to
+ * @param type $measure_space
+ */
+function upitt_workflow_rename($rename_from, $rename_to, $measure_space) {
+  if (!$measure_space) {
+    rename($rename_from, $rename_to);
+  }
+}
+
+/**
+ * Will copy the file specified by $file_to_copy to the $copy_to_location based on whether or not
+ * "upitt_workflow_copyfiles_incoming_folder_to_batch" is running in "measure_space" mode.  If
+ * the function is called with $measure_space == TRUE, then the $file_to_copy reference is added to
+ * the $check_source_files array.
+ *
+ * @param type $file_to_copy
+ * @param type $copy_to_location
+ * @param type $measure_space
+ * @param type $check_source_files
+ */
+function upitt_workflow_check_copy($file_to_copy, $copy_to_location, $measure_space, &$check_source_files) {
+  if ($measure_space) {
+    $check_source_files[] = $file_to_copy;
+  }
+  else {
+    copy($file_to_copy, $copy_to_location);
+  }
+}
+
+/**
  * This function will take the contents of a folder that is in the incoming location
  * and make the files/folder structure that Islandora batch expects.
  *
@@ -526,7 +592,17 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
  * @param bool $do_copy - if FALSE, provides a report on the file size for the move,
  *          else, it copies the files as expected for an islandora batch.
  */
-function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy = FALSE, $do_download = FALSE, $batch_external_id = '') {
+function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, 
+        $content_model, $do_copy = FALSE, $do_download = FALSE, $batch_external_id = '', $measure_space = FALSE) {
+  $check_source_files = array();
+
+  if ($measure_space) {
+    $markup = '<h3 class="bad">Can not proceed with the One step (delete, update, copy, ingest) due to space limitations</h3>' .
+            '<p>Not enough space.  incoming_folder = ' . $incoming_folder . ', batch_path = ' . $batch_path . ', ' .
+            'content_model = ' . $content_model . ', batch_external_id = ' . $batch_external_id;
+    return ''; // $markup;
+  }
+
   if (strstr($incoming_folder, 'ftp:') && $do_download) {
     // make a temp folder - unzip all files there - and set $incoming_folder to this
     // temp path -- and proceed as if they were local files.
@@ -632,17 +708,18 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
     $markup .= "</div></div><br style='clear:both'>";
   }
   else {
-    $markup = "<h3>Moving files from '" . $incoming_folder . "' to '" . $batch_path . "'</h3>";
+    $markup = ($measure_space) ? "<h3>Checking ingest file space from '" . $incoming_folder . "</h3>" :
+      "<h3>Moving files from '" . $incoming_folder . "' to '" . $batch_path . "'</h3>";
     $markup .= "<pre>";
 
     if (file_exists($batch_path)) {
       $command = 'rm -rf ' . $batch_path;
       exec($command);
     }
-    mkdir($batch_path);
+    upitt_workflow_mkdir($batch_path, $measure_space);
     if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
             $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
-      mkdir($paged_object_folder);
+      upitt_workflow_mkdir($paged_object_folder, $measure_space);
     }
     $obj_filename = '';
 
@@ -658,17 +735,20 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
               $extension = (isset($this_fileinfo['extension'])) ? $this_fileinfo['extension'] : '';
               if (strtolower($file_baseName) <> 'target') {
                 $page_folder = $this_fileinfo['filename'];
-                mkdir($paged_object_folder . '/' . $page_folder);
-                copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/' . $file);
-                rename($paged_object_folder . '/' . $page_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/OBJ.' . $extension);
-                $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . '/' . $page_folder . "/OBJ." . $extension . "'<br>";
+                upitt_workflow_mkdir($paged_object_folder . '/' . $page_folder, $measure_space);
+                upitt_workflow_check_copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/' . $file,
+                        $measure_space, $check_source_files);
+                upitt_workflow_rename($paged_object_folder . '/' . $page_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/OBJ.' . $extension,
+                        $measure_space);
+                $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $paged_object_folder . '/' . $page_folder . "/OBJ." . $extension . "'<br>";
               }
             }
             else {
               // for large image, simply move file to root of batch_path
               $obj_filename = $file;
-              copy($incoming_folder . '/' . $file, $batch_path . '/' . $file);
-              $markup .= "Moved '$file' to '" . $batch_path . "/" . $file . "'<br>";
+              upitt_workflow_check_copy($incoming_folder . '/' . $file, $batch_path . '/' . $file,
+                      $measure_space, $check_source_files);
+              $markup .= ($measure_space) ? '' : "Moved '$file' to '" . $batch_path . "/" . $file . "'<br>";
             }
             break;
           case '*.mods.xml':
@@ -678,27 +758,31 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
             $marcxml_file = $file;
             if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
                     $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
-              copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file);
-              rename($paged_object_folder . '/' . $file, $paged_object_folder . '/--METADATA--.xml');
-              $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
+              upitt_workflow_check_copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file,
+                      $measure_space, $check_source_files);
+              upitt_workflow_rename($paged_object_folder . '/' . $file, $paged_object_folder . '/--METADATA--.xml', $measure_space);
+              $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
             }
             else {
-              copy($incoming_folder . '/' . $file, $batch_path . '/' . $file);
-              rename($batch_path . '/' . $file, $batch_path . '/--METADATA--.xml');
-              $markup .= "Moved and renamed '$file' to '" . $batch_path . "/--METADATA--.xml'<br>";
+              upitt_workflow_check_copy($incoming_folder . '/' . $file, $batch_path . '/' . $file,
+                      $measure_space, $check_source_files);
+              upitt_workflow_rename($batch_path . '/' . $file, $batch_path . '/--METADATA--.xml', $measure_space);
+              $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $batch_path . "/--METADATA--.xml'<br>";
             }
             break;
           case '*.mets.xml':
             if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
                     $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
-              copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file);
-              rename($paged_object_folder . '/' . $file, $paged_object_folder . '/METS.xml');
-              $markup .= "Moved and renamed '$file' to '" . $paged_object_folder . "/METS.xml'<br>";
+              upitt_workflow_check_copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file,
+                      $measure_space, $check_source_files);
+              upitt_workflow_rename($paged_object_folder . '/' . $file, $paged_object_folder . '/METS.xml', $measure_space);
+              $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $paged_object_folder . "/METS.xml'<br>";
             }
             else {
-              copy($incoming_folder . '/' . $file, $batch_path . '/' . $file);
-              rename($batch_path . '/' . $file, $batch_path .  '/METS.xml');
-              $markup .= "Moved and renamed '$file' to '" . $batch_path . "/METS.xml'<br>";
+              upitt_workflow_check_copy($incoming_folder . '/' . $file, $batch_path . '/' . $file,
+                      $measure_space, $check_source_files);
+              upitt_workflow_rename($batch_path . '/' . $file, $batch_path .  '/METS.xml', $measure_space);
+              $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $batch_path . "/METS.xml'<br>";
             }
             break;
           default:
@@ -706,10 +790,11 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
             if (strstr($file, '/') && ($content_model == 'sp_pdf' || $content_model == 'sp_videoCModel')) {
               // create subfolder if needed
               $file_pathinfo = pathinfo($file);
-              mkdir($batch_path . '/' . $file_pathinfo['dirname']);
+              upitt_workflow_mkdir($batch_path . '/' . $file_pathinfo['dirname'], $measure_space);
             }
-            copy($incoming_folder . '/' . $file, $batch_path . '/' . $file);
-            $markup .= "Moved '$file' to '" . $batch_path . "/" . $file . "'<br>";
+            upitt_workflow_check_copy($incoming_folder . '/' . $file, $batch_path . '/' . $file,
+                    $measure_space, $check_source_files);
+            $markup .= ($measure_space) ? '' : "Moved '$file' to '" . $batch_path . "/" . $file . "'<br>";
             break;
         }
       }
@@ -717,12 +802,14 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
     if ($mods_file) {
       if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
               $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
-        copy($incoming_folder . '/' . $mods_file, $paged_object_folder . '/' . $mods_file);
-        rename($paged_object_folder . '/' . $mods_file, $paged_object_folder . '/--METADATA--.xml');
-        $markup .= "Moved and renamed '$mods_file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
+        upitt_workflow_check_copy($incoming_folder . '/' . $mods_file, $paged_object_folder . '/' . $mods_file,
+                $measure_space, $check_source_files);
+        upitt_workflow_rename($paged_object_folder . '/' . $mods_file, $paged_object_folder . '/--METADATA--.xml', $measure_space);
+        $markup .= ($measure_space) ? '' : "Moved and renamed '$mods_file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
       }
       else {
-        copy($incoming_folder . '/' . $mods_file, $batch_path . '/' . $mods_file);
+        upitt_workflow_check_copy($incoming_folder . '/' . $mods_file, $batch_path . '/' . $mods_file,
+                $measure_space, $check_source_files);
         // Each OBJ file has a corresponding XML file, and that the filenames of the OBJs and the XML files
         // are identical in every way – including capitalization – except for the extension based on:
         //   https://wiki.duraspace.org/display/ISLANDORA/How+to+Batch+Ingest+Files#HowtoBatchIngestFiles-IngestMetadataandFilestogether .
@@ -730,23 +817,25 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
           $obj_pathinfo = pathinfo($obj_filename);
           if (isset($obj_pathinfo['filename'])) {
             $rename_to = $obj_pathinfo['filename'] . '.xml';
-            rename($batch_path . '/' . $mods_file, $batch_path . '/' . $rename_to);
-            $markup .= "Moved and renamed '$mods_file' to '" . $batch_path . "/" . $rename_to . "'<br>";
+            upitt_workflow_rename($batch_path . '/' . $mods_file, $batch_path . '/' . $rename_to, $measure_space);
+            $markup .= ($measure_space) ? '' : "Moved and renamed '$mods_file' to '" . $batch_path . "/" . $rename_to . "'<br>";
           }
         }
       }
     }
     if ($marcxml_file && ($content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel')) {
       $newspaper_parent_folder = $paged_object_folder . '_parent';
-      mkdir($newspaper_parent_folder);
-      copy($incoming_folder . '/' . $marcxml_file, $newspaper_parent_folder . '/' . $marcxml_file);
-      rename($newspaper_parent_folder . '/' . $marcxml_file, $newspaper_parent_folder . '/--METADATA--.xml');
-      $markup .= "Moved and renamed '$marcxml_file' to '" . $newspaper_parent_folder . "/--METADATA--.xml'<br>";
-
-      $newspaper_parent_results = upitt_workflow_make_newspaper_parent_now($newspaper_parent_folder . '/--METADATA--.xml', $batch_external_id);
-      $markup_result = $newspaper_parent_results['markup'];
-      $newspaper_parent_pid = $newspaper_parent_results['newspaper_parent_pid'];
-      $markup .= $markup_result;
+      upitt_workflow_mkdir($newspaper_parent_folder, $measure_space);
+      upitt_workflow_check_copy($incoming_folder . '/' . $marcxml_file, $newspaper_parent_folder . '/' . $marcxml_file,
+              $measure_space, $check_source_files);
+      upitt_workflow_rename($newspaper_parent_folder . '/' . $marcxml_file, $newspaper_parent_folder . '/--METADATA--.xml', $measure_space);
+      $markup .= ($measure_space) ? '' : "Moved and renamed '$marcxml_file' to '" . $newspaper_parent_folder . "/--METADATA--.xml'<br>";
+      if ($measure_space) {
+        $newspaper_parent_results = upitt_workflow_make_newspaper_parent_now($newspaper_parent_folder . '/--METADATA--.xml', $batch_external_id);
+        $markup_result = $newspaper_parent_results['markup'];
+        $newspaper_parent_pid = $newspaper_parent_results['newspaper_parent_pid'];
+        $markup .= $markup_result;
+      }
     }
     $markup .= "</pre>";
     upitt_workflow_set_status_for_batch($batch_external_id, UPITT_WORKFLOW_ACTION_INCOMING_INGEST_FILES_MOVED, NULL, TRUE);
@@ -771,6 +860,15 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
           ((strstr($xml, 'BibID not found for barcode') == '') ? '' : 'The BibID was not found for the barcode "' . $barcode . '".'), 'warning');
       }
     }    
+  }
+
+  if ($measure_space) {
+    $total_measured_space = 0;
+    foreach ($check_source_files as $check_source_file) {
+      $total_measured_space += filesize($check_source_file);
+    }
+    dpm('filemove_size = ' . $filemove_size);
+    dpm('total_measured_space = ' . $total_measured_space);
   }
 
   return $markup;
@@ -800,30 +898,11 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
   $markup .= "<i>marcxml = " . $marcxml_filename . "<br>";
   $markup .= "batch_external_id = " . $batch_external_id . "<br>";
   $markup .= "collection = " . $mapto_collections . "</i><hr>";
+
   $xpath_query = '//marc:collection/marc:record/marc:datafield[@tag="035"]/marc:subfield[@code="a"]';
   $dom_namespaces = array('marc' => 'http://www.loc.gov/MARC21/slim');
   $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '(OCoLC)');
   $OCoLC = array_pop($node_values);
-  // if the OCoLC is not in the /collection/record/datafield[@tag="035"]/subfield[@code="a"] then the marcxml
-  // may not have a collection wrapper around it.  This will look at the /record/datafield[@tag="035"]/subfield[@code="a"]
-  // in the marcxml file.
-  if (!$OCoLC) {
-    $xpath_query = '//marc:record/marc:datafield[@tag="035"]/marc:subfield[@code="a"]';
-    $dom_namespaces = array('marc' => 'http://www.loc.gov/MARC21/slim');
-    $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '(OCoLC)');
-    $OCoLC = array_pop($node_values);
-  }
-  /* 
-  if (!$OCoLC) {
-    // Get the bibid value from tag 001 value
-    $xpath_query = '//marc:record/marc:controlfield[@tag="001"]';
-    $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '');
-    $bibid = array_pop($node_values);
-    $voystaff_uri = 'http://voystaff.library.pitt.edu/cgi-bin/barcode2marcxml.php?barcode=' . $bibid;
-    $xml = @file_get_contents($voystaff_uri);
-  }
-  */
-
   $markup .= "<h3>found OCoLC = ".$OCoLC."</h3>";
 
   if (!$OCoLC) {
@@ -848,13 +927,8 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
     $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '');
     $use_label = array_pop($node_values);
     if (!$use_label) {
-      $xpath_query = '//marc:record/marc:datafield[@tag="245"]/marc:subfield[@code="a"]';
-      $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '');
-      $use_label = array_pop($node_values);
-      if (!$use_label) {
-        $markup .= '<div class="bad">The title could not be pulled from the marcxml file from tag 222[@code=a] or in tag 245[@code=a]<pre> ' .
-              htmlspecialchars(file_get_contents($marcxml_filename)) . '</pre></div>';
-      }
+      $markup .= '<div class="bad">The title could not be pulled from the marcxml file from tag 222[@code=a]<pre> ' .
+              htmlspecialchars(file_get_contents($xml_filename)) . '</pre></div>';
     }
 
     $newspaper_parent = islandora_object_load($newspaper_parent_pid);
