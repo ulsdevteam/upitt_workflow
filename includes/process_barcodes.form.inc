@@ -398,6 +398,7 @@ function upitt_workflow_make_jp2_for_barcodes($barcodes) {
   $missing_barcodes = array();
   $barcodes_arr = explode("\n", $barcodes);
   $markup = '<div class="text-report">';
+  $markup .= "<b>Start " . date('Y-m-d H:i:s') . "</b><br>";
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
@@ -416,6 +417,9 @@ function upitt_workflow_make_jp2_for_barcodes($barcodes) {
   if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes or their OBJ datastream could not be found  ' . implode(", ", $missing_barcodes), 'warning');
   }
+  
+  $markup .= "<b>Done " . date('Y-m-d H:i:s') . "</b><br>";
+  $markup .= "<b>" . count($barcodes_arr) . " objects processed</b><br>";
   $markup .= '</div>';
   return $markup;
 }
