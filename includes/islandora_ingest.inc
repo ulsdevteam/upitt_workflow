@@ -846,6 +846,16 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
   }
 }
 
+function upitt_workflow_make_jp2($object) {
+  module_load_include('inc', 'islandora_large_image', 'includes/derivatives');
+  if (!isset($object['OBJ'])) {
+    drupal_set_message("Could not create JP2 datastream because there was no OBJ datastream found for " . $object->id, 'warning');
+    return FALSE;
+  }
+
+  return islandora_large_image_create_jp2_derivative($object, true);
+}
+
 function upitt_workflow_make_tn($object, $save_on_object) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $obj_ds = NULL;

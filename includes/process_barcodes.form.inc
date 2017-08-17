@@ -30,6 +30,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     '1' => 'Special Functionality',
       'make_tn' => ' - Make TN derivative',
       'make_tn_large' => ' - Make TN_LARGE derivative',
+      'make_jp2' => ' - Make JP2 derivative',
       'make_page_pdfs' => ' - (Make page PDF derivatives)',
       'aggregate' => ' - Aggregate OCR and PDF, make TN_LARGE',
       'set_status' => ' - Set Status',
@@ -269,6 +270,7 @@ function upitt_workflow_make_batch_records_for_barcodes($barcodes, $mode) {
 function upitt_workflow_delete_update_copy_ingest_for_barcodes($barcodes) {
   $checksize_markup = upitt_workflow_do_copy_for_barcodes($barcodes, TRUE);
   return  (strstr($checksize_markup, 'Not enough space') == '') ?
+    $checksize_markup .
     upitt_workflow_delete_batch_for_barcodes($barcodes) .
     upitt_workflow_purge_objects_for_barcodes($barcodes) .
     upitt_workflow_make_batch_records_for_barcodes($barcodes, 'update') .
@@ -385,6 +387,34 @@ function upitt_workflow_make_page_pdf_for_barcodes($barcodes) {
   }
   if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
+  }
+  $markup .= '</div>';
+  return $markup;
+}
+
+function upitt_workflow_make_jp2_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+
+  $missing_barcodes = array();
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '<div class="text-report">';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $pid = $ingest_namespace . $barcode;
+    $islandora_object = islandora_object_load($pid);
+    if (is_object($islandora_object)) {
+      if (!upitt_workflow_make_jp2($islandora_object, $islandora_object)) {
+        $missing_barcodes[] = $barcode;
+      }
+    }
+    else {
+      $missing_barcodes[] = $barcode;
+    }
+    $markup .= '<div>JP2 created for ' . $pid . "</div>";
+  }
+  if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes or their OBJ datastream could not be found  ' . implode(", ", $missing_barcodes), 'warning');
   }
   $markup .= '</div>';
   return $markup;
