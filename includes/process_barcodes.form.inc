@@ -840,37 +840,41 @@ function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FAL
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('inc', 'upitt_workflow', 'includes/batch.form');
 
-  $grand_total_size = 0;
+  $avail_ingest_temp_space = $grand_total_size = 0;
   $missing_barcodes = array();
   $barcodes_arr = explode("\n", $barcodes);
   $markup = '<div class="text-report">';
+  $avail_ingest_temp_space = upitt_workflow_get_ingest_temp_space();
+
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
     // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
     $batch = upitt_workflow_batch_load_by_batch_external_id($barcode);
     if (count($batch) < 1) {
       $missing_barcodes[] = $barcode;
+    } else {
+      $do_copy = TRUE;
+      $do_download = (strstr($batch['batch_host'], 'ftp:'));
+      $content_model = isset($batch['default_type_of_resource']) ? $batch['default_type_of_resource'] : 'sp_large_image_cmodel';
+      $batch_external_id = $batch['batch_external_id'];
+
+      // Now it is safe to make the full path to the specific incoming subfolder that has been selected.
+      $incoming_folder = (isset($batch['batch_host']) && strstr($batch['batch_host'], 'ftp:')) ?
+              $batch['batch_host'] :
+              (isset($batch['batch_host']) ? $batch['batch_host'] :
+              rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $incoming_folder);
+
+      if ($incoming_folder == '' || $batch_external_id == '') {
+        drupal_set_message('The batch name and a incoming folder must be set in order to save this batch', 'error');
+        return;
+      }
+      $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
+
+      $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, $measure_size_only);
+      $markup .= isset($copyfiles_result['markup']) ? '<div>' . $copyfiles_result['markup'] . '</div>' : '';
+      $grand_total_size += (isset($copyfiles_result['total_measured_space'])) ? $copyfiles_result['total_measured_space'] : 0;
+      $avail_ingest_temp_space = $copyfiles_result['available_space'];
     }
-    $do_copy = TRUE;
-    $do_download = (strstr($batch['batch_host'], 'ftp:'));
-    $content_model = isset($batch['default_type_of_resource']) ? $batch['default_type_of_resource'] : 'sp_large_image_cmodel';
-    $batch_external_id = $batch['batch_external_id'];
-
-    // Now it is safe to make the full path to the specific incoming subfolder that has been selected.
-    $incoming_folder = (isset($batch['batch_host']) && strstr($batch['batch_host'], 'ftp:')) ?
-            $batch['batch_host'] :
-            (isset($batch['batch_host']) ? $batch['batch_host'] : 
-            rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $incoming_folder);
-
-    if ($incoming_folder == '' || $batch_external_id == '') {
-      drupal_set_message('The batch name and a incoming folder must be set in order to save this batch', 'error');
-      return;
-    }
-    $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
-
-    $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, $measure_size_only);
-    $markup .= isset($copyfiles_result['markup']) ? '<div>' . $copyfiles_result['markup'] . '</div>' : '';
-    $grand_total_size += (isset($copyfiles_result['total_measured_space'])) ? $copyfiles_result['total_measured_space'] : 0;
   }
   if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
@@ -880,6 +884,8 @@ function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FAL
   // Insert the total file size result at the top in a new <div>
   $markup = '<div class="text-report"><h3>Grand Total of File Size of Ingest Files</h3>' .
           '  <div class="not-found"><b>Total measured space: ' . upitt_workflow_formatBytes($grand_total_size,2) . '</b></div>' .
+          '  <div class="not-found"><b>Total AVAILABLE space: ' . upitt_workflow_formatBytes($avail_ingest_temp_space,2) . '</b></div>' .
+          '  <div class="' . (($grand_total_size < $avail_ingest_temp_space) ? 'good' : 'bad') . '"><b>This ingest represents ' . round($grand_total_size / $avail_ingest_temp_space * 100) . '% of the available space</b></div>' .
           '</div>'.
           $markup;
 

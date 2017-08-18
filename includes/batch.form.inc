@@ -465,8 +465,11 @@ function upitt_workflow_new_batch_form_validate(&$elements, &$form_state, $form_
   }
 
   // Validate the input values for the files related to this batch to see if it has enough space
-  $markup = ''; // upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, TRUE);
-  return (strstr($markup, 'Not enough space') == '');
+  $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, TRUE);
+  if ($copyfiles_result['total_measured_space'] >= $copyfiles_result['available_space']) {
+    form_set_error($elements['barcodes'], 'Not enough disk space to ingest all of the required files.  ' .
+            'Try a smaller set of barcodes, or free space on the ' . file_directory_temp() . ' location.');
+  }
 }
 
 function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
@@ -597,6 +600,8 @@ function upitt_workflow_check_copy($file_to_copy, $copy_to_location, $measure_sp
 function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, 
         $content_model, $do_copy = FALSE, $do_download = FALSE, $batch_external_id = '', $measure_space = FALSE) {
   $check_source_files = array();
+
+  $ingest_space = upitt_workflow_get_ingest_temp_space();
 
   if (strstr($incoming_folder, 'ftp:') && $do_download) {
     // make a temp folder - unzip all files there - and set $incoming_folder to this
@@ -866,7 +871,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
     $markup .= '<div class="not-found">total measured space = ' . upitt_workflow_formatBytes($total_measured_space, 2) . '</div>';
   }
 
-  return array('markup' => $markup, 'total_measured_space' => $total_measured_space);
+  return array('markup' => $markup, 'total_measured_space' => $total_measured_space, 'available_space' => $ingest_space);
 }
 
 /**

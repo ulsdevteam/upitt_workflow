@@ -1992,3 +1992,25 @@ function upitt_workflow_formatBytes($bytes, $precision = 2) {
 
     return round($bytes, $precision) . ' ' . $units[$pow];
 }
+
+function upitt_workflow_get_ingest_temp_space() {
+  $cmd = 'df -P | gawk \'{ printf "%s\t%s\t%s\t%s\t%s\n", $1, $6, $2, $3, $4 }\'';
+  $output = array();
+  exec($cmd, $output ,$return_var);
+  $temp_dir = file_directory_temp();
+
+  $found_line = '';
+  $space = 0;
+  foreach ($output as $line) {
+    if (!$found_line && (strstr($line, $temp_dir) <> '')) {
+      $found_line = $line;
+    }
+  }
+  if ($found_line) {
+    $r = explode("\t", $found_line);
+    // since the number represents the # of 1k blocks, this must be multiplied by 1024
+    // to get the # of bytes.
+    $space = isset($r[4]) ? $r[4] * 1024 : 0;
+  }
+  return $space;
+}
