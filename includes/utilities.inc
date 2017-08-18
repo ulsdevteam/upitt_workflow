@@ -1943,6 +1943,9 @@ function upitt_workflow_object_isPage($islandora_object) {
  * @return array
  */
 function upitt_workflow_get_xpath_node_values_from_xml($xml_filename, $xpath_query, $dom_namespaces, $matching_value_filter = '') {
+  if (!file_exists($xml_filename)) {
+    return;
+  }
   $f = file_get_contents($xml_filename);
   $doc = new DOMDocument();
   $doc->loadXML($f);
@@ -1974,4 +1977,18 @@ function upitt_workflow_get_xpath_node_values_from_xml($xml_filename, $xpath_que
 function upitt_workflow_get_PID_of_oclc($OCoLC) {
   $ret = upitt_workflow_get_solr_options('mods_identifier_oclc_s:' . $OCoLC, 'PID', 'PID');
   return array_pop($ret);
+}
+
+function upitt_workflow_formatBytes($bytes, $precision = 2) {
+    $units = array('B', 'KB', 'MB', 'GB', 'TB');
+
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+
+    // Uncomment one of the following alternatives
+    // $bytes /= pow(1024, $pow);
+    $bytes /= (1 << (10 * $pow));
+
+    return round($bytes, $precision) . ' ' . $units[$pow];
 }

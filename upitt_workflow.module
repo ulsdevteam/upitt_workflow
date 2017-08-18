@@ -876,13 +876,5 @@ function upitt_workflow_islandora_paged_content_OCR_batch_operation_finished($pa
     $rm_temp_command = 'rm -rf ' . $v . $filefriendly_pid . '*';
     $output = array();
     exec($rm_temp_command, $output, $ret);
-
-    // Delete the batch_{BARCODE} folder in the temp directory.
-    @list($namespace, $barcode) = explode(":", $pid);
-    if ($barcode) {
-      $rm_temp_command = 'rm -rf ' . $v . 'batch_' . $barcode;
-      $output = array();
-      exec($rm_temp_command, $output, $ret);
-    }
   }
 }

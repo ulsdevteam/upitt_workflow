@@ -498,7 +498,8 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
           rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $incoming_folder;
   $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
 
-  $markup = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, FALSE);
+  $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, FALSE);
+  $markup = isset($copyfiles_result['markup']) ? $copyfiles_result['markup'] : '';
 
   // If these values are still set in the form_state, the save_batch code will 
   // not know what to do with them, so copy the variable and trim off the values
@@ -578,6 +579,7 @@ function upitt_workflow_check_copy($file_to_copy, $copy_to_location, $measure_sp
     $check_source_files[] = $file_to_copy;
   }
   else {
+    dpm($file_to_copy);
     copy($file_to_copy, $copy_to_location);
   }
 }
@@ -595,13 +597,6 @@ function upitt_workflow_check_copy($file_to_copy, $copy_to_location, $measure_sp
 function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, 
         $content_model, $do_copy = FALSE, $do_download = FALSE, $batch_external_id = '', $measure_space = FALSE) {
   $check_source_files = array();
-
-  if ($measure_space) {
-    $markup = '<h3 class="bad">Can not proceed with the One step (delete, update, copy, ingest) due to space limitations</h3>' .
-            '<p>Not enough space.  incoming_folder = ' . $incoming_folder . ', batch_path = ' . $batch_path . ', ' .
-            'content_model = ' . $content_model . ', batch_external_id = ' . $batch_external_id;
-    return ''; // $markup;
-  }
 
   if (strstr($incoming_folder, 'ftp:') && $do_download) {
     // make a temp folder - unzip all files there - and set $incoming_folder to this
@@ -708,7 +703,8 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
     $markup .= "</div></div><br style='clear:both'>";
   }
   else {
-    $markup = ($measure_space) ? "<h3>Checking ingest file space from '" . $incoming_folder . "</h3>" :
+    $markup = ($measure_space) ? "<h3>Checking ingest file space for " . $batch_external_id . "</h3>" .
+      "<p>from '". $incoming_folder . "'</p>" :
       "<h3>Moving files from '" . $incoming_folder . "' to '" . $batch_path . "'</h3>";
     $markup .= "<pre>";
 
@@ -830,7 +826,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
               $measure_space, $check_source_files);
       upitt_workflow_rename($newspaper_parent_folder . '/' . $marcxml_file, $newspaper_parent_folder . '/--METADATA--.xml', $measure_space);
       $markup .= ($measure_space) ? '' : "Moved and renamed '$marcxml_file' to '" . $newspaper_parent_folder . "/--METADATA--.xml'<br>";
-      if ($measure_space) {
+      if (!$measure_space) {
         $newspaper_parent_results = upitt_workflow_make_newspaper_parent_now($newspaper_parent_folder . '/--METADATA--.xml', $batch_external_id);
         $markup_result = $newspaper_parent_results['markup'];
         $newspaper_parent_pid = $newspaper_parent_results['newspaper_parent_pid'];
@@ -867,11 +863,10 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
     foreach ($check_source_files as $check_source_file) {
       $total_measured_space += filesize($check_source_file);
     }
-    dpm('filemove_size = ' . $filemove_size);
-    dpm('total_measured_space = ' . $total_measured_space);
+    $markup .= '<div class="not-found">total measured space = ' . upitt_workflow_formatBytes($total_measured_space, 2) . '</div>';
   }
 
-  return $markup;
+  return array('markup' => $markup, 'total_measured_space' => $total_measured_space);
 }
 
 /**
@@ -902,7 +897,7 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
   $xpath_query = '//marc:collection/marc:record/marc:datafield[@tag="035"]/marc:subfield[@code="a"]';
   $dom_namespaces = array('marc' => 'http://www.loc.gov/MARC21/slim');
   $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '(OCoLC)');
-  $OCoLC = array_pop($node_values);
+  $OCoLC = @array_pop($node_values);
   $markup .= "<h3>found OCoLC = ".$OCoLC."</h3>";
 
   if (!$OCoLC) {
@@ -925,7 +920,7 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
     $repository = $connection->repository;
     $xpath_query = '//marc:collection/marc:record/marc:datafield[@tag="222"]/marc:subfield[@code="a"]';
     $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '');
-    $use_label = array_pop($node_values);
+    $use_label = @array_pop($node_values);
     if (!$use_label) {
       $markup .= '<div class="bad">The title could not be pulled from the marcxml file from tag 222[@code=a]<pre> ' .
               htmlspecialchars(file_get_contents($xml_filename)) . '</pre></div>';

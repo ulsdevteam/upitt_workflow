@@ -41,6 +41,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'get_wf_paths' => ' - Get Bigfoot paths',
       'purge_OCR_PDF' => ' - Purge page OCR and PDF derivative',
       'delete_batch' => ' - DELETE islandora_batch_* records',
+      'delete_batch_tempfiles' => ' - DELETE temp batch_* ingest folders',
       'purge_objects' => ' - DELETE objects',
       'pid_to_barcode' => ' - Convert PIDs to barcodes',
       'barcode_to_pid' => ' - Convert barcodes to PIDs',
@@ -278,6 +279,36 @@ function upitt_workflow_delete_update_copy_ingest_for_barcodes($barcodes) {
     upitt_workflow_ingest_prepare_for_barcodes($barcodes) :
     $checksize_markup;
 }
+
+/** Delete all of the temp batch_* folders per batcode.
+ *
+ * @param string $barcodes
+ */
+function upitt_workflow_delete_batch_tempfiles_for_barcodes($barcodes) {
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '<div class="text-report">';
+  foreach ($barcodes_arr as $barcode) {
+    $folder = $v . 'batch_' . trim($barcode);
+    if (file_exists($folder)) {
+      $rm_temp_command = 'rm -rf ' . $folder;
+      $output = array();
+      exec($rm_temp_command, $output, $ret);
+      if (!$ret) {
+        $markup .= '<div class="bad">' . $folder . ' could not be deleted</div>';
+      }
+      else {
+        $markup .= '<div class="good">' . $folder . ' deleted</div>';
+      }
+    }
+    else {
+      $markup .= '<div class="not-found">' . $folder . ' did not exist</div>';
+    }
+  }
+  $markup .= '</div>';
+  return $markup;
+}
+
+
 
 /** Delete all of those pesky islandora_batch_* records related to a set of PID
  * values.
@@ -809,6 +840,7 @@ function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FAL
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('inc', 'upitt_workflow', 'includes/batch.form');
 
+  $grand_total_size = 0;
   $missing_barcodes = array();
   $barcodes_arr = explode("\n", $barcodes);
   $markup = '<div class="text-report">';
@@ -835,12 +867,22 @@ function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FAL
       return;
     }
     $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
-    $markup .= '<div>' . upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, $measure_size_only) . "</div>";
+
+    $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, $measure_size_only);
+    $markup .= isset($copyfiles_result['markup']) ? '<div>' . $copyfiles_result['markup'] . '</div>' : '';
+    $grand_total_size += (isset($copyfiles_result['total_measured_space'])) ? $copyfiles_result['total_measured_space'] : 0;
   }
   if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
   }
   $markup .= '</div>';
+
+  // Insert the total file size result at the top in a new <div>
+  $markup = '<div class="text-report"><h3>Grand Total of File Size of Ingest Files</h3>' .
+          '  <div class="not-found"><b>Total measured space: ' . upitt_workflow_formatBytes($grand_total_size,2) . '</b></div>' .
+          '</div>'.
+          $markup;
+
   return $markup;
 }
 
