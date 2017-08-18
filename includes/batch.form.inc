@@ -582,7 +582,6 @@ function upitt_workflow_check_copy($file_to_copy, $copy_to_location, $measure_sp
     $check_source_files[] = $file_to_copy;
   }
   else {
-    dpm($file_to_copy);
     copy($file_to_copy, $copy_to_location);
   }
 }
@@ -928,7 +927,7 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
     $use_label = @array_pop($node_values);
     if (!$use_label) {
       $markup .= '<div class="bad">The title could not be pulled from the marcxml file from tag 222[@code=a]<pre> ' .
-              htmlspecialchars(file_get_contents($xml_filename)) . '</pre></div>';
+              htmlspecialchars(file_get_contents($marcxml_filename)) . '</pre></div>';
     }
 
     $newspaper_parent = islandora_object_load($newspaper_parent_pid);
