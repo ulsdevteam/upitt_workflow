@@ -770,7 +770,12 @@ function upitt_workflow_purge_objects_for_barcodes($barcodes) {
           foreach ($child_pages as $child_page) {
             if (isset($child_page['pid'])) {
               $child = islandora_object_load($child_page['pid']);
-              $deleted = islandora_delete_object($child);
+              if (is_object($child)) {
+                $deleted = islandora_delete_object($child);
+              }
+              else {
+                $deleted = FALSE;
+              }
               $pages_delete_statuses[] = $child_page['pid'] . ' ' . ($deleted ? 'deleted' : 'not deleted') ;
             }
           }
@@ -788,7 +793,12 @@ function upitt_workflow_purge_objects_for_barcodes($barcodes) {
       foreach ($child_pids as $k => $child_pid) {
         if (isset($child_pid)) {
           $child = islandora_object_load($child_pid);
-          $deleted = islandora_delete_object($child);
+          if (is_object($child)) {
+            $deleted = islandora_delete_object($child);
+          }
+          else {
+            $deleted = FALSE;
+          }
           $pages_delete_statuses[] = $child_pid . ' ' . ($deleted ? 'deleted' : 'not deleted') ;
         }
       }
