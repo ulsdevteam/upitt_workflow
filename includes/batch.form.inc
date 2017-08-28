@@ -902,8 +902,15 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
   $dom_namespaces = array('marc' => 'http://www.loc.gov/MARC21/slim');
   $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '(OCoLC)');
   $OCoLC = @array_pop($node_values);
-  $markup .= "<h3>found OCoLC = ".$OCoLC."</h3>";
+  if (!$OCoLC) {
+    // Try to get this from the same xml, but a different path because not all MARC are wrapped with the collection node.
+    $xpath_query = '//marc:record/marc:datafield[@tag="035"]/marc:subfield[@code="a"]';
+    $dom_namespaces = array('marc' => 'http://www.loc.gov/MARC21/slim');
+    $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '(OCoLC)');
+    $OCoLC = @array_pop($node_values);
+  }
 
+  $markup .= "<h3>found OCoLC = ".$OCoLC."</h3>";
   if (!$OCoLC) {
     $markup .= '<div class="bad"><b>tag 035 @a did not return any OCoLC value</b></div>';
   }
