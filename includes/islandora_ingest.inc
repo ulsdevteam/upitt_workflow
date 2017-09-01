@@ -186,7 +186,7 @@ function upitt_workflow_drush_generic($batch) {
   } elseif ($fedora_model_name == 'newspaperCModel' || $fedora_model_name == 'newspaperIssueCModel') {
     $markup = upitt_workflow_drush_newspaper_issue($batch['batch_external_id'], $batch_path, $fedora_model_name, $site, $batch_default_depositor);
   } else {
-    $markup = "Model not supported " . $fedora_model_name . "<br>";
+    $markup = "<br>Model not supported " . $fedora_model_name . "<br>";
   }
   return $markup;
 }
