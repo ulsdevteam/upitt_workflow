@@ -657,7 +657,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
   $move_files = array();
   $size = $filemove_size = 0;
   foreach ($files as $i => $file) {
-    $this_size = filesize($incoming_folder . '/' . $file);
+    $this_size = (file_exists($incoming_folder . '/' . $file) ? filesize($incoming_folder . '/' . $file) : 0);
     $size += $this_size;
     // If the file has a subfolder reference, skip it UNLESS the content model is sp_pdf or sp_videoCModel
     if ($content_model == 'sp_pdf' || $content_model == 'sp_videoCModel') {
