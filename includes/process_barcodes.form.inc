@@ -895,7 +895,8 @@ function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FAL
   $markup = '<div class="text-report"><h3>Grand Total of File Size of Ingest Files</h3>' .
           '  <div class="not-found"><b>Total measured space: ' . upitt_workflow_formatBytes($grand_total_size,2) . '</b></div>' .
           '  <div class="not-found"><b>Total AVAILABLE space: ' . upitt_workflow_formatBytes($avail_ingest_temp_space,2) . '</b></div>' .
-          '  <div class="' . (($grand_total_size < $avail_ingest_temp_space) ? 'good' : 'bad') . '"><b>This ingest represents ' . round($grand_total_size / $avail_ingest_temp_space * 100, 2) . '% of the available space</b></div>' .
+          '  <div class="' . (($grand_total_size < $avail_ingest_temp_space) ? 'good' : 'bad') . '"><b>This ingest represents ' . 
+          (($avail_ingest_temp_space > 0) ? round($grand_total_size / $avail_ingest_temp_space * 100, 2) : '<i>an unknown </i>') . '% of the available space</b></div>' .
           '</div>'.
           $markup;
 
@@ -927,7 +928,7 @@ function upitt_workflow_gen_OCR_for_barcodes($barcodes) {
     }
     $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' upitt_workflow_generate_ocr_datastreams ' .
                      '--paged_object_pid=' . $pid;
-    $markup = '<h4>Called upitt_workflow_generate_ocr_datastreams</h4><code>' . $drush_command . '</code>';
+    $markup .= '<h4>Called upitt_workflow_generate_ocr_datastreams</h4><code>' . $drush_command . '</code>';
 
     $output = $return_var = array();
     exec($drush_command, $output, $return_var);

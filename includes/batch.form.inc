@@ -599,6 +599,7 @@ function upitt_workflow_check_copy($file_to_copy, $copy_to_location, $measure_sp
 function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, 
         $content_model, $do_copy = FALSE, $do_download = FALSE, $batch_external_id = '', $measure_space = FALSE) {
   $check_source_files = array();
+  $total_measured_space = 0;
 
   $ingest_space = upitt_workflow_get_ingest_temp_space();
 
@@ -863,7 +864,6 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
   }
 
   if ($measure_space) {
-    $total_measured_space = 0;
     foreach ($check_source_files as $check_source_file) {
       $total_measured_space += filesize($check_source_file);
     }
