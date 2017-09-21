@@ -465,9 +465,18 @@ function upitt_workflow_new_batch_form_validate(&$elements, &$form_state, $form_
   }
 
   // Validate the input values for the files related to this batch to see if it has enough space
-  $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, TRUE);
+  $batch_external_id = $form_state['values']['batch_external_id'];
+  $incoming_folder = $form_state['values']['source_incoming_folder'];
+  // Now it is safe to make the full path to the specific incoming subfolder that has been selected.
+  $incoming_folder = (isset($form_state['values']['batch_host']) && strstr($form_state['values']['batch_host'], 'ftp:')) ?
+          $form_state['values']['batch_host'] :
+          rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $incoming_folder;
+  $content_model = isset($form_state['values']['default_type_of_resource']) ? $form_state['values']['default_type_of_resource'] : 'sp_large_image_cmodel';
+  $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
+  $do_download = isset($form_state['values']['do_download']) ? $form_state['values']['do_download'] : FALSE;
+  $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, TRUE, $do_download, $batch_external_id, TRUE);
   if ($copyfiles_result['total_measured_space'] >= $copyfiles_result['available_space']) {
-    form_set_error($elements['barcodes'], 'Not enough disk space to ingest all of the required files.  ' .
+    form_set_error($elements['batch_external_id'], 'Not enough disk space to ingest all of the required files.  ' .
             'Try a smaller set of barcodes, or free space on the ' . file_directory_temp() . ' location.');
   }
 }
@@ -548,7 +557,9 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
  */
 function upitt_workflow_mkdir($folder, $measure_space) {
   if (!$measure_space) {
-    mkdir($folder);
+    if (!file_exists($folder)) {
+      mkdir($folder);
+    }
   }
 }
 
@@ -597,10 +608,13 @@ function upitt_workflow_check_copy($file_to_copy, $copy_to_location, $measure_sp
  *          else, it copies the files as expected for an islandora batch.
  */
 function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, 
-        $content_model, $do_copy = FALSE, $do_download = FALSE, $batch_external_id = '', $measure_space = FALSE) {
+    $content_model, $do_copy = FALSE, $do_download = FALSE, $batch_external_id = '', 
+    $measure_space = FALSE, $is_child_of_compound = FALSE) {
+
   $check_source_files = array();
   $total_measured_space = 0;
 
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $ingest_space = upitt_workflow_get_ingest_temp_space();
 
   if (strstr($incoming_folder, 'ftp:') && $do_download) {
@@ -633,14 +647,32 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
   //
   // 3) make a subfolder for each page and copy the {page#}.tif to the folder as : {page#}/OBJ.tif
 
+  // For compoundCModel:
+  //
+  // 1) Top level - "parent" folder contains a single MODS.xml and a folder
+  //    for each child object according to that child's model.
+  //
+  //   parent
+  //   ├── first_child
+  //   │   ├── MODS.xml
+  //   │   └── OBJ.jp2
+  //   ├── second_child
+  //   │   ├── MODS.xml
+  //   │   └── OBJ.jp2
+  //   ├── MODS.xml
+  //   └─ structure.xml
+
   // If the model is sp_pdf or sp_videoCModel, then return folder names - and process each folder's files
   if ($content_model == 'sp_pdf' || $content_model == 'sp_videoCModel') {
     $tmp_files = upitt_workflow_generic_get_directory($incoming_folder);
   }
-  else {
+  elseif ($content_model == 'compoundCModel') {
+    $tmp_files = upitt_workflow_file_scan_directory($incoming_folder, '', TRUE, FALSE);
+  } else {
     $tmp_files = upitt_workflow_file_scan_directory($incoming_folder, '', TRUE, FALSE);
   }
   $files = array();
+
   // FLATTEN this result
   foreach ($tmp_files as $key => $file) {
     if (is_array($file)) {
@@ -652,16 +684,20 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       $files[] = $file;
     }
   }
-
   // Inspect the filemask that is related to the given content_model and keep the matching
   // files in a new $move_files array -- also, calculate the size of the files being inspected.
-  $move_files = array();
+  $move_files = $recurse_children = array();
   $size = $filemove_size = 0;
   foreach ($files as $i => $file) {
-    $this_size = (file_exists($incoming_folder . '/' . $file) ? filesize($incoming_folder . '/' . $file) : 0);
+    $this_size = filesize($incoming_folder . '/' . $file);
     $size += $this_size;
     // If the file has a subfolder reference, skip it UNLESS the content model is sp_pdf or sp_videoCModel
     if ($content_model == 'sp_pdf' || $content_model == 'sp_videoCModel') {
+      if ($matched_model_filemask = upitt_workflow_filemask_comparison($file, $model_filemasks)) {
+        $move_files[$matched_model_filemask][] = $file;
+      }
+    }
+    elseif ($content_model == 'compoundCModel') {
       if ($matched_model_filemask = upitt_workflow_filemask_comparison($file, $model_filemasks)) {
         $move_files[$matched_model_filemask][] = $file;
       }
@@ -713,9 +749,12 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       "<h3>Moving files from '" . $incoming_folder . "' to '" . $batch_path . "'</h3>";
     $markup .= "<pre>";
 
-    if (file_exists($batch_path)) {
-      $command = 'rm -rf ' . $batch_path;
-      exec($command);
+    if ($is_child_of_compound || $content_model == 'compoundCModel') {
+    } else {
+      if (file_exists($batch_path)) {
+        $command = 'rm -rf ' . $batch_path;
+        exec($command);
+      }
     }
     upitt_workflow_mkdir($batch_path, $measure_space);
     if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
@@ -726,77 +765,96 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
 
     foreach ($move_files as $file_mask_match => $files) {
       foreach ($files as $file) {
-        switch ($file_mask_match) {
-          case '*.tif'; case '*.jpg';
-            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
-                    $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
-              // for Book, make directory, move file into that directory, rename OBJ.tif
-              $file_baseName = str_replace(str_replace("*", "", $file_mask_match), "", $file);
-              $this_fileinfo = pathinfo($file);
-              $extension = (isset($this_fileinfo['extension'])) ? $this_fileinfo['extension'] : '';
-              if (strtolower($file_baseName) <> 'target') {
-                $page_folder = $this_fileinfo['filename'];
-                upitt_workflow_mkdir($paged_object_folder . '/' . $page_folder, $measure_space);
-                upitt_workflow_check_copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/' . $file,
-                        $measure_space, $check_source_files);
-                upitt_workflow_rename($paged_object_folder . '/' . $page_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/OBJ.' . $extension,
-                        $measure_space);
-                $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $paged_object_folder . '/' . $page_folder . "/OBJ." . $extension . "'<br>";
+        if (($content_model == 'compoundCModel') && (strstr($file, '/'))) {
+          $recurse_children[] = $file;
+        } else {
+          switch ($file_mask_match) {
+            case '*.tif'; case '*.jpg';
+              if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
+                      $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
+                // for Book, make directory, move file into that directory, rename OBJ.tif
+                $file_baseName = str_replace(str_replace("*", "", $file_mask_match), "", $file);
+                $this_fileinfo = pathinfo($file);
+                $extension = (isset($this_fileinfo['extension'])) ? $this_fileinfo['extension'] : '';
+                if (strtolower($file_baseName) <> 'target') {
+                  $page_folder = $this_fileinfo['filename'];
+                  upitt_workflow_mkdir($paged_object_folder . '/' . $page_folder, $measure_space);
+                  upitt_workflow_check_copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/' . $file,
+                          $measure_space, $check_source_files);
+                  upitt_workflow_rename($paged_object_folder . '/' . $page_folder . '/' . $file, $paged_object_folder . '/' . $page_folder . '/OBJ.' . $extension,
+                          $measure_space);
+                  $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $paged_object_folder . '/' . $page_folder . "/OBJ." . $extension . "'<br>";
+                }
               }
-            }
-            else {
-              // for large image, simply move file to root of batch_path
+              else {
+                // for large image, simply move file to root of batch_path
+                $obj_filename = $file;
+                upitt_workflow_check_copy($incoming_folder . '/' . $file, $batch_path . '/' . $file,
+                        $measure_space, $check_source_files);
+                $markup .= ($measure_space) ? '' : "Moved '$file' to '" . $batch_path . "/" . $file . "'<br>";
+              }
+              break;
+            case '*.wav':
+              if ($content_model == 'sp_audioCModel') {
+                // for Book, make directory, move file into that directory, rename OBJ.tif
+                $file_baseName = str_replace(str_replace("*", "", $file_mask_match), "", $file);
+                $this_fileinfo = pathinfo($file);
+                $extension = (isset($this_fileinfo['extension'])) ? $this_fileinfo['extension'] : '';
+                upitt_workflow_check_copy($incoming_folder . '/' . $file, $batch_path . '/' . $file,
+                    $measure_space, $check_source_files);
+                upitt_workflow_rename($batch_path . '/' . $file, $batch_path . '/OBJ.' . $extension,
+                    $measure_space);
+                $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $batch_path . "/OBJ." . $extension . "'<br>";
+              }
               $obj_filename = $file;
+              break;
+            case '*_MODS.xml':
+            case '*.mods.xml':
+              $mods_file = $file;
+              break;
+            case '*.marcxml.xml':
+              $marcxml_file = $file;
+              if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
+                      $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
+                upitt_workflow_check_copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file,
+                        $measure_space, $check_source_files);
+                upitt_workflow_rename($paged_object_folder . '/' . $file, $paged_object_folder . '/--METADATA--.xml', $measure_space);
+                $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
+              }
+              else {
+                upitt_workflow_check_copy($incoming_folder . '/' . $file, $batch_path . '/' . $file,
+                        $measure_space, $check_source_files);
+                upitt_workflow_rename($batch_path . '/' . $file, $batch_path . '/--METADATA--.xml', $measure_space);
+                $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $batch_path . "/--METADATA--.xml'<br>";
+              }
+              break;
+            case '*.mets.xml':
+              if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
+                      $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
+                upitt_workflow_check_copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file,
+                        $measure_space, $check_source_files);
+                upitt_workflow_rename($paged_object_folder . '/' . $file, $paged_object_folder . '/METS.xml', $measure_space);
+                $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $paged_object_folder . "/METS.xml'<br>";
+              }
+              else {
+                upitt_workflow_check_copy($incoming_folder . '/' . $file, $batch_path . '/' . $file,
+                        $measure_space, $check_source_files);
+                upitt_workflow_rename($batch_path . '/' . $file, $batch_path .  '/METS.xml', $measure_space);
+                $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $batch_path . "/METS.xml'<br>";
+              }
+              break;
+            default:
+              $obj_filename = $file;
+              if (strstr($file, '/') && ($content_model == 'sp_pdf' || $content_model == 'sp_videoCModel')) {
+                // create subfolder if needed
+                $file_pathinfo = pathinfo($file);
+                upitt_workflow_mkdir($batch_path . '/' . $file_pathinfo['dirname'], $measure_space);
+              }
               upitt_workflow_check_copy($incoming_folder . '/' . $file, $batch_path . '/' . $file,
                       $measure_space, $check_source_files);
               $markup .= ($measure_space) ? '' : "Moved '$file' to '" . $batch_path . "/" . $file . "'<br>";
-            }
-            break;
-          case '*.mods.xml':
-            $mods_file = $file;
-            break;
-          case '*.marcxml.xml':
-            $marcxml_file = $file;
-            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
-                    $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
-              upitt_workflow_check_copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file,
-                      $measure_space, $check_source_files);
-              upitt_workflow_rename($paged_object_folder . '/' . $file, $paged_object_folder . '/--METADATA--.xml', $measure_space);
-              $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
-            }
-            else {
-              upitt_workflow_check_copy($incoming_folder . '/' . $file, $batch_path . '/' . $file,
-                      $measure_space, $check_source_files);
-              upitt_workflow_rename($batch_path . '/' . $file, $batch_path . '/--METADATA--.xml', $measure_space);
-              $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $batch_path . "/--METADATA--.xml'<br>";
-            }
-            break;
-          case '*.mets.xml':
-            if ($content_model == 'bookCModel' || $content_model == 'manuscriptCModel' ||
-                    $content_model == 'newspaperCModel' || $content_model == 'newspaperIssueCModel') {
-              upitt_workflow_check_copy($incoming_folder . '/' . $file, $paged_object_folder . '/' . $file,
-                      $measure_space, $check_source_files);
-              upitt_workflow_rename($paged_object_folder . '/' . $file, $paged_object_folder . '/METS.xml', $measure_space);
-              $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $paged_object_folder . "/METS.xml'<br>";
-            }
-            else {
-              upitt_workflow_check_copy($incoming_folder . '/' . $file, $batch_path . '/' . $file,
-                      $measure_space, $check_source_files);
-              upitt_workflow_rename($batch_path . '/' . $file, $batch_path .  '/METS.xml', $measure_space);
-              $markup .= ($measure_space) ? '' : "Moved and renamed '$file' to '" . $batch_path . "/METS.xml'<br>";
-            }
-            break;
-          default:
-            $obj_filename = $file;
-            if (strstr($file, '/') && ($content_model == 'sp_pdf' || $content_model == 'sp_videoCModel')) {
-              // create subfolder if needed
-              $file_pathinfo = pathinfo($file);
-              upitt_workflow_mkdir($batch_path . '/' . $file_pathinfo['dirname'], $measure_space);
-            }
-            upitt_workflow_check_copy($incoming_folder . '/' . $file, $batch_path . '/' . $file,
-                    $measure_space, $check_source_files);
-            $markup .= ($measure_space) ? '' : "Moved '$file' to '" . $batch_path . "/" . $file . "'<br>";
-            break;
+              break;
+          }
         }
       }
     }
@@ -808,7 +866,13 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
         upitt_workflow_rename($paged_object_folder . '/' . $mods_file, $paged_object_folder . '/--METADATA--.xml', $measure_space);
         $markup .= ($measure_space) ? '' : "Moved and renamed '$mods_file' to '" . $paged_object_folder . "/--METADATA--.xml'<br>";
       }
-      else {
+      elseif ($content_model == 'compoundCModel') {
+        upitt_workflow_check_copy($incoming_folder . '/' . $mods_file, $batch_path . '/' . $mods_file,
+                $measure_space, $check_source_files);
+        $rename_to = 'MODS.xml';
+        upitt_workflow_rename($batch_path . '/' . $mods_file, $batch_path . '/' . $rename_to, $measure_space);
+        $markup .= ($measure_space) ? '' : "Moved and renamed '$mods_file' to '" . $batch_path . "/" . $rename_to . "'<br>";
+      } else {
         upitt_workflow_check_copy($incoming_folder . '/' . $mods_file, $batch_path . '/' . $mods_file,
                 $measure_space, $check_source_files);
         // Each OBJ file has a corresponding XML file, and that the filenames of the OBJs and the XML files
@@ -817,7 +881,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
         if ($obj_filename) {
           $obj_pathinfo = pathinfo($obj_filename);
           if (isset($obj_pathinfo['filename'])) {
-            $rename_to = $obj_pathinfo['filename'] . '.xml';
+            $rename_to = ($is_child_of_compound) ? 'MODS.xml' : $obj_pathinfo['filename'] . '.xml';
             upitt_workflow_rename($batch_path . '/' . $mods_file, $batch_path . '/' . $rename_to, $measure_space);
             $markup .= ($measure_space) ? '' : "Moved and renamed '$mods_file' to '" . $batch_path . "/" . $rename_to . "'<br>";
           }
@@ -839,7 +903,46 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
       }
     }
     $markup .= "</pre>";
-    upitt_workflow_set_status_for_batch($batch_external_id, UPITT_WORKFLOW_ACTION_INCOMING_INGEST_FILES_MOVED, NULL, TRUE);
+
+    // Since the children of a compound object can be any object type, this
+    // is the time for recursion.
+    if ($content_model == 'compoundCModel' && count($recurse_children) > 0) {
+      // Break apart the $recurse_children array into as many arrays as needed
+      // for each child because each child folder needs to be copied as a separate
+      // call to upitt_workflow_copyfiles_incoming_folder_to_batch.
+      $child_paths = array();
+      foreach ($recurse_children as $child_file) {
+        list($child_folder_name, $junk) = explode('/', $child_file);
+        $child_paths[$child_folder_name][] = $child_file;
+      }
+
+      foreach ($child_paths as $child_folder_name => $child_files) {
+        $child_content_model = upitt_workflow_determine_fedora_model_from_filenames($child_files);
+        $recursion_results = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder . '/' . $child_folder_name,
+            $batch_path . '/' . $child_folder_name, $child_content_model, $do_copy, $do_download, $child_folder_name, $measure_space, TRUE);
+        $markup .= $recursion_results['markup'];
+        $total_measured_space += $recursion_results['total_measured_space'];
+      }
+
+      // For Compound objects, it will need to run create_structure_files.php to make
+      // a structure.xml for each parent compound object.
+      $compound_batch_module_full_path = getcwd() . '/' . drupal_get_path('module','islandora_compound_batch') . '/extras/scripts';
+      // make the command to call
+      $compound_objects_containing_folder = str_replace('/batch_' . $batch_external_id, '', $batch_path);
+      $create_structure_command = 'cd ' . $compound_batch_module_full_path . ';php ' . $compound_batch_module_full_path . '/create_structure_files.php ' . $compound_objects_containing_folder;
+      dpm($create_structure_command);
+      $output = array();
+      exec($create_structure_command, $output, $return_var);
+      if (count($output) > 0) {
+        foreach ($output as $subfolder) {
+          $markup .= 'structure.xml created for compound object folder ' . $subfolder . "<br>";
+        }
+      }
+    }
+
+    if (!$measure_space) {
+      upitt_workflow_set_status_for_batch($batch_external_id, UPITT_WORKFLOW_ACTION_INCOMING_INGEST_FILES_MOVED, NULL, TRUE);
+    }
   }
 
   // In either case, if the object is a book, and the --METADATA--.xml does not 
@@ -860,7 +963,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
         drupal_set_message('The MARC record could not be retrieved from the Voyager application. ' . l($voystaff_uri, $voystaff_uri) . '.' .
           ((strstr($xml, 'BibID not found for barcode') == '') ? '' : 'The BibID was not found for the barcode "' . $barcode . '".'), 'warning');
       }
-    }    
+    }
   }
 
   if ($measure_space) {
@@ -1027,7 +1130,21 @@ function upitt_workflow_content_model_filemask($content_model) {
       $filemasks['*.pdf'] = 'PDF file';
       break;
 
+    case 'compoundCModel':
+      $filemasks['*_MODS.xml'] = 'MODS XML';
+      $filemasks['*.mods.xml'] = 'MODS XML';
+      $filemasks['*.wav'] = 'Audio WAV file';
+      // $filemasks['*'] = 'any file';
+      break;
+
+    case 'sp_audioCModel':
+      $filemasks['*_MODS.xml'] = 'MODS XML';
+      $filemasks['*.mods.xml'] = 'MODS XML';
+      $filemasks['*.wav'] = 'Audio WAV file';
+      break;
+
     case 'sp_videoCModel':
+      $filemasks['*_MODS.xml'] = 'MODS XML';
       $filemasks['*.mods.xml'] = 'MODS XML';
       $filemasks['*.mp4'] = 'Video file';
       break;
@@ -1049,6 +1166,9 @@ function upitt_workflow_content_model_filemask($content_model) {
  */
 function upitt_workflow_filemask_match($file, $filemask) {
   $d = ($file == '0001.thumb.jpg' && $filemask == '*.thumb.jpg');
+  if ($filemask == '*') {
+    return TRUE;
+  }
   $filemask_without_wildcards = str_replace("*", "", $filemask);
   $starts_with_wildcard = ($filemask[0] == '*');
   $ends_with_wildcard = ($filemask[strlen($filemask) - 1] == '*');

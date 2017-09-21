@@ -177,6 +177,10 @@ function upitt_workflow_drush_generic($batch) {
 
   if ($fedora_model_name == 'bookCModel') {
     $markup = upitt_workflow_drush_book($batch_path, $parent_review, $site, $ingest_namespace . $batch['batch_external_id']);
+  } elseif ($fedora_model_name == 'compoundCModel') {
+    $compound_objects_folder = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/compound_objects';
+    $batch_path = $compound_objects_folder . '/batch_' . $batch['batch_external_id'];
+    $markup = upitt_workflow_drush_compound($batch_path, $parent_review, $site, $ingest_namespace . $batch['batch_external_id']);
   } elseif ($fedora_model_name == 'manuscriptCModel') {
     $markup = upitt_workflow_drush_manuscript($batch_path, $parent_review, $site, $ingest_namespace . $batch['batch_external_id']);
   } elseif ($fedora_model_name == 'sp_large_image_cmodel') {
@@ -417,7 +421,7 @@ $markup .= "<h1>oclc = " . $OCoLC . "</h1>";
         $alerted_on_err = TRUE;
       }
       $color = (($return_var == -1 || $return_var == 255)) ? 'red' : 'green';
-      $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code style="color:' . $color . '">' . $drush_command . '</code>';
+      $markup = '<h4>Called islandora_newspaper_batch_preprocess</h4><code style="color:' . $color . '">' . $drush_command . '</code>';
     }
   }
   $retval .= $markup;
@@ -539,7 +543,7 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
                    (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
                    ' --target=' . $filepath;
-  $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
+  $markup = '<h4>Called islandora_book_batch_preprocess</h4><code>' . $drush_command . '</code>';
   $retval .= $markup;
 
   $output = $return_var = array();
@@ -552,6 +556,38 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
 
   return $retval;
 }
+
+function upitt_workflow_drush_compound($filepath, $parent, $site, $pid) {
+  global $user;
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  $retval = '';
+
+  $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+
+  $alerted_on_err = FALSE;
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  $ingest_namespace_nocolon = rtrim($ingest_namespace, ":");
+
+  $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=' . $ingest_namespace_nocolon . ' --uri=' . $this_domain . ' islandora_compound_batch_preprocess ' .
+                   // assuming that only if the parent is set, than the parent_relationship_pred is needed
+                   '--target=' . $filepath . ' ' .
+                   '--assign_pid=' . $pid . ' ' .
+                   (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '');
+  $markup = '<h4>Called islandora_compound_batch_preprocess</h4><code>' . $drush_command . '</code>';
+  $retval .= $markup;
+
+  $output = $return_var = array();
+  exec($drush_command, $output, $return_var);
+
+  if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
+    drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+    $alerted_on_err = TRUE;
+  }
+
+  return $retval;
+}
+
 
 /**
  * Helper function to just issue the drush command.
@@ -581,7 +617,7 @@ function upitt_workflow_drush_manuscript($filepath, $parent, $site, $pid) {
                    (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
                    ' --target=' . $filepath;
-  $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
+  $markup = '<h4>Called islandora_manuscript_batch_preprocess</h4><code>' . $drush_command . '</code>';
   $retval .= $markup;
 
   $output = $return_var = array();

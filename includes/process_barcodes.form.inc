@@ -879,6 +879,13 @@ function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FAL
         return;
       }
       $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
+      if ($content_model == 'compoundCModel') {
+        $compound_objects_folder = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/compound_objects';
+        if (!file_exists($compound_objects_folder)) {
+          mkdir($compound_objects_folder);
+        }
+        $batch_path = $compound_objects_folder . '/batch_' . $batch_external_id;
+      }
 
       $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, $measure_size_only);
       $markup .= isset($copyfiles_result['markup']) ? '<div>' . $copyfiles_result['markup'] . '</div>' : '';

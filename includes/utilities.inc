@@ -5,13 +5,14 @@
  */
 function upitt_workflow_get_workflow_to_fedora_object_mappings() {
   return array('' => ' - select model - ',
-               'sp-audioCModel' => 'Audio (pending development)',
+               'sp-audioCModel' => 'Audio',
                'bookCModel' => 'Book',
+               'compoundCModel' => 'Compound Object',
                'findingAidCModel' => 'Finding Aids (pending development)',
                'sp_large_image_cmodel' => 'Large Images',
                'manuscriptCModel' => 'Manuscript',
                'newspaperIssueCModel' => 'Newspaper',
-               'oralhistoriesCModel' => 'Oral Histories (pending development)',
+               'oralhistoriesCModel' => 'Oral Histories',
                'sp_pdf' => 'PDF object',
                'sp_videoCModel' => 'Video',
               );
@@ -25,14 +26,20 @@ function upitt_workflow_get_workflow_to_fedora_object_mappings() {
  * @return string
  */
 function upitt_workflow_wf_type_to_fedora_model($type) {
-  $mapping = array('manuscript' => 'manuscriptCModel',
+  $mapping = array(
+      'manuscript' => 'manuscriptCModel',
       'image' => 'sp_large_image_cmodel',
       'text - cataloged' => 'bookCModel',
       'text - uncataloged' => 'bookCModel',
       'map' => 'sp_large_image_cmodel',
       'pdf' => 'sp_pdf',
       'georeferenced map' => 'sp_large_image_cmodel',
-      'newspaper - cataloged' => 'newspaperCModel');
+      'newspaper - cataloged' => 'newspaperCModel',
+      'compound object' => 'compoundCModel',
+      'audio' => 'sp-audioCModel',
+      'video' => 'sp_videoCModel',
+      'oral histories' => 'oralhistoriesCModel',
+      );
   return isset($mapping[$type]) ? $mapping[$type] : '';
 }
 
@@ -846,50 +853,60 @@ function upitt_workflow_fix_if_csv_date_approximate($headers, &$row) {
  * that would match for that field.
  */
 function upitt_workflow_get_csv_header_xpath_mappings() {
-  return array('genre'                     => '/mods:mods/mods:genre',
-               'description'               => '/mods:mods/mods:abstract',
-               'type_of_resource'          => '/mods:mods/mods:typeOfResource',
-               'gift_of'                   => '/mods:mods/mods:note[@type="donor"]',
-               'address'                   => '/mods:mods/mods:note[@type="address"]',
-               'subject'                   => '/mods:mods/mods:subject/mods:topic',
-               'contributor'               => '/mods:mods/mods:name/mods:namePart[../mods:role/mods:roleTerm[(text()="contributor") and @type="text"]]',
-               'creator'                   => '/mods:mods/mods:name/mods:namePart[../mods:role/mods:roleTerm[(text()="creator") and @type="text"]]',
-               'depositor'                 => '/mods:mods/mods:name/mods:namePart[../mods:role/mods:roleTerm[(text()="depositor") and @type="text"]]',
-               'identifier'                => '/mods:mods/mods:identifier[@type="pitt"]',
-               'source_id'                 => '/mods:mods/mods:identifier[@type="source"]',
-               'source_identifier'         => '/mods:mods/mods:identifier[@type="source"]',
-               'title'                     => '/mods:mods/mods:titleInfo/mods:title',
-               'publisher'                 => '/mods:mods/mods:originInfo/mods:publisher',
-               'date_digitized'            => '/mods:mods/mods:originInfo/mods:dateCaptured',
-               'format'                    => '/mods:mods/mods:physicalDescription/mods:form',
-               'subject_name'              => '/mods:mods/mods:subject[@authority="lcsh"]/mods:name',
-               'dimension'                 => '/mods:mods/mods:physicalDescription/mods:extent',
-               'source_citation'           => '/mods:mods/mods:relatedItem/note[@type="prefercite"]',
-               'subject_lcsh'              => '/mods:mods/mods:subject[@authority="lcsh"]/mods:topic',
-               'source_collection_id'      => '/mods:mods/mods:relatedItem[@type="host"]/mods:identifier',
-               'subject_local'             => '/mods:mods/mods:subject[@authority="local"]/mods:topic',
-               'sort_date'                 => '/mods:mods/mods:originInfo/mods:dateOther[@type="sort"]',
-               'subject_location'          => '/mods:mods/mods:subject[@authority="lcsh"]/mods:geographic',
-               'date'                      => '/mods:mods/mods:originInfo/mods:dateOther[@type="display"]',
-               'scale'                     => '/mods:mods/mods:subject/mods:cartographics/mods:scale',
-               'source_collection'         => '/mods:mods/mods:relatedItem/mods:titleInfo/mods:title',
-               'copyright_status'          => '/mods:mods/mods:accessCondition/copyrightMD:copyright/@copyright.status',
-               'source_container'          => '/mods:mods/mods:relatedItem[@type="host"]/mods:note[@type="container"]',
-               'source_ownership'          => '/mods:mods/mods:relatedItem[@type="host"]/mods:note[@type="ownership"]',
-               'publication_status'        => '/mods:mods/mods:accessCondition/copyrightMD:copyright/@publication.status',
-               'pub_place'                 => '/mods:mods/mods:originInfo/mods:place/mods:placeTerm[@type="text"]',
-               'source_collection_date'    => '/mods:mods/mods:relatedItem[@type="host"]/mods:originInfo/mods:dateCreated',
-               'normalized_date'           => '/mods:mods/mods:originInfo/mods:dateCreated[@encoding="iso8601" @keyDate="yes"]',
-               'rights_holder'             => '/mods:mods/mods:accessCondition/copyrightMD:copyright/copyrightMD:rights.holder/copyrightMD:name',
-               'normalized_date_qualifier' => '/mods:mods/mods:originInfo/mods:dateCreated[@qualifier="approximate" @encoding="iso8601" @keyDate="yes"]',
-               // These field values are not represented in a MODS file, but will appear in the CSV file
-	       'batch' => '',
-               'collection' => '',
-               // 'date_qualifier' => '',
-               'file_name' => '',
-               'filename' => '',
-               'location' => '',
-    );
+  return array(
+    'genre'                     => '/mods:mods/mods:genre',
+    'abstract'                  => '/mods:mods/mods:abstract',
+    'description'               => '/mods:mods/mods:abstract',
+    'type_of_resource'          => '/mods:mods/mods:typeOfResource',
+    'gift_of'                   => '/mods:mods/mods:note[@type="donor"]',
+    'address'                   => '/mods:mods/mods:note[@type="address"]',
+    'subject'                   => '/mods:mods/mods:subject/mods:topic',
+    'contributor'               => '/mods:mods/mods:name/mods:namePart[../mods:role/mods:roleTerm[(text()="contributor") and @type="text"]]',
+    'creator'                   => '/mods:mods/mods:name/mods:namePart[../mods:role/mods:roleTerm[(text()="creator") and @type="text"]]',
+    'depositor'                 => '/mods:mods/mods:name/mods:namePart[../mods:role/mods:roleTerm[(text()="depositor") and @type="text"]]',
+    'identifier'                => '/mods:mods/mods:identifier[@type="pitt"]',
+    'source_id'                 => '/mods:mods/mods:identifier[@type="source"]',
+    'source_identifier'         => '/mods:mods/mods:identifier[@type="source"]',
+    'title'                     => '/mods:mods/mods:titleInfo/mods:title',
+    'publisher'                 => '/mods:mods/mods:originInfo/mods:publisher',
+    'date_digitized'            => '/mods:mods/mods:originInfo/mods:dateCaptured',
+    'format'                    => '/mods:mods/mods:physicalDescription/mods:form',
+    'subject_name'              => '/mods:mods/mods:subject[@authority="lcsh"]/mods:name',
+    'dimension'                 => '/mods:mods/mods:physicalDescription/mods:extent',
+    'source_citation'           => '/mods:mods/mods:relatedItem/note[@type="prefercite"]',
+    'subject_lcsh'              => '/mods:mods/mods:subject[@authority="lcsh"]/mods:topic',
+    'source_collection_id'      => '/mods:mods/mods:relatedItem[@type="host"]/mods:identifier',
+    'subject_local'             => '/mods:mods/mods:subject[@authority="local"]/mods:topic',
+    'sort_date'                 => '/mods:mods/mods:originInfo/mods:dateOther[@type="sort"]',
+    'subject_location'          => '/mods:mods/mods:subject[@authority="lcsh"]/mods:geographic',
+    'date'                      => '/mods:mods/mods:originInfo/mods:dateOther[@type="display"]',
+    'scale'                     => '/mods:mods/mods:subject/mods:cartographics/mods:scale',
+    'source_collection'         => '/mods:mods/mods:relatedItem/mods:titleInfo/mods:title',
+    'copyright_status'          => '/mods:mods/mods:accessCondition/copyrightMD:copyright/@copyright.status',
+    'source_container'          => '/mods:mods/mods:relatedItem[@type="host"]/mods:note[@type="container"]',
+    'source_ownership'          => '/mods:mods/mods:relatedItem[@type="host"]/mods:note[@type="ownership"]',
+    'publication_status'        => '/mods:mods/mods:accessCondition/copyrightMD:copyright/@publication.status',
+    'pub_place'                 => '/mods:mods/mods:originInfo/mods:place/mods:placeTerm[@type="text"]',
+    'source_collection_date'    => '/mods:mods/mods:relatedItem[@type="host"]/mods:originInfo/mods:dateCreated',
+    'normalized_date'           => '/mods:mods/mods:originInfo/mods:dateCreated[@encoding="iso8601" @keyDate="yes"]',
+    'rights_holder'             => '/mods:mods/mods:accessCondition/copyrightMD:copyright/copyrightMD:rights.holder/copyrightMD:name',
+    'normalized_date_qualifier' => '/mods:mods/mods:originInfo/mods:dateCreated[@qualifier="approximate" @encoding="iso8601" @keyDate="yes"]',
+    // NEW fields for Oral Histories
+    'interviewee'               => '',
+    'interviewer'               => '',
+    'parent_id'                 => '', // same as parent_identifier
+    'parent_identifier'         => '', // same as parent_id
+    // These field values are not represented in a MODS file, but will appear
+    // in the CSV file.
+    'batch' => '',
+    'collection' => '',
+    'file_name' => '',
+    'filename' => '',
+    'location' => '',
+    // NEW fields that will appear in the CSV file, but not to be transformed to
+    // a MODS node.
+    'path_to_master_wav' => '',
+  );
 }
 
 /**
@@ -1996,13 +2013,18 @@ function upitt_workflow_formatBytes($bytes, $precision = 2) {
 function upitt_workflow_get_ingest_temp_space() {
   $cmd = 'df -P | gawk \'{ printf "%s\t%s\t%s\t%s\t%s\n", $1, $6, $2, $3, $4 }\'';
   $output = array();
-  exec($cmd, $output ,$return_var);
+  exec($cmd, $output, $return_var);
   $temp_dir = file_directory_temp();
+  if (strstr($temp_dir, 'ingest') == '') {
+    $temp_dir = '/';
+  }
 
   $found_line = '';
   $space = 0;
   foreach ($output as $line) {
-    if (!$found_line && (strstr($line, $temp_dir) <> '')) {
+    $line_parts = explode("\t", $line);
+    $line_path =  isset($line_parts[1]) ? $line_parts[1] : $line_parts[0];
+    if (!$found_line && ($line_path == $temp_dir)) { // (strstr($line, $temp_dir) <> '')) {
       $found_line = $line;
     }
   }
@@ -2013,4 +2035,34 @@ function upitt_workflow_get_ingest_temp_space() {
     $space = isset($r[4]) ? $r[4] * 1024 : 0;
   }
   return $space;
+}
+
+/**
+ * This will inspect the filenames that are supplied in the $files array and
+ * return the fedora model that the files represent.
+ *
+ * @param array $files
+ * @return string
+ *   The name of the model that the files likely represent
+*/
+function upitt_workflow_determine_fedora_model_from_filenames($files) {
+  $model = 'sp_large_image_cmodel';
+  foreach ($files as $file) {
+    $file_pathinfo = pathinfo($file);
+    if (isset($file_pathinfo['extension'])) {
+      $upcase_extension = strtoupper($file_pathinfo['extension']);
+      switch ($upcase_extension) {
+        case 'XML':
+          break;
+        case 'WAV':
+          $model = 'sp_audioCModel';
+          break;
+        case 'MP4':
+          $model = 'sp_videoCModel';
+          break;
+      }
+    }
+  }
+  // inspect the child_file values to see what model to use
+  return $model;
 }
