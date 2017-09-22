@@ -923,21 +923,6 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
         $markup .= $recursion_results['markup'];
         $total_measured_space += $recursion_results['total_measured_space'];
       }
-
-      // For Compound objects, it will need to run create_structure_files.php to make
-      // a structure.xml for each parent compound object.
-      $compound_batch_module_full_path = getcwd() . '/' . drupal_get_path('module','islandora_compound_batch') . '/extras/scripts';
-      // make the command to call
-      $compound_objects_containing_folder = str_replace('/batch_' . $batch_external_id, '', $batch_path);
-      $create_structure_command = 'cd ' . $compound_batch_module_full_path . ';php ' . $compound_batch_module_full_path . '/create_structure_files.php ' . $compound_objects_containing_folder;
-      dpm($create_structure_command);
-      $output = array();
-      exec($create_structure_command, $output, $return_var);
-      if (count($output) > 0) {
-        foreach ($output as $subfolder) {
-          $markup .= 'structure.xml created for compound object folder ' . $subfolder . "<br>";
-        }
-      }
     }
 
     if (!$measure_space) {

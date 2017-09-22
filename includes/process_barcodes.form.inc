@@ -888,6 +888,23 @@ function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FAL
       }
 
       $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, $measure_size_only);
+
+      if ($content_model == 'compoundCModel') {
+        // For Compound objects, it will need to run create_structure_files.php to make
+        // a structure.xml for each parent compound object.
+        $compound_batch_module_full_path = getcwd() . '/' . drupal_get_path('module','islandora_compound_batch') . '/extras/scripts';
+        // make the command to call
+        $compound_objects_containing_folder = str_replace('/batch_' . $batch_external_id, '', $batch_path);
+        $create_structure_command = 'cd ' . $compound_batch_module_full_path . ';php ' . $compound_batch_module_full_path . '/create_structure_files.php ' . $compound_objects_containing_folder;
+        $output = array();
+        exec($create_structure_command, $output, $return_var);
+        if (count($output) > 0) {
+          foreach ($output as $subfolder) {
+            $copyfiles_result['markup'] .= 'structure.xml created for compound object folder ' . $subfolder . "<br>";
+          }
+        }
+      }
+
       $markup .= isset($copyfiles_result['markup']) ? '<div>' . $copyfiles_result['markup'] . '</div>' : '';
       $grand_total_size += (isset($copyfiles_result['total_measured_space'])) ? $copyfiles_result['total_measured_space'] : 0;
       $avail_ingest_temp_space = $copyfiles_result['available_space'];
