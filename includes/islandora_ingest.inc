@@ -827,8 +827,14 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
     }
   }
 
-  $temp_dest_file_uri = upitt_workflow_create_TN_LARGE_file($object, $obj_ds, $thumbnail_id, $object->models);
+  $results = upitt_workflow_create_TN_LARGE_file($object, $obj_ds, $thumbnail_id, $object->models);
 
+  if (is_array($results)) {
+    return (isset($results['success']) ? $results['success'] : FALSE);
+  }
+  else {
+    $temp_dest_file_uri = $results;
+  }
   if (!$temp_dest_file_uri) {
     return FALSE;
   }
