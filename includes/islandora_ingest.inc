@@ -827,7 +827,7 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
     }
   }
 
-  $temp_dest_file_uri = upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id, $object->models);
+  $temp_dest_file_uri = upitt_workflow_create_TN_LARGE_file($object, $obj_ds, $thumbnail_id, $object->models);
 
   if (!$temp_dest_file_uri) {
     return FALSE;
@@ -1043,7 +1043,7 @@ function upitt_workflow_create_TN_file($obj_ds, $thumbnail_id, $models) {
  * @param type $obj_ds
  * @return string
  */
-function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id, $models) {
+function upitt_workflow_create_TN_LARGE_file($object, $obj_ds, $thumbnail_id, $models) {
   module_load_include('inc', 'islandora_large_image', 'includes/derivatives');
   module_load_include('module', 'imagemagick', 'imagemagick');
 
@@ -1061,7 +1061,7 @@ function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id, $models) {
   if (islandora_large_image_is_tiff($obj_ds_file) || $obj_is_pdf) {
     $im_obj_ds_file = $obj_ds_file . '[0]';
   } elseif ($obj_is_video) {
-    $im_obj_ds_file = $obj_ds_file . '[1]'; // use first frame
+    return upitt_workflow_create_TN_LARGE_file_for_video($object);
   } else {
     $im_obj_ds_file = $obj_ds_file;
   }
@@ -1085,6 +1085,53 @@ function upitt_workflow_create_TN_LARGE_file($obj_ds, $thumbnail_id, $models) {
   file_unmanaged_delete($obj_ds_file);
   $derivative_file = $dest_file;
   return $derivative_file;
+}
+
+
+function upitt_workflow_create_TN_LARGE_file_for_video($object) {
+  module_load_include('inc', 'islandora_video', 'includes/derivatives');
+  $archival_file = islandora_video_copy_obj_datastream($object);
+  if ($archival_file === FALSE) {
+    return islandora_video_no_obj_datastream($object->id);
+  }
+  $archival_path = drupal_realpath($archival_file['file']->uri);
+  $out_file = $archival_path . '-TN_LARGE.jpg';
+  $ffmpeg_executable = variable_get('islandora_video_ffmpeg_path', 'ffmpeg');
+
+  $vid_length = "$ffmpeg_executable -i $archival_path 2>&1";
+  exec($vid_length, $time_output, $ret_value);
+
+  $dur_match = FALSE;
+  $duration = '';
+  foreach ($time_output as $key => $value) {
+    preg_match('/Duration: (.*), start/', $value, $time_match);
+    if (count($time_match)) {
+      $dur_match = TRUE;
+      $duration = $time_match[1];
+      break;
+    }
+  }
+  if ($dur_match) {
+    // Snip off the ms because we don't care about them.
+    $time_val = preg_replace('/\.(.*)/', '', $duration);
+    $time_array = explode(':', $time_val);
+    $output_time = floor((($time_array[0] * 360) + ($time_array[1] * 60) + $time_array[2]) / 2);
+    $resize = escapeshellarg("500 x 500");
+
+    $tn_large_creation = "$ffmpeg_executable -itsoffset -2 -ss $output_time -i $archival_path -vcodec mjpeg -vframes 1 -an -f rawvideo -resize $resize $out_file";
+
+    $return_value = FALSE;
+    exec($tn_large_creation, $output, $return_value);
+    file_delete($archival_file['file']);
+    if ($return_value === 0) {
+      return islandora_video_add_datastream($object, 'TN_LARGE', $out_file);
+    }
+    // Unable to generate with Ffmpeg, add default TN_LARGE.
+    else {
+      $stored_thumbnail = drupal_get_path('module', 'islandora_video') . '/images/crystal_clear_app_camera.png';
+      return islandora_video_add_datastream($object, 'TN_LARGE', $stored_thumbnail, FALSE);
+    }
+  }
 }
 
 function upitt_workflow_make_page_pdf($page_object) {
