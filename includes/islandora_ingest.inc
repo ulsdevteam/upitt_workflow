@@ -1056,7 +1056,11 @@ function upitt_workflow_create_TN_LARGE_file($object, $obj_ds, $thumbnail_id, $m
   $obj_ds_file = drupal_realpath("temporary://{$thumbnail_id}_OBJ.{$ext}");
   $obj_ds->getContent($obj_ds_file);
   $obj_is_pdf = (is_array($models) ? !(array_search('islandora:sp_pdf', $models) === FALSE) : FALSE);
-  $obj_is_video = (is_array($models) ? !(array_search('islandora:sp_videoCModel', $models) === FALSE) : FALSE);
+  // A video can be either islandora:oralhistoriesCModel or islandora:sp_videoCModel...
+  // it is probably better to look at the extension of the OBJ though -
+  $obj_is_video = (upitt_workflow_determine_fedora_model_from_extension($ext) == 'islandora:sp_videoCModel');
+  //  $obj_is_video = (is_array($models) ? (!(array_search('islandora:oralhistoriesCModel', $models) === FALSE) || !(array_search('islandora:sp_videoCModel', $models) === FALSE)) : FALSE);
+  //
   // For the imagemagick call, a TIF source needs [0] at the end of the filename source.
   if (islandora_large_image_is_tiff($obj_ds_file) || $obj_is_pdf) {
     $im_obj_ds_file = $obj_ds_file . '[0]';
@@ -1116,9 +1120,8 @@ function upitt_workflow_create_TN_LARGE_file_for_video($object) {
     $time_val = preg_replace('/\.(.*)/', '', $duration);
     $time_array = explode(':', $time_val);
     $output_time = floor((($time_array[0] * 360) + ($time_array[1] * 60) + $time_array[2]) / 2);
-    $resize = escapeshellarg("500 x 500");
 
-    $tn_large_creation = "$ffmpeg_executable -itsoffset -2 -ss $output_time -i $archival_path -vcodec mjpeg -vframes 1 -an -f rawvideo -resize $resize $out_file";
+    $tn_large_creation = "$ffmpeg_executable -itsoffset -2 -ss $output_time -i $archival_path -vcodec mjpeg -vframes 1 -an -f rawvideo $out_file";
 
     $return_value = FALSE;
     exec($tn_large_creation, $output, $return_value);

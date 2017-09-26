@@ -2046,23 +2046,52 @@ function upitt_workflow_get_ingest_temp_space() {
  *   The name of the model that the files likely represent
 */
 function upitt_workflow_determine_fedora_model_from_filenames($files) {
+  $extensionToContentModelMap = array(
+    'jpeg' => 'islandora:sp_basic_image',
+    'jpg' => 'islandora:sp_basic_image',
+    'gif' => 'islandora:sp_basic_image',
+    'png' => 'islandora:sp_basic_image',
+    'tif' => 'islandora:sp_large_image_cmodel',
+    'tiff' => 'islandora:sp_large_image_cmodel',
+    'jp2' => 'islandora:sp_large_image_cmodel',
+    'pdf' => 'islandora:sp_pdf',
+    'mp3' => 'islandora:sp-audioCModel',
+    'mp4a' => 'islandora:sp-audioCModel',
+    'm4a' => 'islandora:sp-audioCModel',
+    'oga' => 'islandora:sp-audioCModel',
+    'ogg' => 'islandora:sp-audioCModel',
+    'flac' => 'islandora:sp-audioCModel',
+    'wav' => 'islandora:sp-audioCModel',
+    'mp4' => 'islandora:sp_videoCModel',
+    'm4v'  => 'islandora:sp_videoCModel',
+    'mkv'  => 'islandora:sp_videoCModel',
+    'mpeg' => 'islandora:sp_videoCModel',
+    'mpe' => 'islandora:sp_videoCModel',
+    'mpg' => 'islandora:sp_videoCModel',
+    'qt' => 'islandora:sp_videoCModel',
+    'mov' => 'islandora:sp_videoCModel',
+    'ogv' => 'islandora:sp_videoCModel',
+  );
   $model = 'sp_large_image_cmodel';
   foreach ($files as $file) {
     $file_pathinfo = pathinfo($file);
     if (isset($file_pathinfo['extension'])) {
-      $upcase_extension = strtoupper($file_pathinfo['extension']);
-      switch ($upcase_extension) {
-        case 'XML':
-          break;
-        case 'WAV':
-          $model = 'sp_audioCModel';
-          break;
-        case 'MP4':
-          $model = 'sp_videoCModel';
-          break;
-      }
+      $lowcase_extension = strtolower($file_pathinfo['extension']);
+      $model = array_search($lowcase_extension, $extensionToContentModelMap);
     }
   }
-  // inspect the child_file values to see what model to use
   return $model;
+}
+
+/**
+ * This will return the fedora model name of a given file extension.
+ *
+ * @param string $extension
+ * @return string
+ */
+function upitt_workflow_determine_fedora_model_from_extension($extension) {
+  // Tricky way to use the existing function... just make up a dummy filename
+  // to use for that function call... it is the extension that is important.
+  $files = array('0' => 'tmp.' . $extension);
+  return upitt_workflow_determine_fedora_model_from_filenames($files);
 }
