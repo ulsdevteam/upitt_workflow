@@ -918,6 +918,9 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
 
       foreach ($child_paths as $child_folder_name => $child_files) {
         $child_content_model = upitt_workflow_determine_fedora_model_from_filenames($child_files);
+        if (strstr($child_content_model, 'islandora:')) {
+          $child_content_model = str_replace(array('islandora:', '-'), array('', '_'), $child_content_model);
+        }
         $recursion_results = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder . '/' . $child_folder_name,
             $batch_path . '/' . $child_folder_name, $child_content_model, $do_copy, $do_download, $child_folder_name, $measure_space, TRUE);
         $markup .= $recursion_results['markup'];
