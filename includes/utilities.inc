@@ -2077,7 +2077,9 @@ function upitt_workflow_determine_fedora_model_from_filenames($files) {
     $file_pathinfo = pathinfo($file);
     if (isset($file_pathinfo['extension'])) {
       $lowcase_extension = strtolower($file_pathinfo['extension']);
-      $model = array_search($lowcase_extension, $extensionToContentModelMap);
+      if (!(array_key_exists($lowcase_extension, $extensionToContentModelMap) === FALSE)) {
+        $model = $extensionToContentModelMap[$lowcase_extension];
+      }
     }
   }
   return $model;

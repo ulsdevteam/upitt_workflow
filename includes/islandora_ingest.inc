@@ -1065,7 +1065,7 @@ function upitt_workflow_create_TN_LARGE_file($object, $obj_ds, $thumbnail_id, $m
   if (islandora_large_image_is_tiff($obj_ds_file) || $obj_is_pdf) {
     $im_obj_ds_file = $obj_ds_file . '[0]';
   } elseif ($obj_is_video) {
-    return upitt_workflow_create_TN_LARGE_file_for_video($object);
+    return upitt_workflow_create_TN_LARGE_file_for_video($object, $dest_file);
   } else {
     $im_obj_ds_file = $obj_ds_file;
   }
@@ -1092,7 +1092,7 @@ function upitt_workflow_create_TN_LARGE_file($object, $obj_ds, $thumbnail_id, $m
 }
 
 
-function upitt_workflow_create_TN_LARGE_file_for_video($object) {
+function upitt_workflow_create_TN_LARGE_file_for_video($object, $dest_file) {
   module_load_include('inc', 'islandora_video', 'includes/derivatives');
   $archival_file = islandora_video_copy_obj_datastream($object);
   if ($archival_file === FALSE) {
@@ -1127,7 +1127,28 @@ function upitt_workflow_create_TN_LARGE_file_for_video($object) {
     exec($tn_large_creation, $output, $return_value);
     file_delete($archival_file['file']);
     if ($return_value === 0) {
-      return islandora_video_add_datastream($object, 'TN_LARGE', $out_file);
+      // Still not done here -- this image is the size of the video and needs to
+      // be resized to 500x500
+      $args = array();
+      $args[] = '-quality ' . escapeshellarg(variable_get('imagemagick_quality', 75));
+      $args[] = '-resize ' . escapeshellarg("500 x 500");
+
+      $command = escapeshellarg($out_file) . ' ' . implode(' ', $args) . ' ' . escapeshellarg($dest_file);
+      $output = array();
+      $ret = -1;
+      if (_imagemagick_convert_exec($command, $output, $ret) !== TRUE) {
+        $variables = array(
+          '@ret' => $ret,
+          '@command' => $command,
+          '!output' => implode('<br/>', $output),
+        );
+        watchdog('islandora_large_image', 'ImageMagick failed to convert.<br/>Error: @ret<br/>Command: @command <br/>Output !output', $variables, WATCHDOG_ERROR);
+        return FALSE;
+      }
+      file_unmanaged_delete($obj_ds_file);
+      file_unmanaged_delete($out_file);
+
+      return islandora_video_add_datastream($object, 'TN_LARGE', $dest_file);
     }
     // Unable to generate with Ffmpeg, add default TN_LARGE.
     else {
