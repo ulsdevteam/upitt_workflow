@@ -865,19 +865,20 @@ function upitt_workflow_islandora_paged_content_OCR_batch_operation_finished($pa
     }
 
     $delete_sql = "DELETE from gearman_queue WHERE data like '%\"" . $pid . "\",[]]}%' AND data like '%\"upitt_workflow_generate_ocr_datastreams\"%';";
-  drush_log($delete_sql, 'ok');
+    drush_log($delete_sql, 'ok');
 
     $result = mysqli_query($link, $delete_sql);
 
     @mysqli_close($link);  
 
     // Delete the temp files that islandora_batch is not cleaning up.
-    $filefriendly_pid = str_replace(":", "_", $pid);
-    $v = file_directory_temp() . '/';
-    $rm_temp_command = 'rm -rf ' . $v . $filefriendly_pid . '*';
-    $output = array();
-    exec($rm_temp_command, $output, $ret);
-  drush_log($rm_temp_command, 'ok');
-
+    /*
+    // $filefriendly_pid = str_replace(":", "_", $pid);
+    // $v = file_directory_temp() . '/';
+    // $rm_temp_command = 'rm -rf ' . $v . $filefriendly_pid . '*';
+    // $output = array();
+    // exec($rm_temp_command, $output, $ret);
+    // drush_log($rm_temp_command, 'ok');
+    */
   }
 }
