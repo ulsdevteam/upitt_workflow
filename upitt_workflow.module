@@ -854,18 +854,19 @@ function upitt_workflow_islandora_paged_content_OCR_batch_operation_finished($pa
     // Remove the page part
     $last_dash = strrpos($page_pid, '-');
     $pid = substr($page_pid, 0, $last_dash);
-    error_log('deleting gearman record for ' . $pid);
 
     global $databases;
     $db_host = $databases['default']['default']['host'];
     
     $link = mysqli_connect($db_host, 'gearman', 'ulsgearman', 'gearman_prod');
     if (mysqli_connect_errno()) {
-      printf("Connect failed: %s\n", mysqli_connect_error());
+      drush_log("Connect failed: " . mysqli_connect_error(), 'ok');
       exit();
     }
 
     $delete_sql = "DELETE from gearman_queue WHERE data like '%\"" . $pid . "\",[]]}%' AND data like '%\"upitt_workflow_generate_ocr_datastreams\"%';";
+  drush_log($delete_sql, 'ok');
+
     $result = mysqli_query($link, $delete_sql);
 
     @mysqli_close($link);  
@@ -876,5 +877,7 @@ function upitt_workflow_islandora_paged_content_OCR_batch_operation_finished($pa
     $rm_temp_command = 'rm -rf ' . $v . $filefriendly_pid . '*';
     $output = array();
     exec($rm_temp_command, $output, $ret);
+  drush_log($rm_temp_command, 'ok');
+
   }
 }

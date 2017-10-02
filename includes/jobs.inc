@@ -77,7 +77,7 @@ function upitt_workflow_generate_ocr_datastreams($object_in, array $options = ar
  * @return boolean
  */
 function upitt_workflow_do_ocr(AbstractObject $islandora_object, $options) {
-  $batch =& batch_get();
+  // PROBABLY should not do this twice::      $batch =& batch_get();
 
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
   module_load_include('inc', 'islandora_paged_content', 'includes/batch');

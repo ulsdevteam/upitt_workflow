@@ -147,7 +147,6 @@ function upitt_workflow_drush_generic($batch) {
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   // $batch_path = upitt_workflow_batch_path($batch);
   $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch['batch_external_id'];
-
   if ($batch['default_type_of_resource'] == 'newspaperCModel') {
     // The parent will be determined in the upitt_workflow_drush_newspaper_issue function
     // call by looking up the current marcxml.xml (OCoLC) value.
@@ -173,8 +172,8 @@ function upitt_workflow_drush_generic($batch) {
   $site = $batch['mapto_site_id_values'];
   // For the drush call, we need to get a few values from the batch record and even lookup the collection PIDs and item_file path.
   $batch_default_depositor = $batch['default_depositor'];
-  $fedora_model_name = $batch['default_type_of_resource'];
 
+  $fedora_model_name = trim($batch['default_type_of_resource']);
   if ($fedora_model_name == 'bookCModel') {
     $markup = upitt_workflow_drush_book($batch_path, $parent_review, $site, $ingest_namespace . $batch['batch_external_id']);
   } elseif ($fedora_model_name == 'compoundCModel') {
@@ -576,7 +575,6 @@ function upitt_workflow_drush_compound($filepath, $parent, $site, $pid) {
                    (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '');
   $markup = '<h4>Called islandora_compound_batch_preprocess</h4><code>' . $drush_command . '</code>';
   $retval .= $markup;
-
   $output = $return_var = array();
   exec($drush_command, $output, $return_var);
 
@@ -1240,7 +1238,6 @@ function upitt_workflow_create_review_collections($collection_pids) {
       $datastream = $object_review->constructDatastream('COLLECTION_POLICY', 'X');
       $datastream->label = 'COLLECTION_POLICY';
       $datastream->mimetype = 'application/xml';
-      error_log("$module_path/xml/islandora_basic_collection_ds_composite_model.xml");
       $datastream->setContentFromFile("$module_path/xml/islandora_basic_collection_collection_policy.xml", FALSE);
       $object_review->ingestDatastream($datastream);
 

@@ -613,6 +613,38 @@ function upitt_workflow_child_object_results($object, $ingest_namespace) {
       'total_OCR_size' => $total_OCR_size);
 }
 
+/**
+ * Inspect the islandora_object's models -- and check the $model_requirements array 
+ * for an existing value for this model -- and add the datastream requirements if it 
+ * did not exist.
+ *
+ * This will return the model_pids from the islandora_object that have datastream requirements.
+ */
+function upitt_workflow_object_model_datastream_requirements($islandora_object, &$model_requirements) {
+  $models = array();
+  if (is_array($islandora_object->models)) {
+    foreach ($islandora_object->models as $model_pid) {
+      if ($model_pid <> 'fedora-system:FedoraObject-3.0') {
+        if (array_key_exists($model_pid, $model_requirements) === FALSE) {
+          $model = @islandora_object_load($model_pid);
+          if (isset($model) && $model) {
+            $model_pids[] = $model_pid;
+            $ds_reqs = islandora_get_datastreams_requirements_from_content_model($model);
+            if (is_array($ds_reqs)) {
+              $model_requirements[$model_pid] = $ds_reqs;
+            }
+          }
+        }
+        else {
+          // the model already has been populated for this model_pid, still must add this model_pid to the models for this object.
+          $model_pids[] = $model_pid;
+        }
+      }
+    }
+  }
+  return $model_pids;
+}
+
 function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
   module_load_include('inc', 'islandora', 'includes/utilities');
   $markup = '<div class="text-report"><h3>Deep info on objects</h3>';
@@ -622,8 +654,18 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
   foreach ($check_results['found_pids'] as $barcode => $pid) {
     $islandora_object = islandora_object_load($pid);
     $ocr_aggregate_size = (isset($islandora_object['OCR'])) ? $islandora_object['OCR']->size : 0;
-    $requirements = islandora_get_datastreams_requirements_from_content_model($islandora_object);
-    $markup .= '<div>' . implode($requirements) . '</div>';
+    $model_requirements = $disds = array();
+    $model_pids = upitt_workflow_object_model_datastream_requirements($islandora_object, $model_requirements);
+    foreach ($model_pids as $model_pid) {
+      $ds_reqs_output = array();
+      foreach ($model_requirements[$model_pid] as $ds_key => $ds_requirement) {
+        $ds_reqs_output[] = '<span' . ((isset($ds_requirement['optional']) && $ds_requirement['optional'] == 1) ? ' class="optional"' : '') . '>' . $ds_key . '</span>';
+      }
+      $dsids[$model_pid] = implode(", ", $ds_reqs_output);
+    }
+    if (count($dsids) > 0) {
+      $markup .= '<div><b>' . implode(", ", (array)$islandora_object->models) . '  datastream requirements</b><br>' . implode(", ", $dsids) . '</div>';
+    }
     $datastream_results = upitt_workflow_datastream_results($islandora_object, $ingest_namespace, FALSE);
     $child_results = upitt_workflow_child_object_results($islandora_object, $ingest_namespace);
     if ($datastream_results['pdf_size'] === FALSE) {
@@ -978,7 +1020,6 @@ function upitt_workflow_ingest_prepare_for_barcodes($barcodes) {
     // Need to get the related batch record to determine whether or not the object
     // is ingested, the related model to use for ingest prepare call...
     $batch_id = upitt_workflow_get_batch_id($barcode, FALSE);
-
     if ($batch_id) {
       $batch = upitt_workflow_batch_load($batch_id);
       if (isset($batch['batch_id'])) {

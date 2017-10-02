@@ -148,3 +148,7 @@ a.bad {
 .not-found {
     color: #c00;
 }
+
+.optional {
+    color: #999;
+}
