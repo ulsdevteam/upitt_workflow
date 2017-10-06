@@ -16,7 +16,7 @@ function upitt_workflow_drush_command() {
     'description' => 'Create OCR datastreams for paged content object\'s pages.',
     'drupal dependencies' => array('islandora_batch','islandora_ocr'),
     'examples' => array(
-      'drush -v --user=admin --uri=http://digital.library.yorku.ca upitt_workflow_generate_ocr_datastreams --paged_object_pid=pitt:00awc1789m',
+      'drush -v --user=admin --uri=http://dev.gamera.library.pitt.edu upitt_workflow_generate_ocr_datastreams --paged_object_pid=pitt:00awc1789m',
     ),
     'options' => array(
       'paged_object_pid' => array(

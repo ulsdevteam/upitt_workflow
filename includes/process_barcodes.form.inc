@@ -596,7 +596,19 @@ function upitt_workflow_datastream_results($islandora_object, $ingest_namespace,
 function upitt_workflow_child_object_results($object, $ingest_namespace) {
   // if paged object, then use the pages function to get the child page objects
   $markup = '';
-  $object_members = upitt_workflow_get_object_members_solr_record($object->id,'PID');
+  if (!(array_search('islandora:compoundCModel', $object->models) === FALSE)) {
+    module_load_include('module', 'islandora_compound_object', 'islandora_compound_object');
+    $child_pids = islandora_compound_object_get_parts($object->id);
+    // Put the results in the same structure that is expected back by the
+    // solr_record method below.
+    $object_members = array();
+    foreach ($child_pids as $idx => $pid) {
+      $object_members[$idx] = array('PID' => $pid);
+    }
+  }
+  else {
+    $object_members = upitt_workflow_get_object_members_solr_record($object->id,'PID');
+  }
   $total_OCR_size = 0;
   foreach ($object_members as $member_solr_doc) {
     $member_object = islandora_object_load($member_solr_doc['PID']);
@@ -651,6 +663,7 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
 
+
   foreach ($check_results['found_pids'] as $barcode => $pid) {
     $islandora_object = islandora_object_load($pid);
     $ocr_aggregate_size = (isset($islandora_object['OCR'])) ? $islandora_object['OCR']->size : 0;
@@ -668,14 +681,17 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
     }
     $datastream_results = upitt_workflow_datastream_results($islandora_object, $ingest_namespace, FALSE);
     $child_results = upitt_workflow_child_object_results($islandora_object, $ingest_namespace);
-    if ($datastream_results['pdf_size'] === FALSE) {
-      $markup .= '<div class="bad">There is no PDF datastream.</div>';
-    }
-    elseif ($datastream_results['pdf_size'] < 2193) {
-      $markup .= '<div class="bad">PDF file is less than 2,193 bytes -- size = ' . $datastream_results['pdf_size'] . '.</div>';
-    } 
-    else {
-      $markup .= '<div class="good">PDF file size is good - size = ' . $datastream_results['pdf_size'] . '.</div>';
+    $is_paged = upitt_workflow_is_paged_object($islandora_object);
+    if ($is_paged) {
+      if ($datastream_results['pdf_size'] === FALSE) {
+        $markup .= '<div class="bad">There is no PDF datastream.</div>';
+      }
+      elseif ($datastream_results['pdf_size'] < 2193) {
+        $markup .= '<div class="bad">PDF file is less than 2,193 bytes -- size = ' . $datastream_results['pdf_size'] . '.</div>';
+      }
+      else {
+        $markup .= '<div class="good">PDF file size is good - size = ' . $datastream_results['pdf_size'] . '.</div>';
+      }
     }
 
     $markup .= $datastream_results['markup'];

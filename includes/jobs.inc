@@ -61,9 +61,6 @@ function upitt_workflow_generate_ocr_datastreams($object_in, array $options = ar
     drush_backend_batch_process();
   }
 
-//BGG - no need for defer derivatives  if ($re_add) {
-//BGG - no need for defer derivatives    islandora_set_defer_derivatives_flag($object);
-//BGG - no need for defer derivatives  }
   return $result;
 }
 
