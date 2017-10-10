@@ -1020,6 +1020,9 @@ function upitt_workflow_create_TN_file($obj_ds, $thumbnail_id, $models) {
   }
 
   $args = array();
+  if ($obj_is_pdf) {
+    $args[] = '-flatten';
+  }
   $args[] = '-quality ' . escapeshellarg(variable_get('imagemagick_quality', 75));
   $args[] = '-resize ' . escapeshellarg("200 x 200");
 
@@ -1075,6 +1078,9 @@ function upitt_workflow_create_TN_LARGE_file($object, $obj_ds, $thumbnail_id, $m
   }
 
   $args = array();
+  if ($obj_is_pdf) {
+    $args[] = '-flatten';
+  }
   $args[] = '-quality ' . escapeshellarg(variable_get('imagemagick_quality', 75));
   $args[] = '-resize ' . escapeshellarg("500 x 500");
 
