@@ -143,7 +143,8 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
         $not_found_pids[$barcode] = $pid;
       }
       else {
-        $pages = islandora_paged_content_get_pages($islandora_object);
+        $is_paged = upitt_workflow_is_paged_object($islandora_object);
+        $pages = ($is_paged) ? islandora_paged_content_get_pages($islandora_object) : array();
         $page_count = count($pages);
         $found_pid_manage_links[$barcode] = '"' . $pid . '": ' .
                 ($page_count ? '(' . number_format($page_count) . ' pages) ' : '') .
@@ -368,7 +369,8 @@ function upitt_workflow_purge_OCR_PDF_for_barcodes($barcodes) {
     $pid = $ingest_namespace . $barcode;
     $islandora_object = islandora_object_load($pid);
     if (is_object($islandora_object)) {
-      $pages = islandora_paged_content_get_pages_ri($islandora_object);
+      $is_paged = upitt_workflow_is_paged_object($islandora_object);
+      $pages = ($is_paged) ? islandora_paged_content_get_pages($islandora_object) : array();
       upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 'OCR');
       upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 'PDF');
       $markup .= '<div class="good">Successfully purged OCR or PDF datastream for ' . $pid . '.</div>';
@@ -397,7 +399,8 @@ function upitt_workflow_make_page_pdf_for_barcodes($barcodes) {
     $pid = $ingest_namespace . $barcode;
     $islandora_object = islandora_object_load($pid);
     if (is_object($islandora_object)) {
-      $pages = islandora_paged_content_get_pages($islandora_object);
+      $is_paged = upitt_workflow_is_paged_object($islandora_object);
+      $pages = ($is_paged) ? islandora_paged_content_get_pages($islandora_object) : array();
       foreach ($pages as $child_page) {
         if (isset($child_page['pid'])) {
           $child_page_obj = islandora_object_load($child_page['pid']);
@@ -621,7 +624,7 @@ function upitt_workflow_child_object_results($object, $ingest_namespace) {
       $exists = is_object($child_object);
       if ($exists) {
         $object_members[] = array('PID' => $child_object_pid);
-        $existing_related_members[] = l($child_object_pid, "islandora/object/{$child_object_pid}");
+        $existing_related_members[] = l($child_object_pid . ': "' . $child_object->label . '"', "islandora/object/{$child_object_pid}");
       }
       else {
         $pending_online_related_members[] = $child_object_pid;
@@ -1226,7 +1229,8 @@ function upitt_workflow_aggregate_for_barcodes($barcodes) {
         upitt_workflow_aggregate_ocr_derivative($ingested_object);
         $markup .= 'OCR aggregate created<br>';
 
-        $pages = islandora_paged_content_get_pages($ingested_object);
+        $is_paged = upitt_workflow_is_paged_object($ingested_object);
+        $pages = ($is_paged) ? islandora_paged_content_get_pages($ingested_object) : array();
         if (count($pages)) {
           module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
           $page = array_shift($pages);
