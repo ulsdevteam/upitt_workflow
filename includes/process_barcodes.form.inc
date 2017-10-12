@@ -14,7 +14,7 @@ set_time_limit(0);
 
 function upitt_workflow_process_barcodes_form($form, &$form_state) {
   if (!isset($form_state['values']['barcodes']) && isset($_GET['barcodes']) && isset($_GET['mode'])) {
-    $form_state['values']['barcodes'] = filter_xss($_GET['barcodes']);
+    $form_state['values']['barcodes'] = str_replace(array(';', ','), "\n", filter_xss($_GET['barcodes']));
     $form_state['values']['mode'] = filter_xss($_GET['mode']);
   }
   $process_options = array(
