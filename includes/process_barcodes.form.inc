@@ -606,6 +606,30 @@ function upitt_workflow_child_object_results($object, $ingest_namespace) {
       $object_members[$idx] = array('PID' => $pid);
     }
   }
+  elseif (!(array_search('islandora:findingAidCModel', $object->models) === FALSE)) {
+    // get Finding Aids members.
+    module_load_include('module','upitt_islandora_findingaids_relationships');
+    $related_objects = findingaid_objects($object->id);
+    // get all the objects that are currently related to this finding aid object.
+    $ead_referenced_objects = findingaid_EAD_objects($object);
+    $referenced_objects = array_merge($ead_referenced_objects, $related_objects);
+    $related_count = 0;
+    $existing_related_members = $pending_online_related_members = array();
+    foreach ($referenced_objects as $child_object_pid => $child_rec_array) {
+      $child_object = islandora_object_load($child_object_pid);
+      $related = FALSE;
+      $exists = is_object($child_object);
+      if ($exists) {
+        $object_members[] = array('PID' => $child_object_pid);
+        $existing_related_members[] = l($child_object_pid, "islandora/object/{$child_object_pid}");
+      }
+      else {
+        $pending_online_related_members[] = $child_object_pid;
+      }
+    }
+    $markup = '<div><pre>' . implode(', ', $existing_related_members) . '</pre>' .
+      '<h4>Pending online members</h4><pre>' . implode(', ', $pending_online_related_members) . '</pre></div>';
+  }
   else {
     $object_members = upitt_workflow_get_object_members_solr_record($object->id,'PID');
   }
