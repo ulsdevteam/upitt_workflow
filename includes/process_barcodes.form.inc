@@ -617,7 +617,7 @@ function upitt_workflow_child_object_results($object, $ingest_namespace) {
     $ead_referenced_objects = findingaid_EAD_objects($object);
     $referenced_objects = array_merge($ead_referenced_objects, $related_objects);
     $related_count = 0;
-    $existing_related_members = $pending_online_related_members = array();
+    $existing_related_members = $pending_online_related_members = $barcodes = array();
     foreach ($referenced_objects as $child_object_pid => $child_rec_array) {
       $child_object = islandora_object_load($child_object_pid);
       $related = FALSE;
@@ -628,10 +628,15 @@ function upitt_workflow_child_object_results($object, $ingest_namespace) {
       }
       else {
         $pending_online_related_members[] = $child_object_pid;
+        @list($namespace, $barcode) = explode(":", $child_object_pid);
+        $barcodes[] = $barcode;
       }
     }
     $markup = '<div><pre>' . implode(', ', $existing_related_members) . '</pre>' .
-      '<h4>Pending online members</h4><pre>' . implode(', ', $pending_online_related_members) . '</pre></div>';
+      '<h4>Pending online members</h4><pre>' .
+          ((count($pending_online_related_members) > 0) ?
+            '<b>' . l('Process these objects', '/workflow/workflowadmin/process_barcodes/?barcodes=' . implode(",",$barcodes) . '&mode=update') . '</b>' . implode(', ', $pending_online_related_members) :
+            '<i>no pending object members</i>') . '</pre></div>';
   }
   else {
     $object_members = upitt_workflow_get_object_members_solr_record($object->id,'PID');
