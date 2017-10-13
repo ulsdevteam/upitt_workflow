@@ -599,12 +599,13 @@ function upitt_workflow_datastream_results($islandora_object, $ingest_namespace,
 function upitt_workflow_child_object_results($object, $ingest_namespace) {
   // if paged object, then use the pages function to get the child page objects
   $markup = '';
+  $object_members = array();
+
   if (!(array_search('islandora:compoundCModel', $object->models) === FALSE)) {
     module_load_include('module', 'islandora_compound_object', 'islandora_compound_object');
     $child_pids = islandora_compound_object_get_parts($object->id);
     // Put the results in the same structure that is expected back by the
     // solr_record method below.
-    $object_members = array();
     foreach ($child_pids as $idx => $pid) {
       $object_members[$idx] = array('PID' => $pid);
     }
