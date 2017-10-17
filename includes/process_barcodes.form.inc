@@ -28,7 +28,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'gen_OCR' => ' - Generate OCR',
       'do_publish' => ' - Publish objects to site',
     '1' => 'Special Functionality',
-      'fix_page_sizes' => 'Fix Page size RELS_INT',
+      'fix_page_sizes' => ' - Fix Page size RELS_INT',
       'make_tn' => ' - Make TN derivative',
       'make_tn_large' => ' - Make TN_LARGE derivative',
       'make_jp2' => ' - Make JP2 derivative',
@@ -461,6 +461,7 @@ function upitt_workflow_make_jp2_for_barcodes($barcodes) {
 
 function upitt_workflow_fix_page_sizes_for_barcodes($barcodes) {
   module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
 
   $missing_barcodes = array();
   $barcodes_arr = explode("\n", $barcodes);
