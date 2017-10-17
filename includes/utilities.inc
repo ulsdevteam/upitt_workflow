@@ -2118,3 +2118,28 @@ function upitt_workflow_getMimetypeToFileExtension($mimetype) {
   );
   return $extensions[$mimetype];
 }
+
+function upitt_workflow_getDatastreamToFile($object,$dsid,$file) {
+  $datastream = $object["$dsid"];
+  if ($datastream) {
+    if ( ! is_writable(dirname($file))) {
+      print "ERROR: ".dirname($file) . " must be writable!!!\n";
+      return(FALSE);
+    } else {
+      $result = $datastream->getContent($file);
+      if (! $result) {
+        print "Get datastream failed.\n";
+      } else {
+        return(TRUE);
+      }
+    }
+  } else {
+    print "ERROR: Datastream: ".$dsid." does not exist.\n";
+    return(FALSE);
+  }
+}
+
+function upitt_workflow_set_relationship($relationships, $predicate_uri, $predicate, $object, $literal = FALSE) {
+  $relationships->remove($predicate_uri, $predicate, NULL, $literal);
+  $relationships->add($predicate_uri, $predicate, $object, $literal);
+}

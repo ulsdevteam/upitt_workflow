@@ -528,7 +528,7 @@ function upitt_workflow_fix_page_size($pageObject) {
   $mimetype = $obj_datastream->mimetype;
   $fileextension = upitt_workflow_getMimetypeToFileExtension($mimetype);
   $filename = tempnam("temporary://", "$DSID.$fileextension");
-  $retval = getDatastreamToFile($pageObject,"OBJ","$filename");
+  $retval = upitt_workflow_getDatastreamToFile($pageObject,"OBJ","$filename");
   list($width, $height) = getimagesize($filename);
   @unlink($filename);
 
@@ -538,8 +538,8 @@ function upitt_workflow_fix_page_size($pageObject) {
   }
   else {
     # Size is incorrect - needs updating.
-    set_relationship($rels, ISLANDORA_RELS_EXT_URI, 'width', $width, 1);
-    set_relationship($rels, ISLANDORA_RELS_EXT_URI, 'height', $height, 1);
+    upitt_workflow_set_relationship($rels, ISLANDORA_RELS_EXT_URI, 'width', $width, 1);
+    upitt_workflow_set_relationship($rels, ISLANDORA_RELS_EXT_URI, 'height', $height, 1);
 
     return sqrt(($width - $width_rels) * ($width - $width_rels) + ($height == $height_rels) * ($height == $height_rels));
     # Report on the differences.
