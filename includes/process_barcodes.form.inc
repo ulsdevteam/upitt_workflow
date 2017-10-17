@@ -28,6 +28,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'gen_OCR' => ' - Generate OCR',
       'do_publish' => ' - Publish objects to site',
     '1' => 'Special Functionality',
+      'fix_page_sizes' => 'Fix Page size RELS_INT',
       'make_tn' => ' - Make TN derivative',
       'make_tn_large' => ' - Make TN_LARGE derivative',
       'make_jp2' => ' - Make JP2 derivative',
@@ -458,6 +459,92 @@ function upitt_workflow_make_jp2_for_barcodes($barcodes) {
   return $markup;
 }
 
+function upitt_workflow_fix_page_sizes_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+
+  $missing_barcodes = array();
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '<div class="text-report">';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $pid = $ingest_namespace . $barcode;
+    $islandora_object = islandora_object_load($pid);
+
+    $pages = array_keys(islandora_paged_content_get_pages($islandora_object));
+    $page_count = count($pages);
+
+    error_log('Start updating page size for book ' . $pid);
+    // For each PageObject update the height/width of the image in RELS-INT.
+    foreach ($pages as $page) {
+      # Working on this PID.
+      error_log("PID: $page");
+
+      # Get the PageObject.
+      $pageObject = islandora_object_load($page);
+
+      if (is_object($pageObject)) {
+        if (!$changed_radius_calc = upitt_workflow_fix_page_size($pageObject)) {
+          $missing_barcodes[] = $barcode;
+        }
+        else {
+          if ($changed_radius_calc > 1) {
+            $markup .= '<div>Page size RELS-INT adjusted for ' . $page . "</div>";
+          }
+          else {
+            $markup .= '<div>Page size checked for ' . $page . "</div>";
+          }
+        }
+      }
+      else {
+        $missing_barcodes[] = $barcode;
+      }
+    }
+  }
+  if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
+  }
+  $markup .= '</div>';
+  return $markup;
+}
+
+function upitt_workflow_fix_page_size($pageObject) {
+  # Get the RELS-INT size of the image.
+  # This should probably be the OBJ datastream but in some cases
+  # the OBJ datastream doesn't work.
+  $jp2_datastream = $pageObject['JP2'];
+  $rels = $jp2_datastream->relationships;
+  $width_rels_in = $rels->get(ISLANDORA_RELS_EXT_URI, 'width');
+  $width_rels = $width_rels_in[0]['object']['value'];
+  $height_rels_in = $rels->get(ISLANDORA_RELS_EXT_URI, 'height');
+  $height_rels = $height_rels_in[0]['object']['value'];
+
+  # Get the actual image dimensions.
+  $DSID = "OBJ";
+  $obj_datastream = $pageObject['OBJ'];
+  $mimetype = $obj_datastream->mimetype;
+  $fileextension = getMimetypeToFileExtension($mimetype);
+  $filename = tempnam("temporary://", "$DSID.$fileextension");
+  $retval = getDatastreamToFile($pageObject,"OBJ","$filename");
+  list($width, $height) = getimagesize($filename);
+  @unlink($filename);
+
+  # Determine if update is needed.
+  if (($width == $width_rels) && ($height == $height_rels)) {
+    return true;
+  }
+  else {
+    # Size is incorrect - needs updating.
+    set_relationship($rels, ISLANDORA_RELS_EXT_URI, 'width', $width, 1);
+    set_relationship($rels, ISLANDORA_RELS_EXT_URI, 'height', $height, 1);
+
+    return sqrt(($width - $width_rels) * ($width - $width_rels) + ($height == $height_rels) * ($height == $height_rels));
+    # Report on the differences.
+    error_log("Actual Width: $width, Height: $height,  \n" .
+              "RELS-INT Width: $width_rels, Height: $height_rels");
+  }
+}
+
 function upitt_workflow_make_tn_for_barcodes($barcodes) {
   module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
 
@@ -599,13 +686,12 @@ function upitt_workflow_datastream_results($islandora_object, $ingest_namespace,
 function upitt_workflow_child_object_results($object, $ingest_namespace) {
   // if paged object, then use the pages function to get the child page objects
   $markup = '';
-  $object_members = array();
-
   if (!(array_search('islandora:compoundCModel', $object->models) === FALSE)) {
     module_load_include('module', 'islandora_compound_object', 'islandora_compound_object');
     $child_pids = islandora_compound_object_get_parts($object->id);
     // Put the results in the same structure that is expected back by the
     // solr_record method below.
+    $object_members = array();
     foreach ($child_pids as $idx => $pid) {
       $object_members[$idx] = array('PID' => $pid);
     }
