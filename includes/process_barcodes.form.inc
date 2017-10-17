@@ -719,10 +719,21 @@ function upitt_workflow_child_object_results($object, $ingest_namespace) {
         $barcodes[] = $barcode;
       }
     }
+    $link_options = array();
+    if (count($pending_online_related_members) > 0) {
+      $link_options = array(
+        'query' => array(
+          'mode' => 'update',
+          'barcodes' => implode(",",$barcodes),
+        ),
+        'attributes' => array('target'=>'_blank'),
+      );
+    }
+
     $markup = '<div><pre>' . implode(', ', $existing_related_members) . '</pre>' .
       '<h4>Pending online members</h4><pre>' .
           ((count($pending_online_related_members) > 0) ?
-            '<b>' . l('Process these objects', '/workflow/workflowadmin/process_barcodes/?barcodes=' . implode(",",$barcodes) . '&mode=update') . '</b>' . implode(', ', $pending_online_related_members) :
+            '<b>' . l('Process these objects', '/workflow/workflowadmin/process_barcodes/', $link_options) . '</b> ' . implode(', ', $pending_online_related_members) :
             '<i>no pending object members</i>') . '</pre></div>';
   }
   else {
