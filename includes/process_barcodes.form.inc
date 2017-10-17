@@ -510,6 +510,8 @@ function upitt_workflow_fix_page_sizes_for_barcodes($barcodes) {
 }
 
 function upitt_workflow_fix_page_size($pageObject) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
   # Get the RELS-INT size of the image.
   # This should probably be the OBJ datastream but in some cases
   # the OBJ datastream doesn't work.
@@ -524,7 +526,7 @@ function upitt_workflow_fix_page_size($pageObject) {
   $DSID = "OBJ";
   $obj_datastream = $pageObject['OBJ'];
   $mimetype = $obj_datastream->mimetype;
-  $fileextension = getMimetypeToFileExtension($mimetype);
+  $fileextension = upitt_workflow_getMimetypeToFileExtension($mimetype);
   $filename = tempnam("temporary://", "$DSID.$fileextension");
   $retval = getDatastreamToFile($pageObject,"OBJ","$filename");
   list($width, $height) = getimagesize($filename);

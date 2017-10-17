@@ -2097,3 +2097,24 @@ function upitt_workflow_determine_fedora_model_from_extension($extension) {
   $files = array('0' => 'tmp.' . $extension);
   return upitt_workflow_determine_fedora_model_from_filenames($files);
 }
+
+function upitt_workflow_getMimetypeToFileExtension($mimetype) {
+  $extensions = array(
+    'text/xml'              => 'xml',
+    'text/html'             => 'html',
+    'image/jpeg'            => 'jpg',
+    'image/jpg'             => 'jpg',
+    'image/tiff'            => 'tif',
+    'image/jp2'             => 'jp2',
+    'image/png'             => 'png',
+    'audio/mpeg'            => 'mp3',
+    'application/rdf+xml'   => 'xml',
+    'application/xml'       => 'xml',
+    'video/mp4'             => 'mp4',
+    'video/x-matroska'      => 'mkv',
+    'application/pdf'       => 'pdf',
+    'audio/x-wav'           => 'wav',
+    'text/plain'            => 'txt'
+  );
+  return $extensions[$mimetype];
+}
