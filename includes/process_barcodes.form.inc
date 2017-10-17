@@ -532,25 +532,17 @@ function upitt_workflow_fix_page_size($pageObject) {
   list($width, $height) = getimagesize($filename);
   @unlink($filename);
 
-  # Determine if update is needed.
-  if (($width == $width_rels) && ($height == $height_rels)) {
-    return true;
-  }
-  else {
-    # Size is incorrect - needs updating.
-    
-    // REMOVE any RELS_EXT width/height - that value would be wrong!
-    $rels->remove(ISLANDORA_RELS_EXT_URI, 'width', NULL);
-    $rels->remove(ISLANDORA_RELS_EXT_URI, 'height', NULL);
+  // REMOVE any RELS_EXT width/height - that value would be wrong!
+  $rels->remove(ISLANDORA_RELS_EXT_URI, 'width', NULL);
+  $rels->remove(ISLANDORA_RELS_EXT_URI, 'height', NULL);
 
-    upitt_workflow_set_relationship($rels, ISLANDORA_RELS_INT_URI, 'width', $width, 1);
-    upitt_workflow_set_relationship($rels, ISLANDORA_RELS_INT_URI, 'height', $height, 1);
+  upitt_workflow_set_relationship($rels, ISLANDORA_RELS_INT_URI, 'width', $width, 1);
+  upitt_workflow_set_relationship($rels, ISLANDORA_RELS_INT_URI, 'height', $height, 1);
 
-    return sqrt(($width - $width_rels) * ($width - $width_rels) + ($height == $height_rels) * ($height == $height_rels));
-    # Report on the differences.
-    error_log("Actual Width: $width, Height: $height,  \n" .
-              "RELS-INT Width: $width_rels, Height: $height_rels");
-  }
+  return sqrt(($width - $width_rels) * ($width - $width_rels) + ($height == $height_rels) * ($height == $height_rels));
+  # Report on the differences.
+  error_log("Actual Width: $width, Height: $height,  \n" .
+            "RELS-INT Width: $width_rels, Height: $height_rels");
 }
 
 function upitt_workflow_make_tn_for_barcodes($barcodes) {
