@@ -517,9 +517,9 @@ function upitt_workflow_fix_page_size($pageObject) {
   # the OBJ datastream doesn't work.
   $jp2_datastream = $pageObject['JP2'];
   $rels = $jp2_datastream->relationships;
-  $width_rels_in = $rels->get(ISLANDORA_RELS_EXT_URI, 'width');
+  $width_rels_in = $rels->get(ISLANDORA_RELS_INT_URI, 'width');
   $width_rels = $width_rels_in[0]['object']['value'];
-  $height_rels_in = $rels->get(ISLANDORA_RELS_EXT_URI, 'height');
+  $height_rels_in = $rels->get(ISLANDORA_RELS_INT_URI, 'height');
   $height_rels = $height_rels_in[0]['object']['value'];
 
   # Get the actual image dimensions.
@@ -538,8 +538,13 @@ function upitt_workflow_fix_page_size($pageObject) {
   }
   else {
     # Size is incorrect - needs updating.
-    upitt_workflow_set_relationship($rels, ISLANDORA_RELS_EXT_URI, 'width', $width, 1);
-    upitt_workflow_set_relationship($rels, ISLANDORA_RELS_EXT_URI, 'height', $height, 1);
+    
+    // REMOVE any RELS_EXT width/height - that value would be wrong!
+    $rels->remove(ISLANDORA_RELS_EXT_URI, 'width', NULL);
+    $rels->remove(ISLANDORA_RELS_EXT_URI, 'height', NULL);
+
+    upitt_workflow_set_relationship($rels, ISLANDORA_RELS_INT_URI, 'width', $width, 1);
+    upitt_workflow_set_relationship($rels, ISLANDORA_RELS_INT_URI, 'height', $height, 1);
 
     return sqrt(($width - $width_rels) * ($width - $width_rels) + ($height == $height_rels) * ($height == $height_rels));
     # Report on the differences.
