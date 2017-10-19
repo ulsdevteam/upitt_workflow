@@ -873,6 +873,30 @@ function upitt_workflow_batch_file_path($barcode, $link) {
 }
 
 /**
+ * Helper function that will just get the item_type name from the core_item record
+ * that matches this barcode.  Returns an empty string if no match was found;
+ *
+ * @param string $barcode
+ * @param type $link
+ * @return string
+ */
+function upitt_workflow_item_type_of_barcode($barcode, $link) {
+  $sql = "select i.do_id, c.name from core_item i join core_item_type c ON (i.type_id = c.id) where i.do_id = '" . mysqli_real_escape_string($link, $barcode) . "' LIMIT 1";
+  $result = mysqli_query($link, $sql);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+
+  $item_type = '';
+  $row = mysqli_fetch_assoc($result);
+  if (isset($row['path'])) {
+    $pathinfo = pathinfo($row['path']);
+    $item_type = $pathinfo['name'];
+  }
+  return $item_type;
+}
+
+/**
  * This will look in the item / item_file table to get the path for that barcode's workflow record.
  *
  * @param type $barcodes
@@ -888,6 +912,33 @@ function upitt_workflow_get_wf_paths_for_barcodes($barcodes) {
     $path = upitt_workflow_batch_file_path($barcode, $link);
     if ($path) {
       $markup .= '<span class="good">' . $barcode . "\t" . $path . '</span><br>';
+    }
+    else {
+      $markup .= '<span class="bad">' . $barcode . ' not found in item table</span><br>';
+    }
+  }
+  $markup .= '</div>';
+
+  return $markup;
+}
+
+/**
+ * This will look in the item / core_item_type table to get the item_type
+ * of the barcodes' workflow records.
+ *
+ * @param type $barcodes
+ * @return string HTML markup
+ */
+function upitt_workflow_get_wf_model_for_barcodes($barcodes) {
+  $barcodes_arr = explode("\n", $barcodes);
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $markup = '<div class="text-report"><h3>Bigfoot paths for barcodes</h3>';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $item_type = upitt_workflow_item_type_of_barcode($barcode, $link);
+    if ($item_type) {
+      $markup .= '<span class="good">' . $barcode . "\t" . $item_type . '</span><br>';
     }
     else {
       $markup .= '<span class="bad">' . $barcode . ' not found in item table</span><br>';
