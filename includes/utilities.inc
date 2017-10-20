@@ -2143,3 +2143,18 @@ function upitt_workflow_set_relationship($relationships, $predicate_uri, $predic
   $relationships->remove($predicate_uri, $predicate, NULL, $literal);
   $relationships->add($predicate_uri, $predicate, $object, $literal);
 }
+
+/**
+ * Use the JP2 to derive the image size.
+ */
+function upitt_workflow_get_jp2_dimensions($object) {
+  if (isset($object["JP2"])) {
+    // use getimagesize on it
+    $saved_jp2 = tempnam(variable_get('file_temporary_path', '/tmp'), '_jp2_dimensions_check_');
+    $object["JP2"]->getContent($saved_jp2);
+    $image_size = getimagesize($saved_jp2);
+    @unlink($saved_jp2);
+    list($width, $height, $type, $attr) = $image_size;
+    return array('width' => $width, 'height' => $height);
+  }
+}

@@ -146,9 +146,37 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
       else {
         $is_paged = upitt_workflow_is_paged_object($islandora_object);
         $pages = ($is_paged) ? islandora_paged_content_get_pages($islandora_object) : array();
+
+        $regen_jp2_link = '';
+        $first_page = array_pop($pages);
+        if ($first_page) {
+          $page_object = islandora_object_load($first_page['pid']);
+          $page_jp2_dimensions = upitt_workflow_get_jp2_dimensions($page_object);
+          if ($first_page['width'] <> $page_jp2_dimensions['width'] ||
+              $first_page['height'] <> $page_jp2_dimensions['height']) {
+            @list($namespace, $barcode_of_object) = explode(":", $islandora_object->id);
+            $link_options = array(
+              'query' => array(
+                'mode' => 'make_jp2',
+                'barcodes' => $barcode_of_object,
+              ),
+              'attributes' => array(
+                'target'=>'_blank',
+                'class' => 'bad',
+              ),
+            );
+
+            $regen_jp2_link  = '<br><b>' .
+                l('Regenerate JP2 for ' . $islandora_object->id, '/workflow/workflowadmin/process_barcodes/', $link_options) .
+                '</b><br>';
+          }
+        }
+
+
         $page_count = count($pages);
         $found_pid_manage_links[$barcode] = '"' . $pid . '": ' .
                 ($page_count ? '(' . number_format($page_count) . ' pages) ' : '') .
+                $regen_jp2_link .
                 l('DELETE', 'islandora/object/' . $pid . '/delete', array('attributes' => array('title' => 'DELETE object', 'class' => 'bad'))) . ' | ' .
                 l('Regen', 'islandora/object/' . $pid . '/regenerate', array('attributes' => array('title' => 'Regenerate all derivatives', 'class' => 'bad'))) . ' | ' .
                 l('Manage', 'islandora/object/' . $pid . '/manage', array('attributes' => array('title' => 'Manage object'))) . ' | ' .
