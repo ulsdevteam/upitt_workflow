@@ -405,7 +405,9 @@ function upitt_workflow_purge_OCR_PDF_for_barcodes($barcodes) {
       $markup .= '<div class="good">Successfully purged OCR or PDF datastream for ' . $pid . '.</div>';
     }
     else {
-      $missing_barcodes[] = $barcode;
+      if ($barcode) {
+        $missing_barcodes[] = $barcode;
+      }
     }
   }
   if (count($missing_barcodes) > 0) {
@@ -444,7 +446,9 @@ function upitt_workflow_make_page_pdf_for_barcodes($barcodes) {
       }
     } 
     else {
-      $missing_barcodes[] = $barcode;
+      if ($barcode) {
+        $missing_barcodes[] = $barcode;
+      }
     }
     $markup .= '<div class="good"><b>PDF derivatives created for the pages of ' . $pid . "</b></div>";
   }
@@ -526,7 +530,9 @@ function upitt_workflow_fix_page_sizes_for_barcodes($barcodes) {
         }
       }
       else {
-        $missing_barcodes[] = $barcode;
+        if ($barcode) {
+          $missing_barcodes[] = $barcode;
+        }
       }
     }
   }
@@ -590,7 +596,9 @@ function upitt_workflow_make_tn_for_barcodes($barcodes) {
       }
     }
     else {
-      $missing_barcodes[] = $barcode;
+      if ($barcode) {
+        $missing_barcodes[] = $barcode;
+      }
     }
     $markup .= '<div>TN created for ' . $pid . "</div>";
   }
@@ -618,7 +626,9 @@ function upitt_workflow_make_tn_large_for_barcodes($barcodes) {
       }
     }
     else {
-      $missing_barcodes[] = $barcode;
+      if ($barcode) {
+        $missing_barcodes[] = $barcode;
+      }
     }
     $markup .= '<div>TN_LARGE created for ' . $pid . "</div>";
   }
@@ -1089,7 +1099,7 @@ function upitt_workflow_do_publish_for_barcodes($barcodes) {
     $barcode = trim($barcode);
     // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
     $batch = upitt_workflow_batch_load_by_batch_external_id($barcode);
-    if (count($batch) < 1) {
+    if (count($batch) < 1 && $barcode) {
       $missing_barcodes[] = $barcode;
     }
     $markup .= '<div>' . upitt_workflow_do_publish_using_batchvalues($batch, $ingest_namespace) . "</div>";
@@ -1127,7 +1137,7 @@ function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FAL
     $barcode = trim($barcode);
     // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
     $batch = upitt_workflow_batch_load_by_batch_external_id($barcode);
-    if (count($batch) < 1) {
+    if (count($batch) < 1 && $barcode) {
       $missing_barcodes[] = $barcode;
     } else {
       $do_copy = TRUE;

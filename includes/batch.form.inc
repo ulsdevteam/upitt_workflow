@@ -1122,6 +1122,7 @@ function upitt_workflow_content_model_filemask($content_model) {
       $filemasks['*_MODS.xml'] = 'MODS XML';
       $filemasks['*.mods.xml'] = 'MODS XML';
       $filemasks['*.wav'] = 'Audio WAV file';
+      $filemasks['*.vtt'] = 'Web VTT Transcript';
       // $filemasks['*'] = 'any file';
       break;
 
