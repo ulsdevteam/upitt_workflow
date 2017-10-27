@@ -148,6 +148,7 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
         $pages = ($is_paged) ? islandora_paged_content_get_pages($islandora_object) : array();
 
         $regen_jp2_link = '';
+        $page_count = count($pages);
         $first_page = array_pop($pages);
         if ($first_page) {
           $page_object = islandora_object_load($first_page['pid']);
@@ -172,8 +173,6 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
           }
         }
 
-
-        $page_count = count($pages);
         $found_pid_manage_links[$barcode] = '"' . $pid . '": ' .
                 ($page_count ? '(' . number_format($page_count) . ' pages) ' : '') .
                 $regen_jp2_link .

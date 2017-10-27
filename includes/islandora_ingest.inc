@@ -365,7 +365,7 @@ function upitt_workflow_drush_newspaper_issue($batch_external_id, $filepath, $fe
     // may not have a collection wrapper around it.  This will look at the /record/datafield[@tag="035"]/subfield[@code="a"]
     // in the marcxml file.
     if (!$OCoLC) {
-$markup .= "<h1>marc file " . $marcxml_filename . "</h1>";
+      $markup .= "<h1>marc file " . $marcxml_filename . "</h1>";
       $xpath_query = '//marc:record/marc:datafield[@tag="035"]/marc:subfield[@code="a"]';
       $dom_namespaces = array('marc' => 'http://www.loc.gov/MARC21/slim');
       $node_values = upitt_workflow_get_xpath_node_values_from_xml($marcxml_filename, $xpath_query, $dom_namespaces, '(OCoLC)');
@@ -374,8 +374,8 @@ $markup .= "<h1>marc file " . $marcxml_filename . "</h1>";
     if (!$OCoLC) {
       $markup .= '<div class="bad"><b>tag 035 @a did not return any OCoLC value</b></div>';
     } else {
-$markup .= "<h1>oclc = " . $OCoLC . "</h1>";
-  }
+      $markup .= "<h1>oclc = " . $OCoLC . "</h1>";
+    }
     
     // If this object was just created inline before a newspaper issue is ingested,
     // it needs to wait a few seconds for the result to get into Solr.

@@ -1992,7 +1992,7 @@ function upitt_workflow_get_xpath_node_values_from_xml($xml_filename, $xpath_que
  * @param type $OCoLC
  */
 function upitt_workflow_get_PID_of_oclc($OCoLC) {
-  $ret = upitt_workflow_get_solr_options('mods_identifier_oclc_s:' . ($OCoLC ? $OCoLC : '*'), 'PID', 'PID');
+  $ret = upitt_workflow_get_solr_options('RELS_EXT_hasModel_uri_ms:*newspaperCModel AND mods_identifier_oclc_s:' . ($OCoLC ? $OCoLC : '*'), 'PID', 'PID');
   return array_pop($ret);
 }
 
