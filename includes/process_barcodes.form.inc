@@ -18,7 +18,12 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     $form_state['values']['mode'] = filter_xss($_GET['mode']);
   }
   $process_options = array(
-    '0' => 'Standard Ingest Steps',
+    '0' => 'Hopper Ingest Queue',
+      'add_to_hopper' => 'Add to Hopper Ingest queue',
+      'hopper_increase_priority' => 'Increase Priority',
+      'hopper_decrease_priority' => 'Decrease Priority',
+      'hopper_list_pending' => 'List Pending Hopper items',
+    '1' => 'Standard Ingest Steps',
       'delete_update_copy_ingest' => ' - One step (delete, update, copy, ingest)',
       'update' => ' - Update batch records (no overwrite if islandora object exists)',
       'updateforce' => ' - Update batch records (force overwrite)',
@@ -27,7 +32,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'ingest_prepare' => ' - Islandora Ingest Preprocess',
       'gen_OCR' => ' - Generate OCR',
       'do_publish' => ' - Publish objects to site',
-    '1' => 'Special Functionality',
+    '2' => 'Special Functionality',
       'fix_page_sizes' => ' - Fix Page size RELS_INT',
       'make_tn' => ' - Make TN derivative',
       'make_tn_large' => ' - Make TN_LARGE derivative',
@@ -35,7 +40,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'make_page_pdfs' => ' - (Make page PDF derivatives)',
       'aggregate' => ' - Aggregate OCR and PDF, make TN_LARGE',
       'set_status' => ' - Set Status',
-    '2' => 'Info / Cleanup',
+    '3' => 'Info / Cleanup',
       'checkobjects' => ' - Check for Islandora Objects',
       'links_to_objects' => ' - Admin links to objects',
       'deep_info_on_objects' => ' - Deep info on objects',
@@ -89,7 +94,7 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
       if ($mode == 'update' || $mode == 'updateforce') {
         $markup = upitt_workflow_make_batch_records_for_barcodes($form_state['values']['barcodes'], $mode);
       } elseif ($mode == 'checksize') {
-        $markup = upitt_workflow_do_copy_for_barcodes($form_state['values']['barcodes'], TRUE);
+        $markup = upitt_workflow_do_copy_for_barcodes($form_state['values']['barcodes'], TRUE, TRUE);
       } else {
         $fn = 'upitt_workflow_' . $mode . '_for_barcodes';
         $markup = $fn($form_state['values']['barcodes']);
@@ -298,7 +303,7 @@ function upitt_workflow_make_batch_records_for_barcodes($barcodes, $mode) {
  * @param type $barcodes
  */
 function upitt_workflow_delete_update_copy_ingest_for_barcodes($barcodes) {
-  $checksize_markup = upitt_workflow_do_copy_for_barcodes($barcodes, TRUE);
+  $checksize_markup = upitt_workflow_do_copy_for_barcodes($barcodes, TRUE, TRUE);
   return  (strstr($checksize_markup, 'Not enough space') == '') ?
     $checksize_markup .
     upitt_workflow_delete_batch_for_barcodes($barcodes) .
@@ -934,6 +939,123 @@ function upitt_workflow_item_type_of_barcode($barcode, $link) {
 }
 
 /**
+ * This will Add to Hopper Ingest queue for barcodes.
+ *
+ * @param type $barcodes
+ * @return string HTML markup
+ */
+function upitt_workflow_add_to_hopper_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/hopper');
+  $barcodes_arr = explode("\n", $barcodes);
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $markup = '<div class="text-report"><h3>Add to Hopper Ingest queue for barcodes</h3>';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    if (trim($barcode)) {
+      $pid = $ingest_namespace . trim($barcode);
+      $added = upitt_workflow_add_barcode_to_hopper($pid, $link);
+      if ($added) {
+        $markup .= '<span class="good">' . $barcode . '</span><br>';
+      }
+      else {
+        $markup .= '<span class="bad">' . $barcode . ' existed already and could not be added</span><br>';
+      }
+    }
+  }
+  $markup .= '</div>';
+  mysqli_close($link);
+
+  return $markup;
+}
+
+/**
+ * This will Increase Priority for barcodes.
+ *
+ * @param type $barcodes
+ * @return string HTML markup
+ */
+function upitt_workflow_hopper_increase_priority_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/hopper');
+  $barcodes_arr = explode("\n", $barcodes);
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $markup = '<div class="text-report"><h3>Increase Priority for barcodes</h3>';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    if (trim($barcode)) {
+      $pid = $ingest_namespace . trim($barcode);
+      $item_markup = upitt_workflow_hopper_increase_priority($pid, $link);
+      if ($item_markup) {
+        $markup .= $item_markup;
+      }
+      else {
+        $markup .= '<span class="bad">' . $barcode . ' did not exist</span><br>';
+      }
+    }
+  }
+  $markup .= '</div>';
+  mysqli_close($link);
+
+  return $markup;
+}
+
+/**
+ * This will Decrease Priority for barcodes.
+ *
+ * @param type $barcodes
+ * @return string HTML markup
+ */
+function upitt_workflow_hopper_decrease_priority_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/hopper');
+  $barcodes_arr = explode("\n", $barcodes);
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $markup = '<div class="text-report"><h3>Decrease Priority for barcodes</h3>';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    if (trim($barcode)) {
+      $pid = $ingest_namespace . trim($barcode);
+      $item_markup = upitt_workflow_hopper_decrease_priority($pid, $link);
+      if ($item_markup) {
+        $markup .= $item_markup;
+      }
+      else {
+        $markup .= '<span class="bad">' . $barcode . ' did not exist</span><br>';
+      }
+    }
+  }
+  $markup .= '</div>';
+  mysqli_close($link);
+
+  return $markup;
+}
+
+/**
+ * This will List all Pending Hopper items sorted by their weight.
+ *
+ * @param type $barcodes
+ * @return string HTML markup
+ */
+function upitt_workflow_hopper_list_pending_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/hopper');
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $markup = '<div class="text-report"><h3>Pending Hopper items</h3>';
+  $markup .= "<b>PID</b>\t<b>Files size</b>\t<b>weight</b><br>";
+
+  if ($barcodes) {
+    drupal_set_message('Barcode values not needed for this function', 'info');
+  }
+
+  $rows = upitt_workflow_get_pending_hopper_queue_items($link);
+  foreach ($rows as $hopper_row) {
+    $markup .= $hopper_row['PID'] . "\t" . number_format($hopper_row['files_size']) . "\t" . $hopper_row['weight'] . '<br>';
+  }
+  $markup .= '</div>';
+  mysqli_close($link);
+
+  return $markup;
+}
+
+
+/**
  * This will look in the item / item_file table to get the path for that barcode's workflow record.
  *
  * @param type $barcodes
@@ -943,7 +1065,6 @@ function upitt_workflow_get_wf_paths_for_barcodes($barcodes) {
   $barcodes_arr = explode("\n", $barcodes);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $markup = '<div class="text-report"><h3>Bigfoot paths for barcodes</h3>';
-  $ingest_namespace = upitt_workflow_get_ingest_namespace();
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
     $path = upitt_workflow_batch_file_path($barcode, $link);
@@ -970,7 +1091,6 @@ function upitt_workflow_get_wf_model_for_barcodes($barcodes) {
   $barcodes_arr = explode("\n", $barcodes);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $markup = '<div class="text-report"><h3>Bigfoot paths for barcodes</h3>';
-  $ingest_namespace = upitt_workflow_get_ingest_namespace();
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
     $item_type = upitt_workflow_item_type_of_barcode($barcode, $link);
@@ -1122,15 +1242,16 @@ function upitt_workflow_do_publish_using_batchvalues($batch, $ingest_namespace) 
   upitt_workflow_relate_object_to_collections_sites($object_id, $sites_arr, $collections_arr);
 }
 
-function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FALSE) {
+function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FALSE, $verbose = TRUE) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('inc', 'upitt_workflow', 'includes/batch.form');
 
   $avail_ingest_temp_space = $grand_total_size = 0;
   $missing_barcodes = array();
   $barcodes_arr = explode("\n", $barcodes);
-  $markup = '<div class="text-report">';
+  $markup = ($verbose) ? '<div class="text-report">' : '';
   $avail_ingest_temp_space = upitt_workflow_get_ingest_temp_space();
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
 
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
@@ -1181,7 +1302,13 @@ function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FAL
         }
       }
 
-      $markup .= isset($copyfiles_result['markup']) ? '<div>' . $copyfiles_result['markup'] . '</div>' : '';
+      if ($verbose) {
+        $markup .= isset($copyfiles_result['markup']) ? '<div>' . $copyfiles_result['markup'] . '</div>' : '';
+      }
+      else {
+        $pid = $ingest_namespace . $barcode;
+        $markup .= (isset($copyfiles_result['total_measured_space'])) ? $pid . '=' . $copyfiles_result['total_measured_space'] . "\n" : 0;
+      }
       $grand_total_size += (isset($copyfiles_result['total_measured_space'])) ? $copyfiles_result['total_measured_space'] : 0;
       $avail_ingest_temp_space = $copyfiles_result['available_space'];
     }
@@ -1189,16 +1316,18 @@ function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FAL
   if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
   }
-  $markup .= '</div>';
+  if ($verbose) {
+    $markup .= '</div>';
 
-  // Insert the total file size result at the top in a new <div>
-  $markup = '<div class="text-report"><h3>Grand Total of File Size of Ingest Files</h3>' .
-          '  <div class="not-found"><b>Total measured space: ' . upitt_workflow_formatBytes($grand_total_size,2) . '</b></div>' .
-          '  <div class="not-found"><b>Total AVAILABLE space: ' . upitt_workflow_formatBytes($avail_ingest_temp_space,2) . '</b></div>' .
-          '  <div class="' . (($grand_total_size < $avail_ingest_temp_space) ? 'good' : 'bad') . '"><b>This ingest represents ' . 
-          (($avail_ingest_temp_space > 0) ? round($grand_total_size / $avail_ingest_temp_space * 100, 2) : '<i>an unknown </i>') . '% of the available space</b></div>' .
-          '</div>'.
-          $markup;
+    // Insert the total file size result at the top in a new <div>
+    $markup = '<div class="text-report"><h3>Grand Total of File Size of Ingest Files</h3>' .
+            '  <div class="not-found"><b>Total measured space: ' . upitt_workflow_formatBytes($grand_total_size,2) . '</b></div>' .
+            '  <div class="not-found"><b>Total AVAILABLE space: ' . upitt_workflow_formatBytes($avail_ingest_temp_space,2) . '</b></div>' .
+            '  <div class="' . (($grand_total_size < $avail_ingest_temp_space) ? 'good' : 'bad') . '"><b>This ingest represents ' .
+            (($avail_ingest_temp_space > 0) ? round($grand_total_size / $avail_ingest_temp_space * 100, 2) : '<i>an unknown </i>') . '% of the available space</b></div>' .
+            '</div>'.
+            $markup;
+  }
 
   return $markup;
 }
