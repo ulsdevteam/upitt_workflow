@@ -89,6 +89,10 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
 
   $btn_id = $form_state['triggering_element']['#id'];
   $mode = $form_state['values']['mode'];
+  if ($mode == '0' || $mode == '1' || $mode == '2' || $mode == '3') {
+    drupal_set_message('Invalid <b>Processing mode</b> selection.');
+    return;
+  }
   switch ($btn_id) {
     case 'edit-submit':
       if ($mode == 'update' || $mode == 'updateforce') {

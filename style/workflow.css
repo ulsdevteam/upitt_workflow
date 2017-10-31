@@ -129,7 +129,7 @@ a.bad {
     background-position-y: 0px;
 }
 
-#edit-mode option[value="0"], #edit-mode option[value="1"], #edit-mode option[value="2"] {
+#edit-mode option[value="0"], #edit-mode option[value="1"], #edit-mode option[value="2"], #edit-mode option[value="3"] {
   font-weight: bold;
   text-transform: uppercase;
 }
