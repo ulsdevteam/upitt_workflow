@@ -1392,7 +1392,7 @@ function upitt_workflow_ingest_prepare_for_barcodes($barcodes) {
       if (isset($batch['batch_id'])) {
         // TODO -- can load the status transactions of this batch to see whether
         // or not the object has been preprocessed or ingested already.
-        $markup .= upitt_workflow_drush_generic($batch);
+        $drush_generic_markup = upitt_workflow_drush_generic($batch);
         $set = upitt_workflow_get_set($batch['batch_external_id']);
         if ($set > 0) {
           upitt_workflow_set_status_for_batch($batch['batch_external_id'], UPITT_WORKFLOW_ACTION_ISLANDORA_INGEST_PREPARED, NULL, TRUE);
@@ -1400,7 +1400,26 @@ function upitt_workflow_ingest_prepare_for_barcodes($barcodes) {
 
         $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
         $ingest_set_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=' . $set;
-        $markup .= '<code>' . $ingest_set_drush_command . '</code>';
+
+        if ($set <> 0) {
+          // no need to display the output of $drush_generic_markup since the
+          // $set value is valid.
+          // NOW, we can call the ingest command.
+          $output = $return_var = array();
+          exec($ingest_set_drush_command, $output, $return_var);
+
+          if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
+            drupal_set_message('There was an error calling the drush command : ' . $ingest_set_drush_command);
+            $alerted_on_err = TRUE;
+          }
+          $color = (($return_var == -1 || $return_var == 255)) ? 'red' : 'green';
+          $markup .= '(called islandora_batch_ingest)<code style="color:' . $color . '">' . $ingest_set_drush_command . '</code>';
+        }
+        else {
+          // the $set was 0... there was a problem with the earlier prepare
+          // command from the upitt_workflow_drush_generic
+          $markup .= '<div class="bad">' . $drush_generic_markup . '</div>';
+        }
       }
       else {
         $markup .= '<span class="bad">batch not found for $barcode</span><br>';
