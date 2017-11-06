@@ -626,6 +626,7 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
   module_load_include('inc', 'islandora_paged_content', 'includes/derivatives');
   module_load_include('inc', 'islandora_batch', 'includes/db');
   module_load_include('inc', 'upitt_workflow', 'includes/process_barcodes.form');
+  module_load_include('inc', 'upitt_workflow', 'includes/hopper');
 
   upitt_workflow_log('in hook upitt_workflow_islandora_batch_process_finished - ready to delete files for object');
 
@@ -634,12 +635,17 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
     foreach ($sets as $set) {
       // Delete set and associated queued items.
       $queued_items = islandora_batch_get_queued_items_for_set($set);
+  upitt_workflow_log('set = ' . print_r($set, true));
+
       foreach ($queued_items as $ingested_pid) {
+  upitt_workflow_log('ingested_pid = ' . print_r($ingested_pid, true));
         $ingested_object = islandora_object_load($ingested_pid);
         if (is_object($ingested_object)) {
+  upitt_workflow_log('it is an object');
           // See whether or not this is a paged-content object in order to call the
           // "aggregate PDF" and "aggregate OCR/HOCR" batch commands on it now.
           if (upitt_workflow_is_paged_object($ingested_object)) {
+  upitt_workflow_log('it is a paged object');
             // Calling the next two functions while gearman is being used does NOT
             // work anymore because the derivatives needed to aggregate these objects
             // are now deferred.  This step must be done after the pages have ALL been
@@ -653,26 +659,35 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
               module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
               $page = array_shift($pages);
               $page_object = islandora_object_load($page['pid']);
+  upitt_workflow_log('calling to make tn_large for page ' . $page['pid']);
               upitt_workflow_make_tn_large($page_object, $ingested_object);
             }
           }
           @list($namespace, $pseudo_barcode) = explode(":", $ingested_pid);
           $delete_markup = upitt_workflow_delete_batch_tempfiles_for_barcodes($pseudo_barcode);
+  upitt_workflow_log('deleted temp files for ' . $pseudo_barcode . ' ? ');
           // If this markup contains the string " not ", then there was a problem
           // deleting the batch folder for this barcode.
           if (strstr($delete_markup, '  not ')) {
             $variables = array('@$pseudo_barcode' => $pseudo_barcode, '@set' => $set);
             watchdog('upitt_workflow', 'There was a problem deleting the temp files for "@$pseudo_barcode" ' .
                 'from this set @set.', $variables, WATCHDOG_NOTICE);
+  upitt_workflow_log('delete markup : ' . $delete_markup);
           }
           else {
             // Check the file space -- and add an item from the hopper queue
             // to continuously ingest.
+  upitt_workflow_log('-------- continuing to call... upitt_workflow_get_next_pending_hopper_queue_item()');
+
             $next_hopper_item = upitt_workflow_get_next_pending_hopper_queue_item();
+  upitt_workflow_log('next_hopper_item = ' . print_r($next_hopper_item, true));
+
             if (isset($next_hopper_item['PID']) && isset($next_hopper_item['files_size'])) {
               $partition_size_and_used = upitt_workflow_get_ingest_temp_size_and_used();
               // TODO - set this threshold eg: "0.75" in the module settings.
               $threshold_used = 0.75 * $partition_size_and_used['partition_size'];
+  upitt_workflow_log($threshold_used . ' partition_size_and_used = ' . print_r($partition_size_and_used, true));
+
               if (($partition_size_and_used['used'] + $next_hopper_item['files_size']) < $threshold_used) {
                 module_load_include('inc', 'upitt_workflow', 'includes/hopper');
                 @list($namespace, $next_barcode) = explode(":", $next_hopper_item['PID']);
@@ -683,6 +698,8 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
                 // the ingest batch, and ingest the islandora_batch.
                 $null_markup = upitt_workflow_delete_update_copy_ingest_for_barcodes($next_barcode);
               }
+              $next_hopper_item = upitt_workflow_get_next_pending_hopper_queue_item();
+  upitt_workflow_log('next_hopper_item = ' . print_r($next_hopper_item, true) . ' ..... (two more)');
               // Do this potentially three more times -- will quickly populate
               // with as many as can handle up to 70% full ingest tmp location.
               $partition_size_and_used = upitt_workflow_get_ingest_temp_size_and_used();
@@ -694,6 +711,7 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
                 upitt_workflow_set_next_ingest_start_timestamp_for_hopper_by_pid($next_hopper_item['PID']);
                 $null_markup = upitt_workflow_delete_update_copy_ingest_for_barcodes($next_barcode);
               }
+              $next_hopper_item = upitt_workflow_get_next_pending_hopper_queue_item();
               $partition_size_and_used = upitt_workflow_get_ingest_temp_size_and_used();
               $threshold_used = 0.70 * $partition_size_and_used['partition_size'];
               if (($partition_size_and_used['used'] + $next_hopper_item['files_size']) < $threshold_used) {
@@ -703,6 +721,7 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
                 upitt_workflow_set_next_ingest_start_timestamp_for_hopper_by_pid($next_hopper_item['PID']);
                 $null_markup = upitt_workflow_delete_update_copy_ingest_for_barcodes($next_barcode);
               }
+              $next_hopper_item = upitt_workflow_get_next_pending_hopper_queue_item();
               $partition_size_and_used = upitt_workflow_get_ingest_temp_size_and_used();
               $threshold_used = 0.70 * $partition_size_and_used['partition_size'];
               if (($partition_size_and_used['used'] + $next_hopper_item['files_size']) < $threshold_used) {

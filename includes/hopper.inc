@@ -35,7 +35,7 @@ function upitt_workflow_get_next_pending_hopper_queue_item() {
   $next_hopper_item = upitt_workflow_get_pending_hopper_queue_items($link, 1);
   mysqli_close($link);
   if (is_array($next_hopper_item)) {
-    return array_pop($$next_hopper_item);
+    return array_pop($next_hopper_item);
   }
   return false;
 }
