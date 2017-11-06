@@ -1081,6 +1081,7 @@ function upitt_workflow_get_wf_paths_for_barcodes($barcodes) {
     }
   }
   $markup .= '</div>';
+  mysqli_close($link);
 
   return $markup;
 }
@@ -1107,6 +1108,7 @@ function upitt_workflow_get_wf_model_for_barcodes($barcodes) {
     }
   }
   $markup .= '</div>';
+  mysqli_close($link);
 
   return $markup;
 }
