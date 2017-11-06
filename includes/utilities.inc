@@ -2010,6 +2010,17 @@ function upitt_workflow_formatBytes($bytes, $precision = 2) {
     return round($bytes, $precision) . ' ' . $units[$pow];
 }
 
+function upitt_workflow_get_ingest_temp_size_and_used() {
+  $temp_dir = file_directory_temp();
+  if (strstr($temp_dir, 'ingest') == '') {
+    $temp_dir = '/tmp';
+  }
+  $cmd = 'df -P | grep \'' . $temp_dir . '\' | gawk \'{ printf "%s\t%s\n", $2, $3 }\'';
+  $results = trim(shell_exec($cmd));
+  @list($partition_size_1kblocks, $used) = explode("\t", $results);
+  return array('partition_size' => 1024 * $partition_size_1kblocks, 'used' => 1024  * $used);
+}
+
 function upitt_workflow_get_ingest_temp_space() {
   $cmd = 'df -P | gawk \'{ printf "%s\t%s\t%s\t%s\t%s\n", $1, $6, $2, $3, $4 }\'';
   $output = array();

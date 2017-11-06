@@ -656,7 +656,35 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
               upitt_workflow_make_tn_large($page_object, $ingested_object);
             }
           }
-
+          @list($namespace, $pseudo_barcode) = explode(":", $ingested_pid);
+          $delete_markup = upitt_workflow_delete_batch_tempfiles_for_barcodes($pseudo_barcode);
+          // If this markup contains the string " not ", then there was a problem
+          // deleting the batch folder for this barcode.
+          if (strstr($delete_markup, '  not ')) {
+            $variables = array('@$pseudo_barcode' => $pseudo_barcode, '@set' => $set);
+            watchdog('upitt_workflow', 'There was a problem deleting the temp files for "@$pseudo_barcode" ' .
+                'from this set @set.', $variables, WATCHDOG_NOTICE);
+          }
+          else {
+            // Check the file space -- and add an item from the hopper queue
+            // to continuously ingest.
+            $next_hopper_item = upitt_workflow_get_next_pending_hopper_queue_item();
+            if (isset($next_hopper_item['PID']) && isset($next_hopper_item['files_size'])) {
+              $partition_size_and_used = upitt_workflow_get_ingest_temp_size_and_used();
+              // TODO - set this threshold eg: "0.75" in the module settings.
+              $threshold_used = 0.75 * $partition_size_and_used['partition_size'];
+              if (($partition_size_and_used['used'] + $next_hopper_item['files_size']) < $threshold_used) {
+                module_load_include('inc', 'upitt_workflow', 'includes/process_barcodes.form');
+                @list($namespace, $next_barcode) = explode(":", $next_hopper_item['PID']);
+                // Must set the ingest `ingest_start_timestamp` right now because
+                // the next command will take more than a minute to complete.
+                upitt_workflow_set_next_ingest_start_timestamp_for_hopper_by_pid($next_hopper_item['PID']);
+                // This will purge, update workflow record, copy files, prepare
+                // the ingest batch, and ingest the islandora_batch.
+                $null_markup = upitt_workflow_delete_update_copy_ingest_for_barcodes($next_barcode);
+              }
+            }
+          }
           // Update the batch status record for the matching batch record for this set's $ingested_pid
           upitt_workflow_set_status_for_pid($ingested_object, UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY, TRUE);
         }

@@ -12,8 +12,6 @@ function upitt_workflow_add_barcode_to_hopper($pid, $link) {
   @list($junk, $size) = explode("=", trim($checksize_result));
   $existed = upitt_workflow_get_hopper_for_pid($pid, FALSE, $link);
   if (!$existed) {
-
-    $size =
     $query = "INSERT INTO `ingest_hopper_queue` (`PID`, `files_size`) VALUES ('" . mysqli_real_escape_string($link, $pid) . "', " . $size . ")";
     $result = mysqli_query($link, $query);
     if (!$result) {
@@ -26,8 +24,52 @@ function upitt_workflow_add_barcode_to_hopper($pid, $link) {
   }
 }
 
-function upitt_workflow_get_pending_hopper_queue_items($link) {
-  $query = "SELECT `PID`, `files_size`, `weight` FROM `ingest_hopper_queue` WHERE ingest_start_timestamp IS NULL ORDER BY `weight`";
+/**
+ * This will get the next hopper queue item.
+ *
+ * @return array
+ *   the hopper queue item row
+ */
+function upitt_workflow_get_next_pending_hopper_queue_item() {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $next_hopper_item = upitt_workflow_get_pending_hopper_queue_items($link, 1);
+  mysqli_close($link);
+  return $next_hopper_item;
+}
+
+/**
+ * This will get the next hopper queue item.
+ *
+ * @return array
+ *   the hopper queue item row
+ */
+function upitt_workflow_set_next_ingest_start_timestamp_for_hopper_by_pid($pid) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $query = "UPDATE `ingest_hopper_queue` SET ingest_start_timestamp = now() WHERE `PID` = '" . mysqli_real_escape_string($link, $pid) . "'";
+  $result = mysqli_query($link, $query);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $query);
+  }
+  // now call hopper_list_pending to display the weight "priority" values for these.
+  $hopper_row = upitt_workflow_get_hopper_for_pid($pid, FALSE, $link);
+
+  if (is_array($hopper_row)) {
+    $markup = 'hopper record updated for ' . $pid . "\n" .
+        'ingest_start_timestamp = ' . $hopper_row['ingest_start_timestamp'] . "/n";
+  }
+  else {
+    $markup = 'hopper record not found for PID ' . $pid . "\n";
+  }
+  return $markup;
+
+  $next_hopper_item = upitt_workflow_get_pending_hopper_queue_items($link, 1);
+  mysqli_close($link);
+  return $next_hopper_item;
+}
+
+function upitt_workflow_get_pending_hopper_queue_items($link, $limit = 0) {
+  $query = "SELECT `PID`, `files_size`, `weight` FROM `ingest_hopper_queue` WHERE ingest_start_timestamp IS NULL ORDER BY `weight`" .
+          ($limit ? " LIMIT " . $limit : "");
   $result = mysqli_query($link, $query);
   if (!$result) {
     upitt_workflow_sql_error_die($link, $query);
