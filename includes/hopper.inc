@@ -53,21 +53,7 @@ function upitt_workflow_set_next_ingest_start_timestamp_for_hopper_by_pid($pid) 
   if (!$result) {
     upitt_workflow_sql_error_die($link, $query);
   }
-  // now call hopper_list_pending to display the weight "priority" values for these.
-  $hopper_row = upitt_workflow_get_hopper_for_pid($pid, FALSE, $link);
-
-  if (is_array($hopper_row)) {
-    $markup = 'hopper record updated for ' . $pid . "\n" .
-        'ingest_start_timestamp = ' . $hopper_row['ingest_start_timestamp'] . "/n";
-  }
-  else {
-    $markup = 'hopper record not found for PID ' . $pid . "\n";
-  }
-  return $markup;
-
-  $next_hopper_item = upitt_workflow_get_pending_hopper_queue_items($link, 1);
   mysqli_close($link);
-  return $next_hopper_item;
 }
 
 function upitt_workflow_get_pending_hopper_queue_items($link, $limit = 0) {
