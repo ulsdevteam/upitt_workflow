@@ -625,7 +625,7 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
   module_load_include('inc', 'islandora_paged_content', 'includes/derivatives');
   module_load_include('inc', 'islandora_batch', 'includes/db');
-
+  module_load_include('inc', 'upitt_workflow', 'includes/process_barcodes.form');
 
   upitt_workflow_log('in hook upitt_workflow_islandora_batch_process_finished - ready to delete files for object');
 
@@ -674,7 +674,6 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
               // TODO - set this threshold eg: "0.75" in the module settings.
               $threshold_used = 0.75 * $partition_size_and_used['partition_size'];
               if (($partition_size_and_used['used'] + $next_hopper_item['files_size']) < $threshold_used) {
-                module_load_include('inc', 'upitt_workflow', 'includes/process_barcodes.form');
                 module_load_include('inc', 'upitt_workflow', 'includes/hopper');
                 @list($namespace, $next_barcode) = explode(":", $next_hopper_item['PID']);
                 // Must set the ingest `ingest_start_timestamp` right now because
