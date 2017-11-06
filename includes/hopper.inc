@@ -34,7 +34,10 @@ function upitt_workflow_get_next_pending_hopper_queue_item() {
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $next_hopper_item = upitt_workflow_get_pending_hopper_queue_items($link, 1);
   mysqli_close($link);
-  return $next_hopper_item;
+  if (is_array($next_hopper_item)) {
+    return array_pop($$next_hopper_item);
+  }
+  return false;
 }
 
 /**
