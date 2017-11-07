@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Helper function to create the search form filter choices for collections in workflow_django
+ * Add barcodes to hopper table.
  */
 function upitt_workflow_add_barcode_to_hopper($pid, $link) {
   module_load_include('inc', 'upitt_workflow', 'includes/process_barcodes.form');
@@ -13,6 +13,26 @@ function upitt_workflow_add_barcode_to_hopper($pid, $link) {
   $existed = upitt_workflow_get_hopper_for_pid($pid, FALSE, $link);
   if (!$existed) {
     $query = "INSERT INTO `ingest_hopper_queue` (`PID`, `files_size`) VALUES ('" . mysqli_real_escape_string($link, $pid) . "', " . $size . ")";
+    $result = mysqli_query($link, $query);
+    if (!$result) {
+      upitt_workflow_sql_error_die($link, $query);
+    }
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Add barcodes to hopper table.
+ */
+function upitt_workflow_remove_barcode_from_hopper($pid, $link) {
+  module_load_include('inc', 'upitt_workflow', 'includes/process_barcodes.form');
+  @list($namespace, $barcode) = explode(":", $pid);
+  $existed = upitt_workflow_get_hopper_for_pid($pid, FALSE, $link);
+  if ($existed) {
+    $query = "DELETE FROM `ingest_hopper_queue` WHERE `PID` = '" . mysqli_real_escape_string($link, $pid) . "'";
     $result = mysqli_query($link, $query);
     if (!$result) {
       upitt_workflow_sql_error_die($link, $query);

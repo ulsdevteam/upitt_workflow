@@ -23,6 +23,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'hopper_increase_priority' => 'Increase Priority',
       'hopper_decrease_priority' => 'Decrease Priority',
       'hopper_list_pending' => 'List Pending Hopper items',
+      'hopper_remove_from_hopper' => 'Remove from Hopper',
     '1' => 'Standard Ingest Steps',
       'delete_update_copy_ingest' => ' - One step (delete, update, copy, ingest)',
       'update' => ' - Update batch records (no overwrite if islandora object exists)',
@@ -964,6 +965,36 @@ function upitt_workflow_add_to_hopper_for_barcodes($barcodes) {
       }
       else {
         $markup .= '<span class="bad">' . $barcode . ' existed already and could not be added</span><br>';
+      }
+    }
+  }
+  $markup .= '</div>';
+  mysqli_close($link);
+
+  return $markup;
+}
+
+/**
+ * This will Remove barcodes from Hopper Ingest queue.
+ *
+ * @param type $barcodes
+ * @return string HTML markup
+ */
+function upitt_workflow_hopper_remove_from_hopper_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/hopper');
+  $barcodes_arr = explode("\n", $barcodes);
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $markup = '<div class="text-report"><h3>Add to Hopper Ingest queue for barcodes</h3>';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    if (trim($barcode)) {
+      $pid = $ingest_namespace . trim($barcode);
+      $removed = upitt_workflow_remove_barcode_from_hopper($pid, $link);
+      if ($removed) {
+        $markup .= '<span class="good">' . $barcode . ' removed.</span><br>';
+      }
+      else {
+        $markup .= '<span class="bad">' . $barcode . ' did not exist.</span><br>';
       }
     }
   }
