@@ -572,7 +572,7 @@ function upitt_workflow_fix_page_size($pageObject) {
   $fileextension = upitt_workflow_getMimetypeToFileExtension($mimetype);
   $filename = tempnam("temporary://", "$DSID.$fileextension");
   $retval = upitt_workflow_getDatastreamToFile($pageObject,"OBJ","$filename");
-  list($width, $height) = getimagesize($filename);
+  @list($width, $height) = getimagesize($filename);
   @unlink($filename);
 
   // REMOVE any RELS_EXT width/height - that value would be wrong!
