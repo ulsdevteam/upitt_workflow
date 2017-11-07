@@ -665,6 +665,9 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
             }
           }
           * REMOVING -- */
+          // Update the batch status record for the matching batch record for this set's $ingested_pid
+          upitt_workflow_set_status_for_pid($ingested_object, UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY, TRUE);
+
           @list($namespace, $pseudo_barcode) = explode(":", $ingested_pid);
           $delete_markup = upitt_workflow_delete_batch_tempfiles_for_barcodes($pseudo_barcode);
           upitt_workflow_log('deleted temp files for ' . $pseudo_barcode . ' ? ');
@@ -706,10 +709,20 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
                 upitt_workflow_set_next_ingest_start_timestamp_for_hopper_by_pid($next_hopper_item['PID']);
                 $null_markup = upitt_workflow_delete_update_copy_ingest_for_barcodes($next_barcode);
               }
+
+              // Do another if possible now .. it will fill up quicker.
+              $next_hopper_item = upitt_workflow_get_next_pending_hopper_queue_item();
+              $partition_size_and_used = upitt_workflow_get_ingest_temp_size_and_used();
+              $threshold_used = 0.70 * $partition_size_and_used['partition_size'];
+              if (($partition_size_and_used['used'] + $next_hopper_item['files_size']) < $threshold_used) {
+                module_load_include('inc', 'upitt_workflow', 'includes/process_barcodes.form');
+                module_load_include('inc', 'upitt_workflow', 'includes/hopper');
+                @list($namespace, $next_barcode) = explode(":", $next_hopper_item['PID']);
+                upitt_workflow_set_next_ingest_start_timestamp_for_hopper_by_pid($next_hopper_item['PID']);
+                $null_markup = upitt_workflow_delete_update_copy_ingest_for_barcodes($next_barcode);
+              }
             }
           }
-          // Update the batch status record for the matching batch record for this set's $ingested_pid
-          upitt_workflow_set_status_for_pid($ingested_object, UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY, TRUE);
           exit();
         }
         else {

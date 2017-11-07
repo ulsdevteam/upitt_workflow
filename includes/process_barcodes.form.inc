@@ -309,7 +309,7 @@ function upitt_workflow_make_batch_records_for_barcodes($barcodes, $mode) {
  */
 function upitt_workflow_delete_update_copy_ingest_for_barcodes($barcodes) {
   $checksize_markup = upitt_workflow_do_copy_for_barcodes($barcodes, TRUE, TRUE);
-  return  (strstr($checksize_markup, 'Not enough space') == '') ?
+  return (strstr($checksize_markup, 'Not enough space') == '') ?
     $checksize_markup .
     upitt_workflow_delete_batch_for_barcodes($barcodes) .
     upitt_workflow_purge_objects_for_barcodes($barcodes) .
