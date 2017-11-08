@@ -701,8 +701,14 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
               }
               $next_hopper_item = upitt_workflow_get_next_pending_hopper_queue_item();
               $partition_size_and_used = upitt_workflow_get_ingest_temp_size_and_used();
+              $fedora_size_and_used = upitt_workflow_get_fedora_avail_bytes();
+              // The avail calculation is slightly different -- using the size and
+              // the available space, as long as 20% of the size is greater than
+              // the available MINUS the new files_size.
+              $threshold_used_fedora = 0.2 * $fedora_size_and_used['disk_size'];
               $threshold_used = 0.70 * $partition_size_and_used['partition_size'];
-              if (($partition_size_and_used['used'] + $next_hopper_item['files_size']) < $threshold_used) {
+              if ((($partition_size_and_used['used'] + $next_hopper_item['files_size']) < $threshold_used) &&
+                  (($fedora_size_and_used['disk_bytes_avail'] - $next_hopper_item['files_size']) < $threshold_used_fedora) ) {
                 module_load_include('inc', 'upitt_workflow', 'includes/process_barcodes.form');
                 module_load_include('inc', 'upitt_workflow', 'includes/hopper');
                 @list($namespace, $next_barcode) = explode(":", $next_hopper_item['PID']);

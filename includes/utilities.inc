@@ -2010,6 +2010,26 @@ function upitt_workflow_formatBytes($bytes, $precision = 2) {
     return round($bytes, $precision) . ' ' . $units[$pow];
 }
 
+function upitt_workflow_get_fedora_avail_bytes() {
+  $link = upitt_workflow_get_databaselink('islandora_jobs_monitor');
+  $sql = 'SELECT `disk_bytes_avail`,`disk_size` FROM host_server_health WHERE `server_id` = 100 ORDER BY `timestamp` DESC LIMIT 1';
+
+  $result = mysqli_query($link, $sql);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+
+  $retval = array(
+      'disk_bytes_avail' => 0,
+      'disk_size' => 0,
+    );
+  if ($row = mysqli_fetch_assoc($result)) {
+    $retval = $row;
+  }
+  mysqli_close($link);
+  return $retval;
+}
+
 function upitt_workflow_get_ingest_temp_size_and_used() {
   $temp_dir = file_directory_temp();
   if (strstr($temp_dir, 'ingest') == '') {
