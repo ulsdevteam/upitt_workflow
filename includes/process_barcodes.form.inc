@@ -379,6 +379,13 @@ function upitt_workflow_delete_batch_for_barcodes($barcodes) {
       $result_resources = db_delete('islandora_batch_resources')->condition('id', '%' . db_like($pid) . '%', 'LIKE')->execute();
       $result_state = db_delete('islandora_batch_state')->condition('id', '%' . db_like($pid) . '%', 'LIKE')->execute();
     }
+    $sql_sets = "delete from islandora_batch_queue where id like '" . $pid . "%'";
+    $result = db_query($sql_sets);
+    $sql_sets = "delete from islandora_batch_report_objects_processed where id like '" . $pid . "%'";
+    $result = db_query($sql_sets);
+    $sql_sets = "delete from islandora_batch_queue_messages where id like '" . $pid . "%'";
+    $result = db_query($sql_sets);
+
     $total = $result_set + $result_report_sets_processed + $result_queue + $result_queue_messages + $result_report_objects_processed + $result_resources + $result_state;
     $class = ($total) ? 'good' : 'bad';
     $markup .= '<div class="' . $class . '"><b>records deleted for ' . $pid . '</b><pre>' .
