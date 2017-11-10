@@ -57,16 +57,41 @@ function drush_upitt_workflow_ingest_via_hopper() {
     // The avail calculation is slightly different -- using the size and
     // the available space, as long as 20% of the size is greater than
     // the available MINUS the new files_size.
-    $threshold_used_fedora = 0.2 * $fedora_size_and_used['disk_size'];
+    $threshold_used_fedora = 0.13 * $fedora_size_and_used['disk_size'];
     $threshold_used = 0.70 * $partition_size_and_used['partition_size'];
     if ((($partition_size_and_used['used'] + $next_hopper_item['files_size']) < $threshold_used) &&
-        (($fedora_size_and_used['disk_bytes_avail'] - $next_hopper_item['files_size']) < $threshold_used_fedora) ) {
+        (($fedora_size_and_used['disk_bytes_avail'] - $next_hopper_item['files_size']) > $threshold_used_fedora) ) {
       @list($namespace, $next_barcode) = explode(":", $next_hopper_item['PID']);
       // This will purge, update workflow record, copy files, prepare
       // the ingest batch, and ingest the islandora_batch.
       $null_markup = upitt_workflow_delete_update_copy_ingest_for_barcodes($next_barcode);
       if (strstr($null_markup, 'There was an error') == '') {
         upitt_workflow_set_next_ingest_start_timestamp_for_hopper_by_pid($next_hopper_item['PID']);
+      }
+    }
+    else {
+      $space_errors = array();
+      if (($partition_size_and_used['used'] + $next_hopper_item['files_size']) > $threshold_used) {
+        $space_errors[] = dt('No space for temp ingest files for next object @PID which is @files_size ' .
+          'bytes.  The temp ingest partition: @used' . ' bytes.',
+          array(
+            '@PID' => $next_hopper_item['PID'], 
+            '@files_size' => number_format($next_hopper_item['files_size']),
+            '@used' => number_format($partition_size_and_used['used']),
+          ));
+      }
+      if (($fedora_size_and_used['disk_bytes_avail'] - $next_hopper_item['files_size']) < $threshold_used_fedora) {
+        $space_errors[] = dt('No space on fedora object store for next object @PID which is ' . 
+          '@files_size bytes.  Fedora available @avail bytes, but the threshold is at @threshold bytes.',
+          array(
+            '@PID' => $next_hopper_item['PID'],
+            '@files_size' => number_format($next_hopper_item['files_size']),
+            '@avail' => number_format($fedora_size_and_used['disk_bytes_avail']),
+            '@threshold' => number_format($threshold_used_fedora),
+          ));
+      }
+      if (count($space_errors)) {
+        drush_log(implode("<br>", $space_errors), 'error');
       }
     }
   }
