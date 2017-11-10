@@ -1231,6 +1231,14 @@ function upitt_workflow_purge_objects_for_barcodes($barcodes) {
       // Try a SOLR query to get child PID values that are not attached to the book (orphans)
       $solr_query = "PID:" . str_replace(":", "\:", $pid) . "*";
       $child_pids = upitt_workflow_get_solr_options($solr_query, 'PID', 'PID');
+      if (strstr($pid, '-') == '') {
+        for ($i = 1; $i < 50; $i++) {
+          $seq = $pid . ($i < 10) ? '-000' . $i : '-00' . $i;
+          if (!array_key_exists($seq, $child_pids)) {
+            $child_pids[$seq] = $seq;
+          }
+        }
+      }
       foreach ($child_pids as $k => $child_pid) {
         if (isset($child_pid)) {
           $child = islandora_object_load($child_pid);
