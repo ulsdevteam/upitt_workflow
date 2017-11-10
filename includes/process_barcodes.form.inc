@@ -362,7 +362,7 @@ function upitt_workflow_delete_batch_for_barcodes($barcodes) {
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
     $pid = $ingest_namespace . $barcode;
-    $sql_sets = "select q.sid, q.id from islandora_batch_queue q join islandora_batch_set s ON (s.id = q.sid) where q.id = '" . $pid . "'";
+    $sql_sets = "select q.sid, q.id from islandora_batch_queue q join islandora_batch_set s ON (s.id = q.sid) where q.id like '" . $pid . "%'";
     $result = db_query($sql_sets);
     $record = $result->fetchAssoc();
     $result_set = $result_report_sets_processed = $result_queue = $result_queue_messages = $result_report_objects_processed = $result_resources = $result_state = 0;
