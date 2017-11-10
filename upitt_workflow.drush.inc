@@ -11,6 +11,16 @@
 function upitt_workflow_drush_command() {
   $items = array();
 
+  $items['upitt_workflow_ingest_via_hopper'] = array(
+    'aliases' => array('uwih'),
+    'description' => 'This will ingest the next item from the hopper.  This call does not take any options.',
+    'drupal dependencies' => array('islandora_batch','islandora_ocr'),
+    'examples' => array(
+      'drush -v --user=admin --uri=http://dev.gamera.library.pitt.edu upitt_workflow_ingest_via_hopper',
+    ),
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
+  );
+
   $items['upitt_workflow_generate_ocr_datastreams'] = array(
     'aliases' => array('uwgod'),
     'description' => 'Create OCR datastreams for paged content object\'s pages.',
@@ -27,6 +37,39 @@ function upitt_workflow_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
   );
   return $items;
+}
+
+            // TODO - move all of the hopper logic to a separate drush job that
+            // can check if there is space to ingest another.  That could be
+            // called via cron job every 10 minutes.
+/**
+ * Drush function that will ingest the next hopper item if there is space.
+ */
+function drush_upitt_workflow_ingest_via_hopper() {
+  module_load_include('inc', 'islandora_batch', 'includes/db');
+  module_load_include('inc', 'upitt_workflow', 'includes/hopper');
+  module_load_include('inc', 'upitt_workflow', 'includes/process_barcodes.form');
+
+  $next_hopper_item = upitt_workflow_get_next_pending_hopper_queue_item();
+  if (isset($next_hopper_item['PID']) && isset($next_hopper_item['files_size'])) {
+    $partition_size_and_used = upitt_workflow_get_ingest_temp_size_and_used();
+    $fedora_size_and_used = upitt_workflow_get_fedora_avail_bytes();
+    // The avail calculation is slightly different -- using the size and
+    // the available space, as long as 20% of the size is greater than
+    // the available MINUS the new files_size.
+    $threshold_used_fedora = 0.2 * $fedora_size_and_used['disk_size'];
+    $threshold_used = 0.70 * $partition_size_and_used['partition_size'];
+    if ((($partition_size_and_used['used'] + $next_hopper_item['files_size']) < $threshold_used) &&
+        (($fedora_size_and_used['disk_bytes_avail'] - $next_hopper_item['files_size']) < $threshold_used_fedora) ) {
+      @list($namespace, $next_barcode) = explode(":", $next_hopper_item['PID']);
+      // This will purge, update workflow record, copy files, prepare
+      // the ingest batch, and ingest the islandora_batch.
+      $null_markup = upitt_workflow_delete_update_copy_ingest_for_barcodes($next_barcode);
+      if (strstr($null_markup, 'There was an error') == '') {
+        upitt_workflow_set_next_ingest_start_timestamp_for_hopper_by_pid($next_hopper_item['PID']);
+      }
+    }
+  }
 }
 
 /**
