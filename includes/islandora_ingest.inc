@@ -1091,7 +1091,7 @@ function upitt_workflow_create_TN_LARGE_file($object, $obj_ds, $thumbnail_id, $m
     $variables = array(
       '@ret' => $ret,
       '@command' => $command,
-      '!output' => implode('<br/>', $output),
+      '!output' => (is_array($output) && count($output) > 0) ? implode('<br/>', $output) : '',
     );
     watchdog('islandora_large_image', 'ImageMagick failed to convert.<br/>Error: @ret<br/>Command: @command <br/>Output !output', $variables, WATCHDOG_ERROR);
     return FALSE;
