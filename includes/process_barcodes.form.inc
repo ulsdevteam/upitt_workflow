@@ -379,12 +379,12 @@ function upitt_workflow_delete_batch_for_barcodes($barcodes) {
       $result_resources = db_delete('islandora_batch_resources')->condition('id', '%' . db_like($pid) . '%', 'LIKE')->execute();
       $result_state = db_delete('islandora_batch_state')->condition('id', '%' . db_like($pid) . '%', 'LIKE')->execute();
     }
-    $sql_sets = "delete from islandora_batch_queue where id like '" . $pid . "%'";
-    $result = db_query($sql_sets);
-    $sql_sets = "delete from islandora_batch_report_objects_processed where id like '" . $pid . "%'";
-    $result = db_query($sql_sets);
-    $sql_sets = "delete from islandora_batch_queue_messages where id like '" . $pid . "%'";
-    $result = db_query($sql_sets);
+    $sql = "delete from islandora_batch_queue where id like '" . $pid . "%'";
+    $result = db_query($sql);
+    $sql = "delete from islandora_batch_report_objects_processed where id like '" . $pid . "%'";
+    $result = db_query($sql);
+    $sql = "delete from islandora_batch_queue_messages where id like '" . $pid . "%'";
+    $result = db_query($sql);
 
     $total = $result_set + $result_report_sets_processed + $result_queue + $result_queue_messages + $result_report_objects_processed + $result_resources + $result_state;
     $class = ($total) ? 'good' : 'bad';
@@ -1233,7 +1233,7 @@ function upitt_workflow_purge_objects_for_barcodes($barcodes) {
       $child_pids = upitt_workflow_get_solr_options($solr_query, 'PID', 'PID');
       if (strstr($pid, '-') == '') {
         for ($i = 1; $i < 50; $i++) {
-          $seq = $pid . ($i < 10) ? '-000' . $i : '-00' . $i;
+          $seq = $pid . (($i < 10) ? '-000' . $i : '-00' . $i);
           if (!array_key_exists($seq, $child_pids)) {
             $child_pids[$seq] = $seq;
           }
