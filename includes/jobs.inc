@@ -88,6 +88,25 @@ function upitt_workflow_do_ocr(AbstractObject $islandora_object, $options) {
     return false;
   }
   else {
+    global $user;
+    global $base_url;
+    $args = func_get_args();
+
+    array_shift($args);
+    // to ensure that pid is first arg passed as payload
+    array_unshift($args, $islandora_object->id);
+    $payload = json_encode(
+      array(
+        "func" => 'upitt_workflow_generate_ocr_datastreams',
+        "args" => $args,
+        "site" => $base_url,
+        "uid" => $user->uid,
+      )
+    );
+
+    $payload = array('object_id' => $islandora_object->id);
+    module_invoke_all('islandora_job_started', $payload);
+
     $aggregate_ocr = drush_get_option('aggregate_ocr', 0);
     $pages = array_keys(islandora_paged_content_get_pages($islandora_object));
     $page_count = count($pages);
