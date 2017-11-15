@@ -46,6 +46,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'links_to_objects' => ' - Admin links to objects',
       'deep_info_on_objects' => ' - Deep info on objects',
       'get_wf_paths' => ' - Get Bigfoot paths',
+      'get_wf_barcodes_from_batch' => ' - Get barcodes from legacy batches',
       'purge_OCR_PDF' => ' - Purge page OCR and PDF derivative',
       'delete_batch' => ' - DELETE islandora_batch_* records',
       'delete_batch_tempfiles' => ' - DELETE temp batch_* ingest folders',
@@ -904,6 +905,40 @@ function upitt_workflow_links_to_objects_for_barcodes($barcodes) {
 }
 
 /**
+ * Helper function that will just get the barcodes from the item record
+ * that matches this batch - related through the batch_item table.
+ *
+ * Returns an empty string if no match was found;
+ *
+ * @param string $batch
+ * @param type $link
+ * @return string
+ */
+function upitt_workflow_legacy_barcodes_from_batch($batch, $link) {
+  $sql = "SELECT b.batch_external_id as `batch_external_id`, GROUP_CONCAT(i.do_id) as `barcodes` " .
+        "FROM batch_item bi " .
+        "JOIN batch b ON (bi.batch_id = b.batch_id) " .
+        "JOIN item i ON (bi.item_id = i.id) " .
+        "WHERE b.batch_external_id = '" . mysqli_real_escape_string($link, $batch) . "'" .
+        "GROUP BY b.batch_external_id";
+  $result = mysqli_query($link, $sql);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+
+  $path = '';
+  $row = mysqli_fetch_assoc($result);
+  $batch_barcodes = array();
+  if (isset($row['batch_external_id']) && isset($row['barcodes'])) {
+    $barcodes = explode(",", $row['barcodes']);
+    foreach ($barcodes as $barcode) {
+      $batch_barcodes[] = $barcode;
+    }
+  }
+  return $batch_barcodes;
+}
+
+/**
  * Helper function that will just get the batch file path from the item_file record
  * that matches this barcode.  Returns an empty string if no match was found;
  *
@@ -1097,6 +1132,32 @@ function upitt_workflow_hopper_list_pending_for_barcodes($barcodes) {
   return $markup;
 }
 
+/**
+ * This will get all of the barcodes assocaited with legacy batch identifiers.
+ *
+ * @param type $batches
+ * @return string HTML markup
+ */
+function upitt_workflow_get_wf_barcodes_from_batch_for_barcodes($batches) {
+  $batches_arr = explode("\n", $batches);
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $markup = '<div class="text-report"><h3>Bigfoot paths for barcodes</h3>';
+  foreach ($batches_arr as $batch) {
+    $batch = trim($batch);
+    $barcodes = upitt_workflow_legacy_barcodes_from_batch($batch, $link);
+    if ($barcodes) {
+      $barcodes_str = implode("<br>", $barcodes);
+      $markup .= '<span class="good">' . $barcodes_str . '</span><br>';
+    }
+    else {
+      $markup .= '<span class="bad">' . $batch . ' not found in item table</span><br>';
+    }
+  }
+  $markup .= '</div>';
+  mysqli_close($link);
+
+  return $markup;
+}
 
 /**
  * This will look in the item / item_file table to get the path for that barcode's workflow record.
