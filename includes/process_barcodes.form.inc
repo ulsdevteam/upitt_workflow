@@ -1147,7 +1147,7 @@ function upitt_workflow_get_wf_barcodes_from_batch_for_barcodes($batches) {
     $barcodes = upitt_workflow_legacy_barcodes_from_batch($batch, $link);
     if ($barcodes) {
       $barcodes_str = implode("<br>", $barcodes);
-      $markup .= '<span class="good">' . $barcodes_str . '</span><br>';
+      $markup .= '<span class="good"><b>batch "' . $batch . '"</b><br><span class="good">' . $barcodes_str . '</span><br>';
     }
     else {
       $markup .= '<span class="bad">' . $batch . ' not found in item table</span><br>';
