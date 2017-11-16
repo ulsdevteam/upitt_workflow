@@ -906,6 +906,6 @@ function upitt_workflow_islandora_paged_content_OCR_batch_operation_finished($pa
     $output = array();
     exec($rm_temp_command, $output, $ret);
     drush_log($rm_temp_command, 'ok');
-    exit;
+    exit(0);
   }
 }
