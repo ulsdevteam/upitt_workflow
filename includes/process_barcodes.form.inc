@@ -888,7 +888,10 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
       } elseif ((!$parent_had_OCR_aggregate || !$parent_had_PDF_aggregate) && !($child_results['all_childs_had_OCR'] || $child_results['all_childs_had_PDF'])) {
         // Parent did not have either OCR or PDF aggregate, and at least one child did not have all datastreams ready.
         $markup .= '<div class="bad">Needs OCR and/or PDF for child pages as well as OCR/PDF aggregation.</div>';
+      } else {
+        $markup .= '<div class="bad">Needs OCR and/or PDF for child pages OR simply OCR/PDF aggregation.</div>';
       }
+
 
       if ($datastream_results['pdf_size'] === FALSE) {
         $markup .= '<div class="bad">There is no PDF datastream.</div>';
