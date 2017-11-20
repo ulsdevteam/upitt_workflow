@@ -105,16 +105,13 @@ function drush_upitt_workflow_ingest_via_hopper() {
  */
 function drush_upitt_workflow_generate_ocr_datastreams() {
   module_load_include('inc', 'islandora', 'includes/derivatives');
-  $parameters = array(
-    'paged_object_pid' => drush_get_option('paged_object_pid', NULL),
-  );
+  $paged_object_pid = drush_get_option('paged_object_pid', NULL);
 
-  $parameters = array_filter($parameters);
 
-  $paged_content = islandora_object_load($parameters['paged_object_pid']);
+  $paged_content = islandora_object_load($paged_object_pid);
   if (!$paged_content) {
-    drush_print('Object ' . $parameters['paged_object_pid'] . ' does not exist');
+    drush_print('Object ' . $paged_object_pid . ' does not exist');
     return;
   }
-  islandora_job_submit_background('upitt_workflow_generate_ocr_datastreams', $paged_content->id, array());
+  islandora_job_submit_background('upitt_workflow_generate_ocr_datastreams', $paged_object_pid, array());
 }
