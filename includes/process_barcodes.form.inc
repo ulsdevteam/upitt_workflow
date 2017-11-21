@@ -907,14 +907,6 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
       }
     }
     
-    // $do_ocr_link, $do_aggregation_link
-    $do_ocr_link = '<b><a href="/workflow/workflowadmin/process_barcodes/?barcodes=' . implode(",", $need_ocr_pdf) . '&mode=aggregate">Aggregate these OCR PDF</a></b><br>';
-    $do_aggregation_link = '<b><a href="/workflow/workflowadmin/process_barcodes/?barcodes=' . implode(",", $need_aggregated) . '&mode=aggregate">Aggregate these OCR PDF</a></b><br>';
-    $need_ocr_pdf = $need_aggregated = $done_ocr_aggregation = array();
-    $markup .= '<h3>Found in Islandora</h3><pre class="good">' . implode("\n", $done_ocr_aggregation) . '</pre>';
-    $markup .= '<h3>Need OCR aggregation</h3>' . $do_aggregation_link . '<pre class="bad">' . implode("\n", $need_aggregated) . '</pre>';
-    $markup .= '<h3>Need OCR & PDF generated</h3>' . $do_ocr_link . '<pre class="bad">' . implode("\n", $need_ocr_pdf) . '</pre>';
-
     $markup .= $datastream_results['markup'];
     // check the total OCR size of child objects - if this is 0, skip this step because aggregate OCR already occurred.
     $ocr_size_ratio = (($ocr_aggregate_size) ? $child_results['total_OCR_size'] / $ocr_aggregate_size : FALSE);
@@ -925,6 +917,13 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
     $markup .= $child_results['markup'] . "<hr>";
   }
 
+  // $do_ocr_link, $do_aggregation_link
+  $do_ocr_link = (count($need_ocr_pdf) > 0) ? '<b><a href="/workflow/workflowadmin/process_barcodes/?barcodes=' . implode(",", $need_ocr_pdf) . '&mode=gen_OCR">Generate OCR / PDF for these</a></b><br>' : '';
+  $do_aggregation_link = (count($need_aggregated) > 0) ? '<b><a href="/workflow/workflowadmin/process_barcodes/?barcodes=' . implode(",", $need_aggregated) . '&mode=aggregate">Aggregate these OCR PDF</a></b><br>' : '';
+  $need_ocr_pdf = $need_aggregated = $done_ocr_aggregation = array();
+  $markup .= '<h3>Found in Islandora</h3><pre class="good">' . implode("\n", $done_ocr_aggregation) . '</pre>';
+  $markup .= '<h3>Need OCR aggregation</h3>' . $do_aggregation_link . '<pre class="bad">' . implode("\n", $need_aggregated) . '</pre>';
+  $markup .= '<h3>Need OCR & PDF generated</h3>' . $do_ocr_link . '<pre class="bad">' . implode("\n", $need_ocr_pdf) . '</pre>';
 
   $markup .= '<h2>Found in Islandora</h2><pre class="good">' . implode("\n", $check_results['found_pid_manage_links']) . '</pre>' .
             '<h2>NOT found in Islandora</h2><pre class="bad">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
