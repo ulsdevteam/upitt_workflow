@@ -802,7 +802,6 @@ function upitt_workflow_child_object_results($object, $ingest_namespace) {
     if (is_object($member_object)) {
       $all_childs_had_OCR &= isset($member_object['OCR']);
       $all_childs_had_PDF &= isset($member_object['PDF']);
-
       $results = upitt_workflow_datastream_results($member_object, $ingest_namespace, TRUE);
       $total_OCR_size += $results['OCR_size'];
       $markup .= $results['markup'] . "<br>";
@@ -857,6 +856,8 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
 
+  // Set up arrays for keeping track of what needs done with the parent objects.
+  $need_ocr_pdf = $need_aggregated = $done_ocr_aggregation = array();
   foreach ($check_results['found_pids'] as $barcode => $pid) {
     $islandora_object = islandora_object_load($pid);
     $ocr_aggregate_size = (isset($islandora_object['OCR'])) ? $islandora_object['OCR']->size : 0;
@@ -876,17 +877,19 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
     $child_results = upitt_workflow_child_object_results($islandora_object, $ingest_namespace);
     $is_paged = upitt_workflow_is_paged_object($islandora_object);
     if ($is_paged) {
-      $parent_had_OCR_aggregate = (isset($islandora_object['OCR']) ? 1 : 0);
-      $parent_had_PDF_aggregate = (isset($islandora_object['PDF']) ? 1 : 0);
-
+      $parent_had_OCR_aggregate = (isset($object['OCR']) ? 1 : 0);
+      $parent_had_PDF_aggregate = (isset($object['PDF']) ? 1 : 0);
       if ($parent_had_OCR_aggregate && $parent_had_PDF_aggregate && !($child_results['all_childs_had_OCR']) && !($child_results['all_childs_had_PDF'])) {
         // OCR / PDF all done
+        $done_ocr_aggregation[] = $barcode;
         $markup .= '<div class="good">OCR and PDF aggregation complete.</div>';
       } elseif ((!$parent_had_OCR_aggregate || !$parent_had_PDF_aggregate) && $child_results['all_childs_had_OCR'] && $child_results['all_childs_had_PDF']) {
         // Parent did not have either OCR or PDF aggregate, but children have all datastreams ready.
+        $need_aggregated[] = $barcode;
         $markup .= '<div class="bad">Needs OCR/PDF aggregation.</div>';
       } elseif ((!$parent_had_OCR_aggregate || !$parent_had_PDF_aggregate) && !($child_results['all_childs_had_OCR'] || $child_results['all_childs_had_PDF'])) {
         // Parent did not have either OCR or PDF aggregate, and at least one child did not have all datastreams ready.
+        $need_ocr_pdf[] = $barcode;
         $markup .= '<div class="bad">Needs OCR and/or PDF for child pages as well as OCR/PDF aggregation.</div>';
       } else {
         $markup .= '<div class="bad">Needs OCR and/or PDF for child pages OR simply OCR/PDF aggregation.</div>';
@@ -903,6 +906,14 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
         $markup .= '<div class="good">PDF file size is good - size = ' . $datastream_results['pdf_size'] . '.</div>';
       }
     }
+    
+    // $do_ocr_link, $do_aggregation_link
+    $do_ocr_link = '<b><a href="/workflow/workflowadmin/process_barcodes/?barcodes=' . implode(",", $need_ocr_pdf) . '&mode=aggregate">Aggregate these OCR PDF</a></b><br>';
+    $do_aggregation_link = '<b><a href="/workflow/workflowadmin/process_barcodes/?barcodes=' . implode(",", $need_aggregated) . '&mode=aggregate">Aggregate these OCR PDF</a></b><br>';
+    $need_ocr_pdf = $need_aggregated = $done_ocr_aggregation = array();
+    $markup .= '<h3>Found in Islandora</h3><pre class="good">' . implode("\n", $done_ocr_aggregation) . '</pre>' .
+    $markup .= '<h3>Need OCR aggregation</h3>' . $do_aggregation_link . '<pre class="bad">' . implode("\n", $need_aggregated) . '</pre>' .
+    $markup .= '<h3>Need OCR & PDF generated</h3>' . $do_ocr_link . '<pre class="bad">' . implode("\n", $need_ocr_pdf) . '</pre>' .
 
     $markup .= $datastream_results['markup'];
     // check the total OCR size of child objects - if this is 0, skip this step because aggregate OCR already occurred.
@@ -913,6 +924,8 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
     }
     $markup .= $child_results['markup'] . "<hr>";
   }
+
+
   $markup .= '<h2>Found in Islandora</h2><pre class="good">' . implode("\n", $check_results['found_pid_manage_links']) . '</pre>' .
             '<h2>NOT found in Islandora</h2><pre class="bad">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
   $markup .= '</div>';
