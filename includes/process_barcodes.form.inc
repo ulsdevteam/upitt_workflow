@@ -877,8 +877,8 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
     $child_results = upitt_workflow_child_object_results($islandora_object, $ingest_namespace);
     $is_paged = upitt_workflow_is_paged_object($islandora_object);
     if ($is_paged) {
-      $parent_had_OCR_aggregate = (isset($object['OCR']) ? 1 : 0);
-      $parent_had_PDF_aggregate = (isset($object['PDF']) ? 1 : 0);
+      $parent_had_OCR_aggregate = (isset($islandora_object['OCR']) ? 1 : 0);
+      $parent_had_PDF_aggregate = (isset($islandora_object['PDF']) ? 1 : 0);
       if ($parent_had_OCR_aggregate && $parent_had_PDF_aggregate && !($child_results['all_childs_had_OCR']) && !($child_results['all_childs_had_PDF'])) {
         // OCR / PDF all done
         $done_ocr_aggregation[] = $barcode;
