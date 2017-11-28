@@ -46,6 +46,10 @@ function upitt_workflow_generate_ocr_datastreams($object_in, array $options = ar
     return;
   }
 
+  module_load_include('inc', 'islandora_job', 'includes/utilities');
+  $payload = islandora_job_format_payload('upitt_workflow_generate_ocr_datastreams', func_get_args());
+  module_invoke_all('islandora_job_started', $payload);
+
 //BGG - no need for defer derivatives  $re_add = islandora_get_defer_derivatives_flag($object);
 //BGG - no need for defer derivatives  islandora_remove_defer_derivatives_flag($object);
 
