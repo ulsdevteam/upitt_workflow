@@ -41,6 +41,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'make_page_pdfs' => ' - (Make page PDF derivatives)',
       'aggregate' => ' - Aggregate OCR and PDF, make TN_LARGE',
       'set_status' => ' - Set Status',
+      'solr_reindex' => ' - Solr reindex objects',
     '3' => 'Info / Cleanup',
       'checkobjects' => ' - Check for Islandora Objects',
       'links_to_objects' => ' - Admin links to objects',
@@ -928,6 +929,18 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
   $markup .= '<h2>Found in Islandora</h2><pre class="good">' . implode("\n", $check_results['found_pid_manage_links']) . '</pre>' .
             '<h2>NOT found in Islandora</h2><pre class="bad">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
   $markup .= '</div>';
+  return $markup;
+}
+
+function upitt_workflow_solr_reindex_for_barcodes($barcodes) {
+  module_load_include('inc', 'islandora_gsearcher', 'includes/utilities');
+  $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
+  $markup = '<div class="text-report"><h3>Solr reindex for objects</h3>';
+  foreach ($check_results['found_pids'] as $key => $pid) {
+    $markup .= $pid . " queued to be added to Solr<br>";
+    islandora_gsearcher_inform_gsearch($pid, TRUE);
+  }
+  $markup .= "</div>";
   return $markup;
 }
 
