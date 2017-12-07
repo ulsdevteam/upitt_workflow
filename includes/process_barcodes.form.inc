@@ -165,8 +165,8 @@ function upitt_workflow_check_islandora_for_barcodes($barcodes) {
         if ($first_page) {
           $page_object = islandora_object_load($first_page['pid']);
           $page_jp2_dimensions = upitt_workflow_get_jp2_dimensions($page_object);
-          if ($first_page['width'] <> $page_jp2_dimensions['width'] ||
-              $first_page['height'] <> $page_jp2_dimensions['height']) {
+          if ((isset($first_page['width']) && $first_page['width'] <> $page_jp2_dimensions['width']) ||
+              (isset($first_page['height']) && $first_page['height'] <> $page_jp2_dimensions['height'])) {
             @list($namespace, $barcode_of_object) = explode(":", $islandora_object->id);
             $link_options = array(
               'query' => array(

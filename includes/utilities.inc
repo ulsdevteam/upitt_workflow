@@ -2186,6 +2186,15 @@ function upitt_workflow_get_jp2_dimensions($object) {
     $image_size = getimagesize($saved_jp2);
     @unlink($saved_jp2);
     list($width, $height, $type, $attr) = $image_size;
-    return array('width' => $width, 'height' => $height);
+    return array(
+        'width' => $width, 
+        'height' => $height
+    );
+  }
+  else {
+    return array(
+        'width' => 0, 
+        'height' => 0
+    );
   }
 }
