@@ -1051,6 +1051,14 @@ function upitt_workflow_create_TN_file($obj_ds, $thumbnail_id, $models) {
  * @return string
  */
 function upitt_workflow_create_TN_LARGE_file($object, $obj_ds, $thumbnail_id, $models) {
+  if (is_null($obj_ds)) {
+    $variables = array(
+      '@pid' => $object->id,
+    );
+    watchdog('upitt_workflow', 'Create TN_LARGE failed due to missing master datastream for object @pid.', $variables, WATCHDOG_ERROR);
+    return FALSE;
+  }
+
   module_load_include('inc', 'islandora_large_image', 'includes/derivatives');
   module_load_include('module', 'imagemagick', 'imagemagick');
 
