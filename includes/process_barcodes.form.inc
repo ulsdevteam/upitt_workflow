@@ -794,7 +794,15 @@ function upitt_workflow_child_object_results($object, $ingest_namespace) {
             '<i>no pending object members</i>') . '</pre></div>';
   }
   else {
-    $object_members = upitt_workflow_get_object_members_solr_record($object->id,'PID');
+    $object_members = array();
+    $child_pages = islandora_paged_content_get_pages_ri($object);
+    // This call will set 'pid' elements, previous code sets 'PID', so need to
+    // swap them over
+    foreach ($child_pages as $child_page) {
+      if (isset($child_page['pid'])) {
+        $object_members[] = array('PID' => $child_page['pid']);
+      }
+    }
   }
   $total_OCR_size = 0;
   $all_childs_had_OCR = $all_childs_had_PDF = TRUE;
@@ -1573,6 +1581,7 @@ function upitt_workflow_ingest_prepare_for_barcodes($barcodes) {
           }
           $color = (($return_var == -1 || $return_var == 255)) ? 'red' : 'green';
           $markup .= '(called islandora_batch_ingest)<code style="color:' . $color . '">' . $ingest_set_drush_command . '</code>';
+          $markup .= "<code style='color:#598'>" . $drush_generic_markup . "</code>";
         }
         else {
           // the $set was 0... there was a problem with the earlier prepare
