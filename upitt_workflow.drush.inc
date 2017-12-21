@@ -58,7 +58,8 @@ function drush_upitt_workflow_ingest_via_hopper() {
     // The avail calculation is slightly different -- using the size and
     // the available space, as long as 20% of the size is greater than
     // the available MINUS the new files_size.
-    $threshold_used_fedora = 0.13 * $fedora_size_and_used['disk_size'];
+    // Based on the CSSD alert percentage, this ratio will determine our threshold.
+    $threshold_used_fedora = 0.21 * $fedora_size_and_used['disk_size'];
     $threshold_used = 0.70 * $partition_size_and_used['partition_size'];
     if ((($partition_size_and_used['used'] + $next_hopper_item['files_size']) < $threshold_used) &&
         (($fedora_size_and_used['disk_bytes_avail'] - $next_hopper_item['files_size']) > $threshold_used_fedora) ) {
@@ -98,6 +99,7 @@ function drush_upitt_workflow_ingest_via_hopper() {
       }
       if (count($space_errors)) {
         drush_log(implode("<br>", $space_errors), 'error');
+        watchdog('upitt_workflow', implode("<br>", $space_errors));
       }
     }
   }
