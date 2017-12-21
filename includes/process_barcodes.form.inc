@@ -37,6 +37,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'fix_page_sizes' => ' - Fix Page size RELS_INT',
       'make_tn' => ' - Make TN derivative',
       'make_tn_large' => ' - Make TN_LARGE derivative',
+      'make_jpg' => ' - Make JPG derivative',
       'make_jp2' => ' - Make JP2 derivative',
       'make_page_pdfs' => ' - (Make page PDF derivatives)',
       'aggregate' => ' - Aggregate OCR and PDF, make TN_LARGE',
@@ -474,6 +475,52 @@ function upitt_workflow_make_page_pdf_for_barcodes($barcodes) {
   if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
   }
+  $markup .= '</div>';
+  return $markup;
+}
+
+function upitt_workflow_make_jpg_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+
+  $missing_barcodes = array();
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '<div class="text-report">';
+  $markup .= "<b>Start " . date('Y-m-d H:i:s') . "</b><br>";
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $pid = $ingest_namespace . $barcode;
+    $islandora_object = islandora_object_load($pid);
+    $is_paged = upitt_workflow_is_paged_object($islandora_object);
+    if ($is_paged) {
+      $pages = ($is_paged) ? islandora_paged_content_get_pages($islandora_object) : array();
+      foreach ($pages as $child_page) {
+        if (isset($child_page['pid'])) {
+          $child_page_obj = islandora_object_load($child_page['pid']);
+          if (is_object($child_page_obj)) {
+            if (!upitt_workflow_make_jpg($child_page_obj, $child_page_obj)) {
+              $missing_barcodes[] = $child_page['pid'];
+            }
+          }
+        }
+      }
+    }
+    elseif (is_object($islandora_object)) {
+      if (!upitt_workflow_make_jpg($islandora_object, $islandora_object)) {
+        $missing_barcodes[] = $barcode;
+      }
+    } else {
+      $missing_barcodes[] = $barcode;
+    }
+    $markup .= '<div>JPG created for ' . $pid . "</div>";
+  }
+  if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes or their OBJ datastream could not be found  ' . implode(", ", $missing_barcodes), 'warning');
+  }
+
+  $markup .= "<b>Done " . date('Y-m-d H:i:s') . "</b><br>";
+  $markup .= "<b>" . count($barcodes_arr) . " objects processed</b><br>";
   $markup .= '</div>';
   return $markup;
 }

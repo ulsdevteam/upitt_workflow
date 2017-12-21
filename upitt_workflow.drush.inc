@@ -47,6 +47,7 @@ function upitt_workflow_drush_command() {
  */
 function drush_upitt_workflow_ingest_via_hopper() {
   module_load_include('inc', 'islandora_batch', 'includes/db');
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('inc', 'upitt_workflow', 'includes/hopper');
   module_load_include('inc', 'upitt_workflow', 'includes/process_barcodes.form');
 
@@ -62,11 +63,16 @@ function drush_upitt_workflow_ingest_via_hopper() {
     if ((($partition_size_and_used['used'] + $next_hopper_item['files_size']) < $threshold_used) &&
         (($fedora_size_and_used['disk_bytes_avail'] - $next_hopper_item['files_size']) > $threshold_used_fedora) ) {
       @list($namespace, $next_barcode) = explode(":", $next_hopper_item['PID']);
+      //  echo "next barcode = " . $next_barcode . "\nsize:" . $next_hopper_item['files_size'] . "\nthreshold = " . $threshold_used . "\nused+size=" . ($partition_size_and_used['used'] + $next_hopper_item['files_size']). "\n";
       // This will purge, update workflow record, copy files, prepare
       // the ingest batch, and ingest the islandora_batch.
       $null_markup = upitt_workflow_delete_update_copy_ingest_for_barcodes($next_barcode);
       if (strstr($null_markup, 'There was an error') == '') {
         upitt_workflow_set_next_ingest_start_timestamp_for_hopper_by_pid($next_hopper_item['PID']);
+        //  echo "updated??\n";
+      }
+      else {
+        //   print $null_markup . "\n------------------\n";
       }
     }
     else {
