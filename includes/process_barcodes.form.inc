@@ -292,12 +292,28 @@ function upitt_workflow_make_batch_records_for_barcodes($barcodes, $mode) {
            $user->uid . ");";
     mysqli_query($link, $sql);
 
-    $batch_id = upitt_workflow_get_batch_id($barcode , FALSE);
+    $batch_id = upitt_workflow_get_batch_id($barcode, FALSE);
     $item_id = upitt_workflow_insert_item_for_batch_external_id($barcode, $link);
     if (!$batch_id) {
-      $batch_id = upitt_workflow_get_batch_id($barcode);
+      $batch_id = upitt_workflow_get_batch_id($barcode, TRUE);
+      $sql = "REPLACE INTO `batch` (batch_external_id, " .
+             "mapto_collections, " .
+             "batch_description, " .
+             "default_type_of_resource, " .
+             "mapto_site_id_values, " .
+             "overwrite_if_exists, " .
+             "batch_host, " .
+             "user) VALUES (" .
+             "'" . mysqli_real_escape_string($link, $barcode) . "', " .
+             "'" . mysqli_real_escape_string($link, $collections) . "', " .
+             "'" . mysqli_real_escape_string($link, $description) . "', " .
+             "'" . mysqli_real_escape_string($link, $model) . "', " .
+             "'" . mysqli_real_escape_string($link, $sites) . "', " .
+             $overwrite_if_exists . ", " .
+             "'" . (($batch_host_path) ? $batch_host_path : variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming')) . "'," .
+             $user->uid . ");";
+      mysqli_query($link, $sql);
     }
-
     upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link);
   }
 
