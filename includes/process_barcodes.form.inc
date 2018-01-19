@@ -142,12 +142,15 @@ function upitt_workflow_checkobjects_for_barcodes($barcodes) {
  * @param string $barcodes
  * @return associative array
  */
-function upitt_workflow_check_islandora_for_barcodes($barcodes) {
+function upitt_workflow_check_islandora_for_barcodes(&$barcodes) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+  $barcodes = upitt_workflow_pid_to_barcode_for_barcodes($barcodes, TRUE);
+  
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   $found_pids = $found_pid_links = $found_pid_manage_links = $not_found_pids = array();
   $barcodes_arr = explode("\n", $barcodes);
+
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
     if ($barcode) {
@@ -663,6 +666,7 @@ function upitt_workflow_fix_page_size($pageObject) {
 
 function upitt_workflow_make_tn_for_barcodes($barcodes) {
   module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+  $barcodes = upitt_workflow_pid_to_barcode_for_barcodes($barcodes, TRUE);
 
   $missing_barcodes = array();
   $barcodes_arr = explode("\n", $barcodes);
@@ -693,6 +697,7 @@ function upitt_workflow_make_tn_for_barcodes($barcodes) {
 
 function upitt_workflow_make_tn_large_for_barcodes($barcodes) {
   module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+  $barcodes = upitt_workflow_pid_to_barcode_for_barcodes($barcodes, TRUE);
 
   $missing_barcodes = array();
   $barcodes_arr = explode("\n", $barcodes);
@@ -1357,15 +1362,21 @@ function upitt_workflow_barcode_to_pid_for_barcodes($vals) {
  * @param type $vals
  * @return HTML markup
  */
-function upitt_workflow_pid_to_barcode_for_barcodes($vals) {
+function upitt_workflow_pid_to_barcode_for_barcodes($vals, $raw_output = FALSE) {
   $pids_arr = explode("\n", $vals);
-  $markup = '<div class="text-report"><h3>PIDs to barcodes</h3>';
+  $markup = ($raw_output ? '' : '<div class="text-report"><h3>PIDs to barcodes</h3>');
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  $barcodes = array();
   foreach ($pids_arr as $pid) {
-    $barcode = str_replace($ingest_namespace, "", trim($pid));
-    $markup .= $barcode . '<br>';
+    $pid = trim($pid);
+    if ($pid) {
+      $barcodes[] = str_replace($ingest_namespace, "", $pid);
+    }
   }
-  $markup .= '</div>';
+  $markup .= implode(($raw_output ? "\n" : '<br>'), $barcodes);
+  if (!$raw_output) {
+    $markup .= '</div>';
+  }
 
   return $markup;
 }
