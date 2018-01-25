@@ -1607,7 +1607,7 @@ function upitt_workflow_gen_OCR_for_barcodes($barcodes) {
     $output = $return_var = array();
     exec($drush_command, $output, $return_var);
 
-    if (($return_var == -1 || $return_var == 255) && !$alerted_on_err) {
+    if (($return_var == -1 || $return_var == 255 || $return_var == 1) && !$alerted_on_err) {
       drupal_set_message('There was an error calling the drush command : ' . $drush_command);
     }
     $markup .= "<hr>drush command return = " . $return_var . "<br>drush command output = " . print_r($output, true) . "</pre>";

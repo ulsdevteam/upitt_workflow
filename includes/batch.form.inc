@@ -499,16 +499,15 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   $content_model = isset($form_state['values']['default_type_of_resource']) ? $form_state['values']['default_type_of_resource'] : 'sp_large_image_cmodel';
   $batch_external_id = $form_state['values']['batch_external_id'];
 
-  if (!$incoming_folder || !$batch_external_id) {
-    drupal_set_message('The batch name and an incoming folder must be set in order to save this batch', 'error');
-    return;
-  }
-
   // Now it is safe to make the full path to the specific incoming subfolder that has been selected.
   $incoming_folder = (isset($form_state['values']['batch_host']) && strstr($form_state['values']['batch_host'], 'ftp:')) ?
           $form_state['values']['batch_host'] :
           rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $incoming_folder;
   $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
+  if (!$incoming_folder || !$batch_external_id) {
+    drupal_set_message('The batch name and an incoming folder must be set in order to save this batch', 'error');
+    return;
+  }
 
   $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, FALSE);
   $markup = isset($copyfiles_result['markup']) ? $copyfiles_result['markup'] : '';

@@ -16,7 +16,7 @@ function upitt_workflow_drush_command() {
     'description' => 'This will ingest the next item from the hopper.  This call does not take any options.',
     'drupal dependencies' => array('islandora_batch','islandora_ocr'),
     'examples' => array(
-      'drush -v --user=admin --uri=http://dev.gamera.library.pitt.edu upitt_workflow_ingest_via_hopper',
+      'drush -v --user=admin --uri=http://gamera.library.pitt.edu upitt_workflow_ingest_via_hopper',
     ),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
   );
@@ -26,7 +26,7 @@ function upitt_workflow_drush_command() {
     'description' => 'Create OCR datastreams for paged content object\'s pages.',
     'drupal dependencies' => array('islandora_batch','islandora_ocr'),
     'examples' => array(
-      'drush -v --user=admin --uri=http://dev.gamera.library.pitt.edu upitt_workflow_generate_ocr_datastreams --paged_object_pid=pitt:00awc1789m',
+      'drush -v --user=admin --uri=http://gamera.library.pitt.edu upitt_workflow_generate_ocr_datastreams --paged_object_pid=pitt:00awc1789m',
     ),
     'options' => array(
       'paged_object_pid' => array(
@@ -114,7 +114,6 @@ function drush_upitt_workflow_ingest_via_hopper() {
 function drush_upitt_workflow_generate_ocr_datastreams() {
   module_load_include('inc', 'islandora', 'includes/derivatives');
   $paged_object_pid = drush_get_option('paged_object_pid', NULL);
-
 
   $paged_content = islandora_object_load($paged_object_pid);
   if (!$paged_content) {
