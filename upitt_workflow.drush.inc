@@ -120,5 +120,15 @@ function drush_upitt_workflow_generate_ocr_datastreams() {
     drush_print('Object ' . $paged_object_pid . ' does not exist');
     return;
   }
+
+  module_load_include('inc', 'islandora_job', 'includes/utilities');
+  $total_args = array_merge(func_get_args(), array($paged_object_pid, ));
+
+  // REMOVE the dedupe record so that this will be forced to be added to queue when called.
+  $payload = str_replace("[]", '["' . $paged_object_pid . '",[]]', islandora_job_format_payload('upitt_workflow_generate_ocr_datastreams', func_get_args()));
+  db_delete('islandora_job_job_status')
+    ->condition('data', $payload)
+    ->execute();
+
   islandora_job_submit_background('upitt_workflow_generate_ocr_datastreams', $paged_object_pid, array());
 }

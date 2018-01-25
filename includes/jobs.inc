@@ -41,13 +41,14 @@ function upitt_workflow_generate_ocr_datastreams($object_in, array $options = ar
     return;
   }
 
+  module_load_include('inc', 'islandora_job', 'includes/utilities');
+  $payload = islandora_job_format_payload('upitt_workflow_generate_ocr_datastreams', func_get_args());
+
   if (!islandora_job_jobs_enforce_idle_wait($object, $entrances)) {
     islandora_job_submit_background('upitt_workflow_generate_ocr_datastreams', $object->id, $options, $entrances + 1);
     return;
   }
 
-  module_load_include('inc', 'islandora_job', 'includes/utilities');
-  $payload = islandora_job_format_payload('upitt_workflow_generate_ocr_datastreams', func_get_args());
   module_invoke_all('islandora_job_started', $payload);
 
 //BGG - no need for defer derivatives  $re_add = islandora_get_defer_derivatives_flag($object);
@@ -136,3 +137,4 @@ function upitt_workflow_do_ocr(AbstractObject $islandora_object, $options) {
   }
   return $results;
 }
+
