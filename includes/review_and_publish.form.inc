@@ -6,7 +6,7 @@ function upitt_workflow_review_and_publish(array $form, array &$form_state) {
   $page = (isset($_GET['page']) ? (is_numeric($_GET['page']) ? $_GET['page'] : 0) : 0);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
-  $records = 'SELECT b.batch_external_id, b.batch_id, ' . 
+  $records = 'SELECT b.batch_external_id `object/batch`, b.batch_id, ' .
              '  (SELECT MAX(t_s.timestamp) ' .
              '   FROM item_current_status ics ' .
              '   JOIN `transaction` t_s ON (t_s.id = ics.last_transaction_id) ' .
@@ -43,8 +43,8 @@ function upitt_workflow_review_and_publish(array $form, array &$form_state) {
 
   $records_headings = $rows = array();
   while ($row = mysqli_fetch_assoc($result)) {
-    $batch_external_id = $row['batch_external_id'];
-    $row['batch_external_id'] = l($row['batch_external_id'], '/workflow/batch/' . $row['batch_id']);
+    $batch_external_id = $row['object/batch'];
+    $row['object/batch'] = l($row['object/batch'], '/workflow/batch/' . $row['batch_id']);
     unset($row['batch_id']);
     // Now that the row has been adjusted to remove the "hidden" column that was used to create the link, make the column headings from the array_keys of the row.
     if (count($records_headings) < 1) {
