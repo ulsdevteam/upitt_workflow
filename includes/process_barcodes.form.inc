@@ -13,6 +13,8 @@ set_time_limit(0);
 //  2) create or update batch records
 
 function upitt_workflow_process_barcodes_form($form, &$form_state) {
+  $admin = user_access('administer users');
+
   if (!isset($form_state['values']['barcodes']) && isset($_GET['barcodes']) && isset($_GET['mode'])) {
     $form_state['values']['barcodes'] = str_replace(array(';', ','), "\n", filter_xss($_GET['barcodes']));
     $form_state['values']['mode'] = filter_xss($_GET['mode']);
@@ -56,6 +58,15 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'pid_to_barcode' => ' - Convert PIDs to barcodes',
       'barcode_to_pid' => ' - Convert barcodes to PIDs',
   );
+
+  // The easiest way to remove some of the options is to unset them if not $admin.
+  if (!$admin) {
+    $admin_only_process_barcode_modes = explode("\n", variable_get('upitt_workflow_ingest_incoming', 'purge_objects'));
+    foreach ($admin_only_process_barcode_modes as $mode) {
+      unset($process_options[$mode]);
+    }
+  }
+
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
     'barcodes' => array(
@@ -97,6 +108,7 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
     drupal_set_message('Invalid <b>Processing mode</b> selection.');
     return;
   }
+
   switch ($btn_id) {
     case 'edit-submit':
       if ($mode == 'update' || $mode == 'updateforce') {

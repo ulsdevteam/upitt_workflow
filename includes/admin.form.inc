@@ -24,15 +24,15 @@ function upitt_workflow_admin_form() {
              Only enter text here if the password value needs to change.') . '</span>':
           t('There is NOT any password value.  FTP will not work without a valid password.'));
   $box_alias_default = 'box.com=ftp';
+  $default_admin_only_process_barcode_modes = 'update' . "\n" .
+    'updateforce' . "\n" .
+    'gen_OCR' . "\n" .
+    'solr_reindex' . "\n" .
+    'purge_OCR_PDF' . "\n" .
+    'delete_batch' . "\n" .
+    'delete_batch_tempfiles' . "\n" .
+    'purge_objects';
   $form = array(
-//    'settings_file' => array(
-//      '#type' => 'textfield',
-//      '#title' => t('settings.php File'),
-//      '#description' => t('Full path to the site\'s settings.php file.  Usually this would ' .
-//        'be located under the /var/www/drupal7/sites/default/settings.php, but for a site ' .
-//        'that has a specific "sites" folder, that must be provided here.'),
-//      '#default_value' => variable_get('upitt_workflow_settings_file', ''),
-//    ),
     'notification_email' => array(
       '#type' => 'textfield',
       '#title' => t('Notification Email Address'),
@@ -98,6 +98,18 @@ function upitt_workflow_admin_form() {
         '#default_value' => variable_get('upitt_workflow_ftp_port', 990),
       ), */
     ),
+    'process_barcodes_panel' => array(
+      '#type' => 'fieldset',
+      '#title' => t('Process Barcodes Admin-only modes.'),
+      'admin_only_process_barcode_modes' => array(
+        '#type' => 'textarea',
+        '#title' => t('List the mode values that ONLY administrators should have access to use.'),
+        '#default_value' => variable_get('upitt_workflow_admin_only_process_barcode_modes', $default_admin_only_process_barcode_modes),
+        '#description' => t('List the individual system names for the modes that should only be accessible by administrators.  These
+                             are listed in the source code for the process_barcodes.form.inc.'),
+      ),
+
+    ),
     'submit' => array(
       '#type' => 'submit',
       '#value' => t('Save configuration'),
@@ -122,7 +134,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
     case 'edit-submit':
       $batch_hosts_array = explode("\r\n", $form_state['values']['batch_hosts']);
       upitt_workflow_create_host_paths($batch_hosts_array);
-      // variable_set('upitt_workflow_settings_file', $form_state['values']['settings_file']);
+      variable_set('upitt_workflow_admin_only_process_barcode_modes', $form_state['values']['admin_only_process_barcode_modes']);
       variable_set('upitt_workflow_notification_email', $form_state['values']['notification_email']);
       variable_set('upitt_workflow_ingest_namespace', $form_state['values']['ingest_namespace']);
       variable_set('upitt_workflow_ingest_prepared_path', $form_state['values']['ingest_prepared_path']);
@@ -134,7 +146,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       break;
 
     case 'edit-reset':
-      // variable_del('upitt_workflow_settings_file');
+      variable_del('upitt_workflow_admin_only_process_barcode_modes');
       variable_del('upitt_workflow_notification_email');
       variable_del('upitt_workflow_ingest_namespace');
       variable_del('upitt_workflow_ingest_prepared_path');
