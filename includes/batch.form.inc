@@ -10,7 +10,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
   $sites = upitt_workflow_get_mysql_options('wflocal_fedora_site', 'Site', 'pid', 'name', 'name', 0);
 
   // for legacy batches, this array may need to be joined with the legacy collection `c_id` pointers instead of Solr PID values.
-  $collections = upitt_workflow_get_solr_options('RELS_EXT_hasModel_uri_ms:info\:fedora\/islandora\:collectionCModel', 'PID', 'fgs_label_s');
+  $collections = upitt_workflow_get_solr_options('RELS_EXT_hasModel_uri_ms:info\:fedora\/islandora\:collectionCModel -PID:*_review', 'PID', 'fgs_label_s');
   asort($collections);
   $batch_id = ((is_numeric($batch)) ? $batch : upitt_workflow_get_batch_id($batch, FALSE));
 
@@ -98,6 +98,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#attributes' => $read_only_att,
       '#description' => t('Legacy batch name, `batch_external_id`'),
       '#default_value' => $batch_external_id,
+      '#maxlength' => 50,
       '#suffix' => (($count_existing_batch_files > 0) ?
         '<em style="color:red">' .
         t('There are already ' . $count_existing_batch_files . ' files / folders in the batch folder.') . '</em>' .
@@ -510,8 +511,8 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
   }
 
   $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, FALSE);
-  $markup = isset($copyfiles_result['markup']) ? $copyfiles_result['markup'] : '';
 
+  $markup = isset($copyfiles_result['markup']) ? $copyfiles_result['markup'] : '';
   // If these values are still set in the form_state, the save_batch code will 
   // not know what to do with them, so copy the variable and trim off the values
   // that are not intended for the batch record.
@@ -1221,6 +1222,7 @@ function upitt_workflow_array_flat_count_values($array) {
 function upitt_workflow_unzip_ftp_zipfiles_to_tempfolder($ftp_folder, $temp_folder, $batch_external_id) {
   module_load_include('inc', 'upitt_workflow', 'includes/ftp_ops');
   if ($results_array = upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $temp_folder, $batch_external_id)) {
+drupal_set_message($results_array);
     if ($results_array['downloaded']) {
       drupal_set_message('There was ' . $results_array['num_zip_files_unzipped'] . ' zip file' . ($results_array['num_zip_files_unzipped'] == 1 ? '' : 's') .
         'downloaded from the FTP location `' . $ftp_folder . '`.' . "\n\n" . 

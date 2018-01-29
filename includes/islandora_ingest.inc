@@ -76,7 +76,7 @@ function upitt_workflow_islandora_ingest($batch_id) {
 
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
-  $batch = upitt_workflow_batch_load($batch_id);
+  $batch = is_numeric($batch_id) ? upitt_workflow_batch_load($batch_id) : upitt_workflow_batch_load_by_batch_external_id($batch_id);
   $markup = '<p>Attempt to ingest batch #' . $batch_id;
 
   if ($batch) {
