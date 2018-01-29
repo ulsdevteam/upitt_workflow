@@ -61,7 +61,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
 
   // The easiest way to remove some of the options is to unset them if not $admin.
   if (!$admin) {
-    $admin_only_process_barcode_modes = explode("\n", variable_get('upitt_workflow_ingest_incoming', 'purge_objects'));
+    $admin_only_process_barcode_modes = explode("\n", variable_get('upitt_workflow_admin_only_process_barcode_modes', 'purge_objects'));
     foreach ($admin_only_process_barcode_modes as $mode) {
       unset($process_options[$mode]);
     }
