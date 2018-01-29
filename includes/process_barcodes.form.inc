@@ -557,6 +557,7 @@ function upitt_workflow_make_jpg_for_barcodes($barcodes) {
 }
 
 function upitt_workflow_make_jp2_for_barcodes($barcodes) {
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
   module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
 
   $missing_barcodes = array();
@@ -564,13 +565,31 @@ function upitt_workflow_make_jp2_for_barcodes($barcodes) {
   $markup = '<div class="text-report">';
   $markup .= "<b>Start " . date('Y-m-d H:i:s') . "</b><br>";
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
+
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
     $pid = $ingest_namespace . $barcode;
     $islandora_object = islandora_object_load($pid);
+
     if (is_object($islandora_object)) {
-      if (!upitt_workflow_make_jp2($islandora_object, $islandora_object)) {
-        $missing_barcodes[] = $barcode;
+      $is_paged = upitt_workflow_is_paged_object($islandora_object);
+      if ($is_paged) {
+        $pages = array_keys(islandora_paged_content_get_pages($islandora_object));
+        foreach ($pages as $page) {
+          # Get the PageObject.
+          $pageObject = islandora_object_load($page);
+          error_log('Start updating page size for page ' . $page);
+
+          if (!upitt_workflow_make_jp2($pageObject)) {
+            $missing_barcodes[] = $barcode;
+          }
+        }
+      }
+      else {
+        error_log('Start updating page size for book ' . $pid);
+        if (!upitt_workflow_make_jp2($islandora_object)) {
+          $missing_barcodes[] = $barcode;
+        }
       }
     }
     else {
