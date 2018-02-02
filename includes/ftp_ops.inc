@@ -110,6 +110,7 @@ function upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $download_to, $bat
   $num_zip_files_unzipped = 0;
   $files_unzipped = array();
   $csv_file = '';
+  $cwd = getcwd();
   if ($conn_id) {
     // 1. Change to the $ftp_folder directory
     // 2. For each of the *.zip files in that directory, save in $download_to -
@@ -189,6 +190,9 @@ function upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $download_to, $bat
     }
 
     ftp_close($conn_id);
+  }
+  if ($cwd) {
+    chdir($cwd);
   }
   return array('downloaded' => $downloaded,
       'num_zip_files_unzipped' => $num_zip_files_unzipped,

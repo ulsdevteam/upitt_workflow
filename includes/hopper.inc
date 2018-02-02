@@ -10,6 +10,12 @@ function upitt_workflow_add_barcode_to_hopper($pid, $link) {
   // object's /ingest/tmp batch folder.
   $checksize_result = upitt_workflow_do_copy_for_barcodes($barcode, TRUE, FALSE);
   @list($junk, $size) = explode("=", trim($checksize_result));
+  
+  // If the size does not come back from the do_copy function, set an arbitrary
+  // size value so that the hopper code still executes.
+  if (!$size) { 
+    $size = 999999;
+  }
   $existed = upitt_workflow_get_hopper_for_pid($pid, FALSE, $link);
   if (!$existed) {
     $query = "INSERT INTO `ingest_hopper_queue` (`PID`, `files_size`) VALUES ('" . mysqli_real_escape_string($link, $pid) . "', " . $size . ")";
