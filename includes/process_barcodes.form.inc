@@ -353,7 +353,7 @@ function upitt_workflow_delete_update_copy_ingest_for_barcodes($barcodes) {
     $checksize_markup;
 }
 
-/** Delete all of the temp batch_* folders per batcode.
+/** Delete all of the temp batch_* folders per barcode.
  *
  * @param string $barcodes
  */
@@ -1071,24 +1071,21 @@ function upitt_workflow_links_to_objects_for_barcodes($barcodes) {
  * @return string
  */
 function upitt_workflow_legacy_barcodes_from_batch($batch, $link) {
-  $sql = "SELECT b.batch_external_id as `batch_external_id`, GROUP_CONCAT(i.do_id) as `barcodes` " .
+  $sql = "SELECT i.do_id as `barcode` " .
         "FROM batch_item bi " .
         "JOIN batch b ON (bi.batch_id = b.batch_id) " .
         "JOIN item i ON (bi.item_id = i.id) " .
-        "WHERE b.batch_external_id = '" . mysqli_real_escape_string($link, $batch) . "'" .
-        "GROUP BY b.batch_external_id";
+        "WHERE b.batch_external_id = '" . mysqli_real_escape_string($link, $batch) . "'";
   $result = mysqli_query($link, $sql);
   if (!$result) {
     upitt_workflow_sql_error_die($link, $sql);
   }
 
   $path = '';
-  $row = mysqli_fetch_assoc($result);
   $batch_barcodes = array();
-  if (isset($row['batch_external_id']) && isset($row['barcodes'])) {
-    $barcodes = explode(",", $row['barcodes']);
-    foreach ($barcodes as $barcode) {
-      $batch_barcodes[] = $barcode;
+  while ($row = mysqli_fetch_assoc($result)) {
+    if (isset($row['barcode'])) {
+      $batch_barcodes[] = $row['barcode'];
     }
   }
   return $batch_barcodes;
@@ -1482,36 +1479,59 @@ function upitt_workflow_purge_objects_for_barcodes($barcodes) {
   return $markup;
 }
 
-function upitt_workflow_do_publish_for_barcodes($barcodes) {
+function upitt_workflow_do_publish_for_barcodes($values) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('inc', 'upitt_workflow', 'includes/batch.form');
 
   $missing_barcodes = array();
-  $barcodes_arr = explode("\n", $barcodes);
+  $values_arr = explode("\n", $values);
+  $barcodes_arr = array();
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  foreach ($values_arr as $value) {
+    // The values provided MAY be true "batches", so try to get the barcodes  
+    $barcodes = upitt_workflow_legacy_barcodes_from_batch($value, $link);
+    if (is_array($barcodes)) {
+      foreach ($barcodes as $barcode) {
+        $barcodes_arr[] = $barcode;
+      }
+    }
+    else {
+      $barcodes_arr[] = $value;
+    }
+  }
+
   $markup = '<div class="text-report">';
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
     // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
-    $batch = upitt_workflow_batch_load_by_batch_external_id($barcode);
-    if (count($batch) < 1 && $barcode) {
+    $batch_record = upitt_workflow_batch_load_by_batch_external_id($barcode);
+    if (count($batch_record) < 1 && $barcode) {
       $missing_barcodes[] = $barcode;
     }
-    $markup .= '<div>' . upitt_workflow_do_publish_using_batchvalues($batch, $ingest_namespace) . "</div>";
+    $markup .= '<div>' . upitt_workflow_do_publish_using_batchvalues($batch_record, $ingest_namespace, $barcode) . "</div>";
   }
   if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
   }
   $markup .= '</div>';
+  mysqli_close($link);
   return $markup;
 }
 
-function upitt_workflow_do_publish_using_batchvalues($batch, $ingest_namespace) {
+function upitt_workflow_do_publish_using_batchvalues($batch, $ingest_namespace, $barcode) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
-  $object_id = $batch['batch_external_id'];
-  $sites = $batch['mapto_site_id_values'];
-  $collections = $batch['mapto_collections'];
+  if (is_array($batch) && array_key_exists('batch_external_id', $batch)) {
+    $object_id = $batch['batch_external_id'];
+    $sites = $batch['mapto_site_id_values'];
+    $collections = $batch['mapto_collections'];
+  }
+  else {
+    $object_id = $barcode;
+    $sites = '';
+    $collections = '';
+  }
 
   $sites_arr = explode(",", $sites);
   $collections_arr = explode(",", $collections);
