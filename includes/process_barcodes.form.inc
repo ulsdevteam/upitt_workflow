@@ -742,16 +742,18 @@ function upitt_workflow_make_tn_large_for_barcodes($barcodes) {
       if (!upitt_workflow_make_tn_large($islandora_object, $islandora_object)) {
         $missing_barcodes[] = $barcode;
       }
+      else {
+        $markup .= '<div>TN_LARGE created for ' . $pid . "</div>";
+      }
     }
     else {
       if ($barcode) {
         $missing_barcodes[] = $barcode;
       }
     }
-    $markup .= '<div>TN_LARGE created for ' . $pid . "</div>";
   }
   if (count($missing_barcodes) > 0) {
-    drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
+    drupal_set_message('Some objects could not be found or their TN_LARGE could not be created ' . implode(", ", $missing_barcodes), 'warning');
   }
   $markup .= '</div>';
   return $markup;
@@ -1551,62 +1553,63 @@ function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FAL
 
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
-    // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
-    $batch = upitt_workflow_batch_load_by_batch_external_id($barcode);
-    if (count($batch) < 1 && $barcode) {
-      $missing_barcodes[] = $barcode;
-    } else {
-      $do_copy = TRUE;
-      $do_download = (strstr($batch['batch_host'], 'ftp:'));
-      $content_model = isset($batch['default_type_of_resource']) ? $batch['default_type_of_resource'] : 'sp_large_image_cmodel';
-      $batch_external_id = $batch['batch_external_id'];
+    if ($barcode) {
+      // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
+      $batch = upitt_workflow_batch_load_by_batch_external_id($barcode);
+      if (count($batch) < 1 && $barcode) {
+        $missing_barcodes[] = $barcode;
+      } else {
+        $do_copy = TRUE;
+        $do_download = (strstr($batch['batch_host'], 'ftp:'));
+        $content_model = isset($batch['default_type_of_resource']) ? $batch['default_type_of_resource'] : 'sp_large_image_cmodel';
+        $batch_external_id = $batch['batch_external_id'];
 
-      // Now it is safe to make the full path to the specific incoming subfolder that has been selected.
-      $incoming_folder = (isset($batch['batch_host']) && strstr($batch['batch_host'], 'ftp:')) ?
+        // Now it is safe to make the full path to the specific incoming subfolder that has been selected.
+        $incoming_folder = (isset($batch['batch_host']) && strstr($batch['batch_host'], 'ftp:')) ?
               $batch['batch_host'] :
               (isset($batch['batch_host']) ? $batch['batch_host'] :
               rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $incoming_folder);
-
-      if ($incoming_folder == '' || $batch_external_id == '') {
-        drupal_set_message('The batch name and a incoming folder must be set in order to save this batch', 'error');
-        return;
-      }
-      $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
-      if ($content_model == 'compoundCModel') {
-        $compound_objects_folder = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/compound_objects';
-        if (!file_exists($compound_objects_folder)) {
-          mkdir($compound_objects_folder);
+        if ($incoming_folder == '' || $batch_external_id == '') {
+          drupal_set_message('The batch name and a incoming folder must be set in order to save this batch', 'error');
+          return;
         }
-        $batch_path = $compound_objects_folder . '/batch_' . $batch_external_id;
-      }
+        $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
+        if ($content_model == 'compoundCModel') {
+          $compound_objects_folder = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/compound_objects';
+          if (!file_exists($compound_objects_folder)) {
+            mkdir($compound_objects_folder);
+          }
+          $batch_path = $compound_objects_folder . '/batch_' . $batch_external_id;
+        }
 
-      $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, $measure_size_only);
+        $copyfiles_result = upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $batch_path, $content_model, $do_copy, $do_download, $batch_external_id, $measure_size_only);
 
-      if ($content_model == 'compoundCModel') {
-        // For Compound objects, it will need to run create_structure_files.php to make
-        // a structure.xml for each parent compound object.
-        $compound_batch_module_full_path = getcwd() . '/' . drupal_get_path('module','islandora_compound_batch') . '/extras/scripts';
-        // make the command to call
-        $compound_objects_containing_folder = str_replace('/batch_' . $batch_external_id, '', $batch_path);
-        $create_structure_command = 'cd ' . $compound_batch_module_full_path . ';php ' . $compound_batch_module_full_path . '/create_structure_files.php ' . $compound_objects_containing_folder;
-        $output = array();
-        exec($create_structure_command, $output, $return_var);
-        if (count($output) > 0) {
-          foreach ($output as $subfolder) {
-            $copyfiles_result['markup'] .= 'structure.xml created for compound object folder ' . $subfolder . "<br>";
+        if ($content_model == 'compoundCModel') {
+          // For Compound objects, it will need to run create_structure_files.php to make
+          // a structure.xml for each parent compound object.
+          $compound_batch_module_full_path = getcwd() . '/' . drupal_get_path('module','islandora_compound_batch') . '/extras/scripts';
+          // make the command to call
+          $compound_objects_containing_folder = str_replace('/batch_' . $batch_external_id, '', $batch_path);
+          $create_structure_command = 'cd ' . $compound_batch_module_full_path . ';php ' . $compound_batch_module_full_path . '/create_structure_files.php ' . $compound_objects_containing_folder;
+          $output = array();
+          exec($create_structure_command, $output, $return_var);
+          if (count($output) > 0) {
+            foreach ($output as $subfolder) {
+              $copyfiles_result['markup'] .= 'structure.xml created for compound object folder ' . $subfolder . "<br>";
+            }
           }
         }
-      }
 
-      if ($verbose) {
-        $markup .= isset($copyfiles_result['markup']) ? '<div>' . $copyfiles_result['markup'] . '</div>' : '';
+        if ($verbose) {
+          $markup .= isset($copyfiles_result['markup']) ? '<div>' . $copyfiles_result['markup'] . '</div>' : '';
+        }
+        else {
+          $pid = $ingest_namespace . $barcode;
+          $markup .= (isset($copyfiles_result['total_measured_space'])) ? $pid . '=' . $copyfiles_result['total_measured_space'] . "\n" : 0;
+        }
+        $grand_total_size += (isset($copyfiles_result['total_measured_space'])) ? $copyfiles_result['total_measured_space'] : 0;
+        $avail_ingest_temp_space = $copyfiles_result['available_space'];
       }
-      else {
-        $pid = $ingest_namespace . $barcode;
-        $markup .= (isset($copyfiles_result['total_measured_space'])) ? $pid . '=' . $copyfiles_result['total_measured_space'] . "\n" : 0;
-      }
-      $grand_total_size += (isset($copyfiles_result['total_measured_space'])) ? $copyfiles_result['total_measured_space'] : 0;
-      $avail_ingest_temp_space = $copyfiles_result['available_space'];
     }
   }
   if (count($missing_barcodes) > 0) {

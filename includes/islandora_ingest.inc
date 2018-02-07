@@ -800,14 +800,10 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
 
   if ($is_paged) {
     module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
-    // if paged_content, must use a couple functions to get the OBJ which is to be used
-    // for the thumbnail creation
-    if ($can_create = islandora_paged_content_can_update_paged_content_thumbnail($save_on_object)) {
-      $pages = islandora_paged_content_get_pages($save_on_object);
-      $page = array_shift($pages);
-      $page = islandora_object_load($page['pid']);
-      $obj_ds = $page['OBJ'];
-    }
+    $pages = islandora_paged_content_get_pages($save_on_object);
+    $page = array_shift($pages);
+    $page = islandora_object_load($page['pid']);
+    $obj_ds = $page['OBJ'];
   }
   else {
     // if image, simply pass the $object['OBJ'] from the $object
