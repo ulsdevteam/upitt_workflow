@@ -36,6 +36,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'gen_OCR' => ' - Generate OCR',
       'do_publish' => ' - Publish objects to site',
     '2' => 'Special Functionality',
+      'update_workflow_values' => ' - Override Workflow Values (site,collection,type)',
       'fix_page_sizes' => ' - Fix Page size RELS_INT',
       'make_tn' => ' - Make TN derivative',
       'make_tn_large' => ' - Make TN_LARGE derivative',
@@ -1284,6 +1285,139 @@ function upitt_workflow_hopper_list_pending_for_barcodes($barcodes) {
   $markup .= '</div>';
   mysqli_close($link);
 
+  return $markup;
+}
+
+/**
+ * This mode is tricky -- it will take either a batch or individual barcodes
+ * AND will require at least one of the following values set:
+ *   site
+ *   collection
+ *   type
+ *
+ * If nothing is passed for this mode, it should display the "help" on how to
+ * use it.
+ *
+ * @param type $batches
+ * @return string
+ */
+function upitt_workflow_update_workflow_values_for_barcodes($values) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  $values = trim($values);
+  $values_arr = explode("\n", $values);
+  $barcodes_arr = array();
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+
+  $good_lines = $good_nv_pairs = TRUE;
+  $legal_nv_names = array('site', 'collection', 'type');
+  $short_fieldnames = array('site=','collection=','type=');
+  $full_fieldnames = array('mapto_site_id_values=', 'mapto_collections=', 'default_type_of_resource=');
+  foreach ($values_arr as $test_value) {
+    $test_value = trim($test_value);
+    if ($test_value) {
+      $good_lines &= ((strstr($test_value, "|") <> '') && (strstr($test_value, "=") <> ''));
+      // Split the line value apart into its constituant parts
+      @list($barcode_or_batchname, $name_value1, $name_value2, $name_value3) = explode("|", $test_value);
+      // Also, test that the name_value parts exist -- and whether or not they also
+      // have one of the legal field names
+      @list($name_1, $value_1) = explode("=", $name_value1);
+      @list($name_2, $value_2) = explode("=", $name_value2);
+      @list($name_3, $value_3) = explode("=", $name_value3);
+      // at least one name value is needed for each line, so this first one is
+      // not optional, but the last two are.
+      $good_nv_pairs &= (( $name_1 ? !(array_search($name_1, $legal_nv_names) === FALSE) : FALSE ) &&
+                        ( $name_2 ? !(array_search($name_2, $legal_nv_names) === FALSE) : TRUE ) &&
+                        ( $name_3 ? !(array_search($name_3, $legal_nv_names) === FALSE): TRUE ));
+      $name_value1 = str_replace($short_fieldnames, $full_fieldnames, $name_value1);
+      $name_value2 = str_replace($short_fieldnames, $full_fieldnames, $name_value2);
+      $name_value3 = str_replace($short_fieldnames, $full_fieldnames, $name_value3);
+
+      // The values provided MAY be true "batches", so try to get the barcodes
+      $barcodes = upitt_workflow_legacy_barcodes_from_batch($barcode_or_batchname, $link);
+      if (is_array($barcodes)) {
+      // update the values to reflect the real field names here
+
+        foreach ($barcodes as $barcode) {
+          $barcodes_arr[] = array(
+              'barcode' => $barcode,
+              'barcode_or_batchname' => $barcode_or_batchname,
+              'name_value1' => $name_value1,
+              'name_value2' => $name_value2,
+              'name_value3' => $name_value3
+            );
+        }
+      }
+      else {
+        $barcodes_arr[] = array(
+              'barcode' => $barcode_or_batchname,
+              'barcode_or_batchname' => '',
+              'name_value1' => $name_value1,
+              'name_value2' => $name_value2,
+              'name_value3' => $name_value3
+            );
+      }
+    }
+  }
+
+  if (!$values || !$good_lines || !$good_nv_pairs) {
+    $markup = '<div class="text-report">' .
+              '  <h3>"Update workflow records for batch or barcode" - Usage</h3>' .
+              (($values && !$good_lines) ? '<p class="bad"><b>One of the line values did not include either ' .
+                 'the equals sign "=" or the pipe character "|".</b><p>' : '') .
+              (($values && !$good_nv_pairs) ? '<p class="bad"><b>One of the lines did not contain a valid ' .
+                 'field name and could not be processed further.</b><p>' : '') .
+              '  <p>This will update the "site", "collection", and "type" value for ' .
+              'the workflow records that are used for ingest; these are the <b class="good">only ' .
+              'fieldnames</b> supported.</p>' .
+              '  <p>Each line should specify either a barcode or a batch name and ' .
+              'the name/value pairs that need to be set delimited by the pipe character "|" such as: ' .
+              '<b class="good">{BARCODE_or_BATCHNAME}|{fieldname}=value|{fieldname}=value|{fieldname}=value.</b>  ' .
+              'To set any of the optional values, the line value must include ' .
+              'the name of the field and the value to set for that field.</b>  <p>Examples:</p> ' .
+              '<li>31735066984000|site=pitt:site.historic-pittsburgh,pitt:site.uls-digital-collections' .
+              '|type=bookCModel</li><li>20160201-ulsnewspaper|collection=' .
+              'pitt:collection.3|type=newspaperCModel</li><li>31735066984000|type=bookCModel</li></ul>' .
+              '  <p>Allowed values for <b class="good">"site"</b>:<ul><li>any collection PID value such ' .
+              'as "pitt:site.uls-digital-collections"</li><li><em>multiple "site" values should be ' .
+              'separated by a comma</em></li></ul></p>' .
+              '  <p>Allowed values for <b class="good">"collection"</b>:<ul><li>any collection PID value such ' .
+              'as "pitt:collection.3" or "pitt:collection.209"</li><li><em>multiple "collection" values should be ' .
+              'separated by a comma</em></li></ul></p>' .
+              '  <p>Allowed values for <b class="good">"type"</b>:<ul><li>newspaperCModel</li>' .
+              '<li>manuscriptCModel</li>' .
+              '<li>sp_large_image_cmodel</li>' .
+              '<li>bookCModel</li></ul></p>' .
+              '</div>';
+    mysqli_close($link);
+    return $markup;
+  }
+  $missing_barcodes = array();
+
+  $markup = '<div class="text-report">' .
+            '  <h3>"Update workflow records for batch or barcode"</h3>';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  $last_batch_name = '';
+  foreach ($barcodes_arr as $barcode_and_name_values) {
+    // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
+    $barcode = $barcode_and_name_values['barcode'];
+    $batch_record = upitt_workflow_batch_load_by_batch_external_id($barcode);
+    if (count($batch_record) < 1 && $barcode) {
+      $missing_barcodes[] = $barcode;
+    }
+    else {
+      if ($barcode_and_name_values['barcode_or_batchname'] <> $last_batch_name) {
+        $markup .= '<pre><b>' . $barcode_and_name_values['barcode_or_batchname'] . '</b></pre>';
+      }
+      $markup .= '<pre>' . upitt_workflow_update_set_batchvalues($barcode_and_name_values, $link) . "</pre>";
+      $last_batch_name = $barcode_and_name_values['barcode_or_batchname'];
+    }
+  }
+  if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
+  }
+  $markup .= '</div>';
+  mysqli_close($link);
   return $markup;
 }
 

@@ -954,6 +954,95 @@ function upitt_workflow_get_batch_id($batch_external_id, $create_if_not_exists =
 }
 
 /**
+ * This will update some specific values of a batch and/or item record.
+ *
+ * Depending on whether or not a value with "default_type_of_resource=" is set,
+ * the item record will also be updated.
+ *
+ * This will inspect the $barcode_and_name_values and create the update SQL that
+ * reflects the changes needed.
+ *
+ * @param type $barcode_and_name_values
+ *   Associative array that holds the barcode and related values that need set.
+ * @param type $link
+ *   Database connection resource.
+ * @return type
+ */
+function upitt_workflow_update_set_batchvalues($barcode_and_name_values, $link) {
+  if (!$barcode_and_name_values['barcode']) {
+    return '<pre class="bad">Barcode value not present in the provided variable: ' . print_r($barcode_and_name_values, true) . '</pre>';
+  }
+
+  $type_ids = array(
+      'bookCModel' => 3,
+      'manuscriptCModel' => 1,
+      'sp_large_image_cmodel' => 2,
+      'newspaperCModel' => 8);
+
+  $fields = $values = $name_values = array();
+  if ($barcode_and_name_values['name_value1'] && strstr($barcode_and_name_values['name_value1'], "=")) {
+    list($fieldname, $value) = explode("=", $barcode_and_name_values['name_value1']);
+    $fields[] = $fieldname;
+    $values[] = $value;
+  }
+  if ($barcode_and_name_values['name_value2'] && strstr($barcode_and_name_values['name_value2'], "=")) {
+    list($fieldname, $value) = explode("=", $barcode_and_name_values['name_value2']);
+    $fields[] = $fieldname;
+    $values[] = $value;
+  }
+  if ($barcode_and_name_values['name_value3'] && strstr($barcode_and_name_values['name_value3'], "=")) {
+    list($fieldname, $value) = explode("=", $barcode_and_name_values['name_value3']);
+    $fields[] = $fieldname;
+    $values[] = $value;
+  }
+  foreach ($fields as $idx => $field) {
+    $name_values[] = "`" . $field . "` = '" . addslashes($values[$idx]) . "'";
+  }
+  $use_type_id = 0;
+  if (!array_search('default_type_of_resource', $fields) === FALSE) {
+    // find which field it is -- and get the corresponding value
+    $field_index = array_search('default_type_of_resource', $fields);
+    $corresponding_value = $values[$field_index];
+    // depending on that value, the type_id value used for the item table needs
+    // to be an integer lookup.
+    if (array_key_exists($corresponding_value, $type_ids)) {
+      $use_type_id = $type_ids[$corresponding_value];
+      if ($use_type_id) {
+        $name_values[] = '`type_id` = ' . $use_type_id;
+        $name_values[] = '`content_type_id` = ' . $use_type_id;
+      }
+    }
+  }
+
+  // Update the batch record first because the code below needs to use the batch
+  // record to update the item record when it did not exist.
+  $sql = "UPDATE `batch` SET " . implode(", ", $name_values) . " " .
+         "WHERE batch_external_id = '" . $barcode_and_name_values['barcode'] . "'";
+
+  // Update the item record for this do_id (*batch_external_id value)
+  $result = mysqli_query($link, $sql);
+  if ($result === FALSE) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+  mysqli_commit($link);
+  $markup = ' &nbsp;' . $barcode_and_name_values['barcode'] . ', set values for fields, `' .
+          implode('`, `', $fields) . '`<br />';
+
+  if (!array_search('default_type_of_resource', $fields) === FALSE) {
+    $item_id = upitt_workflow_insert_item_for_batch_external_id($barcode_and_name_values['barcode'], $link);
+    if ($item_id) {
+      $update_item_sql = "UPDATE `item` SET type_id = " . $use_type_id . " WHERE id = " . $item_id;
+      $result = mysqli_query($link, $update_item_sql);
+      if ($result === FALSE) {
+        upitt_workflow_sql_error_die($link, $update_item_sql);
+      }
+    }
+  }
+
+  return $markup;
+}
+
+/**
  * Loads a batch record given the batch_external_id value.
  *
  * @param string $batch_external_id
@@ -1418,6 +1507,8 @@ function upitt_workflow_insert_item_for_batch_external_id($batch_external_id, $l
   $row = mysqli_fetch_assoc($result);
   if (!isset($row['id'])) {
     upitt_workflow_log('item record did not exist');
+    // Need to get the $batch record for this object
+    $batch = upitt_workflow_batch_load($batch_external_id);
     // If the passed $islandora_object is not null, use the label from that for this record.
     $label = (is_null($islandora_object) ? '' : $islandora_object->label);
     // Need to insert the item record.
@@ -1860,8 +1951,13 @@ function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_ac
 
 // TODO - finish this function and call 
 function upitt_workflow_update_batch_file($batch_external_id, $local_name) {
+  $link = upitt_workflow_get_databaselink('islandora_jobs_monitor');
   $sql = "UPDATE batch SET file = '" . $local_name . "' WHERE batch_external_id = '" . $batch_external_id . "'";
-  dpm($sql);
+  $result = mysqli_query($link, $sql);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+  mysqli_close($link);
 }
 
 /**
