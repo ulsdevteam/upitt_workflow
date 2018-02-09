@@ -36,7 +36,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'gen_OCR' => ' - Generate OCR',
       'do_publish' => ' - Publish objects to site',
     '2' => 'Special Functionality',
-      'update_workflow_values' => ' - Override Workflow Values (site,collection,type)',
+      'update_workflow_values' => ' - Override Workflow Values (type,site,collection)',
       'fix_page_sizes' => ' - Fix Page size RELS_INT',
       'make_tn' => ' - Make TN derivative',
       'make_tn_large' => ' - Make TN_LARGE derivative',
@@ -50,6 +50,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'checkobjects' => ' - Check for Islandora Objects',
       'links_to_objects' => ' - Admin links to objects',
       'deep_info_on_objects' => ' - Deep info on objects',
+      'get_common_batchvalues' => ' - Get batch values (site, collection, type)',
       'get_wf_paths' => ' - Get Bigfoot paths',
       'get_wf_barcodes_from_batch' => ' - Get barcodes from legacy batches',
       'purge_OCR_PDF' => ' - Purge page OCR and PDF derivative',
@@ -1039,6 +1040,71 @@ function upitt_workflow_deep_info_on_objects_for_barcodes($barcodes) {
   $markup .= '<h2>Found in Islandora</h2><pre class="good">' . implode("\n", $check_results['found_pid_manage_links']) . '</pre>' .
             '<h2>NOT found in Islandora</h2><pre class="bad">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
   $markup .= '</div>';
+  return $markup;
+}
+
+/**
+ * This will fetch the site, collections, and type from the batch table.
+ *
+ * For the provided $barcodes value, each line could be a batch or a barcode. 
+ *
+ * @param type $barcodes
+ * @return string
+ *   HTML markup of the results for this request.
+ */
+function upitt_workflow_get_common_batchvalues_for_barcodes($values) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  $missing_barcodes = array();
+  $values_arr = explode("\n", $values);
+  $barcode_batch_array = array();
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  foreach ($values_arr as $value) {
+    $value = trim($value);
+    // The values provided MAY be true "batches", so try to get the barcodes
+    $barcodes = upitt_workflow_legacy_barcodes_from_batch($value, $link);
+    if (is_array($barcodes)) {
+      foreach ($barcodes as $barcode) {
+        $barcode_batch_array[] = array(
+          'batch' => $value,
+          'barcode' => $barcode,
+        );
+      }
+    }
+    else {
+      $barcode_batch_array[] = array(
+          'batch' => '',
+          'barcode' => trim($value),
+        );
+    }
+  }
+
+  $markup = '<div class="text-report">';
+  $last_batch_name = '';
+  foreach ($barcode_batch_array as $barcode_batch) {
+    // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
+    $batch_record = upitt_workflow_batch_load_by_batch_external_id($barcode_batch['barcode']);
+    if (count($batch_record) < 1 && $barcode_batch['barcode']) {
+      $missing_barcodes[] = $barcode_batch['barcode'];
+    }
+    else {
+      if (($barcode_batch['batch'] <> $last_batch_name) && ($barcode_batch['batch'] <> $barcode_batch['barcode'])) {
+        $markup .= '<pre><b>' . $barcode_batch['batch'] . '</b></pre>';
+      }
+      elseif ($barcode_batch['batch'] <> $last_batch_name) {
+        $markup .= "<br />";
+      }
+      $markup .= '<div> &nbsp;' . $barcode_batch['barcode'] . ", type = '" .
+              $batch_record['default_type_of_resource'] . "', " .
+              "site/s = '" . $batch_record['mapto_site_id_values'] . "', collection/s = '" . $batch_record['mapto_collections'] . "'</div>";
+      $last_batch_name = $barcode_batch['batch'];
+    }
+  }
+  if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes could not be found ' . implode(", ", $missing_barcodes), 'warning');
+  }
+  $markup .= '</div>';
+  mysqli_close($link);
   return $markup;
 }
 
