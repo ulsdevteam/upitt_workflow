@@ -109,6 +109,34 @@ function upitt_workflow_get_solr_options($solr_query, $key_field, $value_field, 
   return $results;
 }
 
+function upitt_workflow_get_solr_values($solr_query, $key_field, $value_fields_csv, $sort_field = '') {
+  $query_processor = new IslandoraSolrQueryProcessor();
+  $query_processor->solrQuery = $solr_query;
+  if ($sort_field) {
+    $query_processor->sort = $sort_field;
+  }
+  $query_processor->solrStart = 0;
+  $query_processor->solrLimit = 40000;
+  $query_processor->solrParams = array('fl' => $key_field . (($value_fields_csv <> $key_field) ? ',' . $value_fields_csv : ''));
+
+  $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
+  $solr = new Apache_Solr_Service($url['host'], $url['port'], $url['path'] . '/');
+  $solr->setCreateDocuments(FALSE);
+  $results = array();
+  try {
+    $search_results = $solr->search($query_processor->solrQuery, $query_processor->solrStart, $query_processor->solrLimit, $query_processor->solrParams, 'POST');
+    $tmp = json_decode($search_results->getRawResponse(), TRUE);
+    if ($tmp['response']['numFound'] > 0) {
+      foreach ($tmp['response']['docs'] as $rec) {
+        $results[$rec[$key_field]] = $rec;
+      }
+    }
+  }
+  catch (Exception $e) {
+  }
+  return $results;
+}
+
 /**
  * Helper function to look up the names of the collections based on a possible comma-separated list
  */

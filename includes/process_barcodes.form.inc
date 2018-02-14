@@ -54,6 +54,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'get_common_batchvalues' => ' - Get batch values (site, collection, type)',
       'get_wf_paths' => ' - Get Bigfoot paths',
       'get_wf_barcodes_from_batch' => ' - Get barcodes from legacy batches',
+      'query_solr' => ' - Query Solr for common values',
       'purge_OCR_PDF' => ' - Purge page OCR and PDF derivative',
       'delete_batch' => ' - DELETE islandora_batch_* records',
       'delete_batch_tempfiles' => ' - DELETE temp batch_* ingest folders',
@@ -1693,6 +1694,36 @@ function upitt_workflow_get_wf_barcodes_from_batch_for_barcodes($batches) {
     }
     else {
       $markup .= '<span class="bad">' . $batch . ' not found in item table</span><br>';
+    }
+  }
+  $markup .= '</div>';
+  mysqli_close($link);
+
+  return $markup;
+}
+
+/**
+ * This will get common Solr values for the barcodes or batch.
+ *
+ * @param string $values
+ *   The posted values to the Process Barcodes form.
+ * @return string HTML markup
+ */
+function upitt_workflow_query_solr_for_barcodes($values) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  $missing_barcodes = array();
+  $barcode_batch_array = upitt_workflow_barcode_or_batch_barcodes($values);
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+
+  $markup = '<div class="text-report"><h3>Bigfoot paths for barcodes</h3>';
+  $last_batch_name = '';
+  $solr_query_prefix = 'PID:*';
+  $key_field = 'PID';
+  $value_fields_csv = 'fgs_label_s,fedora_datastream_latest_OCR_SIZE_ms,RELS_EXT_isMemberOfCollection_uri_ms,RELS_EXT_isMemberOfSite_uri_ms,fgs_createdDate_dt';
+  foreach ($barcode_batch_array as $barcode_batch) {
+    if (array_key_exists('barcode', $barcode_batch) && $barcode_batch['barcode']) {
+      $solr_record = upitt_workflow_get_solr_values($solr_query_prefix . str_replace(":", "%5C%3A", $barcode_batch['barcode']), $key_field, $value_fields_csv);
     }
   }
   $markup .= '</div>';
