@@ -1725,6 +1725,12 @@ function upitt_workflow_query_solr_for_barcodes($values) {
   $barcode_batch_array = upitt_workflow_barcode_or_batch_barcodes($values);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
+  $batch_record_fields = array(
+      'mapto_site_id_values', 
+      'mapto_collections',
+      'default_type_of_resource',
+  );
+
   $markup = '<div class="text-report"><h3>Bigfoot paths for barcodes</h3>';
   $last_batch_name = '';
   $solr_query_prefix = 'PID:*';
@@ -1740,21 +1746,26 @@ function upitt_workflow_query_solr_for_barcodes($values) {
       $pid = $ingest_namespace . $barcode;
 
       $solr_record = upitt_workflow_get_solr_values($solr_query_prefix . str_replace(":", "%5C%3A", $barcode), $key_field, $value_fields_csv, '', 1);
-      if (array_key_exists($pid, $solr_record)) {
-        $a_row = array();
-        foreach ($value_fields_arr as $f) {
-          $a_row[$f] = (array_key_exists($f, $solr_record[$pid])) ? 
-            ((is_array($solr_record[$pid][$f])) ? implode("\n", $solr_record[$pid][$f]) : $solr_record[$pid][$f]) : 
-            '';
-        }
-        $rows[$pid] = $a_row;
+      $a_row = array();
+      foreach ($value_fields_arr as $f) {
+        $a_row[$f] = ((array_key_exists($pid, $solr_record)) ? ((array_key_exists($f, $solr_record[$pid])) ?
+          ((is_array($solr_record[$pid][$f])) ? implode("\n", $solr_record[$pid][$f]) : $solr_record[$pid][$f]) : 
+          '') : '');
       }
+      // Before adding the a_row to the $rows array... add the values from the
+      // batch record to compare
+      @list($namespace, $barcode) = explode(":", $pid);
+      $batch_record = upitt_workflow_batch_load_by_batch_external_id($barcode);
+      foreach ($batch_record_fields as $batch_field_name) {
+        $a_row[$batch_field_name] = (array_key_exists($batch_field_name, $batch_record)) ? $batch_record[$batch_field_name] : '';
+      }
+      $rows[$pid] = $a_row;
     }
   }
 
   $markup .= theme('table', array(
      'rows'=>$rows,
-     'header'=> $value_fields_arr,
+     'header'=> array_merge($value_fields_arr, $batch_record_fields),
      'attributes' =>array('class'=>array('report_table'))
   ));
 
