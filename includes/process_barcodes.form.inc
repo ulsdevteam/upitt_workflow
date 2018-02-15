@@ -1731,13 +1731,17 @@ function upitt_workflow_query_solr_for_barcodes($values) {
       'default_type_of_resource',
   );
 
-  $markup = '<div class="text-report"><h3>Bigfoot paths for barcodes</h3>';
+  $markup = '<div class="text-report" style="max-height:700px"><h3>Bigfoot paths for barcodes</h3>';
   $last_batch_name = '';
   $solr_query_prefix = 'PID:*';
   $key_field = 'PID';
-  $value_fields_csv = 'fgs_label_s,RELS_EXT_isMemberOfCollection_uri_ms,RELS_EXT_isMemberOfSite_uri_ms,' . 
-                      'RELS_EXT_hasModel_uri_ms,fedora_datastream_latest_OCR_SIZE_ms,fedora_datastream_latest_PDF_SIZE_ms,fgs_createdDate_dt';
+  $value_fields_csv = 'fgs_label_s,RELS_EXT_isMemberOfCollection_uri_ms,' .
+    'RELS_EXT_isMemberOfSite_uri_ms,RELS_EXT_hasModel_uri_ms,' .
+    'fedora_datastream_latest_TN_LARGE_SIZE_ms,' .
+    'fedora_datastream_latest_OCR_SIZE_ms,' .
+    'fedora_datastream_latest_PDF_SIZE_ms,fgs_createdDate_dt';
   $value_fields_arr = explode(",", $key_field . ',' . $value_fields_csv);
+  $logic_arr = array('Same Type?', 'Added to Collection/s?', 'Published?', 'Needs OCR?', 'Needs PDF?', 'Needs TN_LARGE?');
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   $rows = array();
   foreach ($barcode_batch_array as $barcode_batch) {
@@ -1748,24 +1752,47 @@ function upitt_workflow_query_solr_for_barcodes($values) {
       $solr_record = upitt_workflow_get_solr_values($solr_query_prefix . str_replace(":", "%5C%3A", $barcode), $key_field, $value_fields_csv, '', 1);
       $a_row = array();
       foreach ($value_fields_arr as $f) {
+        dpm($pid);
         $a_row[$f] = ((array_key_exists($pid, $solr_record)) ? ((array_key_exists($f, $solr_record[$pid])) ?
-          ((is_array($solr_record[$pid][$f])) ? implode("\n", $solr_record[$pid][$f]) : $solr_record[$pid][$f]) : 
+          str_replace("info:fedora/", "", ((is_array($solr_record[$pid][$f])) ? implode("\n", $solr_record[$pid][$f]) : $solr_record[$pid][$f])) :
           '') : '');
       }
       // Before adding the a_row to the $rows array... add the values from the
       // batch record to compare
-      @list($namespace, $barcode) = explode(":", $pid);
+      $barcode = upitt_workflow_remove_namespace($pid);
       $batch_record = upitt_workflow_batch_load_by_batch_external_id($barcode);
       foreach ($batch_record_fields as $batch_field_name) {
         $a_row[$batch_field_name] = (array_key_exists($batch_field_name, $batch_record)) ? $batch_record[$batch_field_name] : '';
       }
+      // Calculate the $logic_arr field values
+      //   Same Type?
+      $model = upitt_workflow_remove_namespace($a_row['RELS_EXT_hasModel_uri_ms']);
+      $a_row['Same Type?'] = ($a_row['default_type_of_resource'] == $model) ? 'TRUE' : 'FALSE';
+      //   Added to Collection/s?
+      // need to iterate and compare the value from solr as well as the batch
+      $a_row['Added to Collection/s?'] = 'FALSE';
+
+      //   Published?
+      // need to iterate and compare the value from solr as well as the batch
+      $a_row['Published?'] = 'FALSE';
+
+      $is_paged = upitt_workflow_is_model_a_paged_object($model);
+      //   Needs OCR?
+      $a_row['Needs OCR?'] = ($is_paged) ? (($a_row['fedora_datastream_latest_OCR_SIZE_ms'] > 0) ? 'FALSE' : 'TRUE') : 'FALSE';
+
+      //   Needs PDF?
+      $a_row['Needs PDF?'] = ($is_paged) ? (($a_row['fedora_datastream_latest_PDF_SIZE_ms'] > 0) ? 'FALSE' : 'TRUE') : 'FALSE';
+
+      //   Needs TN_LARGE?
+      $a_row['Needs TN_LARGE?'] = ($a_row['fedora_datastream_latest_TN_LARGE_SIZE_ms'] > 0) ? 'FALSE' : 'TRUE';
+
       $rows[$pid] = $a_row;
     }
   }
 
   $markup .= theme('table', array(
      'rows'=>$rows,
-     'header'=> array_merge($value_fields_arr, $batch_record_fields),
+     'header'=> array_merge($value_fields_arr, $batch_record_fields, $logic_arr),
      'attributes' =>array('class'=>array('report_table'))
   ));
 

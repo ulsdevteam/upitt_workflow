@@ -2322,3 +2322,13 @@ function upitt_workflow_get_jp2_dimensions($object) {
     );
   }
 }
+
+function upitt_workflow_remove_namespace($pid) {
+  @list($namespace, $barcode) = explode(":", $pid);
+  return $barcode;
+}
+
+function upitt_workflow_is_model_a_paged_object($model_name) {
+  return ($model_name == 'bookCModel' || $model_name == 'manuscriptCModel' 
+    || $model_name == 'newspaperIssueCModel');
+}
