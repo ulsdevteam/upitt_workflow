@@ -1729,12 +1729,35 @@ function upitt_workflow_query_solr_for_barcodes($values) {
   $last_batch_name = '';
   $solr_query_prefix = 'PID:*';
   $key_field = 'PID';
-  $value_fields_csv = 'fgs_label_s,fedora_datastream_latest_OCR_SIZE_ms,RELS_EXT_isMemberOfCollection_uri_ms,RELS_EXT_isMemberOfSite_uri_ms,fgs_createdDate_dt';
+  $value_fields_csv = 'fgs_label_s,RELS_EXT_isMemberOfCollection_uri_ms,RELS_EXT_isMemberOfSite_uri_ms,' . 
+                      'RELS_EXT_hasModel_uri_ms,fedora_datastream_latest_OCR_SIZE_ms,fedora_datastream_latest_PDF_SIZE_ms,fgs_createdDate_dt';
+  $value_fields_arr = explode(",", $key_field . ',' . $value_fields_csv);
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  $rows = array();
   foreach ($barcode_batch_array as $barcode_batch) {
     if (array_key_exists('barcode', $barcode_batch) && $barcode_batch['barcode']) {
-      $solr_record = upitt_workflow_get_solr_values($solr_query_prefix . str_replace(":", "%5C%3A", $barcode_batch['barcode']), $key_field, $value_fields_csv);
+      $barcode = trim($barcode_batch['barcode']);
+      $pid = $ingest_namespace . $barcode;
+
+      $solr_record = upitt_workflow_get_solr_values($solr_query_prefix . str_replace(":", "%5C%3A", $barcode), $key_field, $value_fields_csv, '', 1);
+      if (array_key_exists($pid, $solr_record)) {
+        $a_row = array();
+        foreach ($value_fields_arr as $f) {
+          $a_row[$f] = (array_key_exists($f, $solr_record[$pid])) ? 
+            ((is_array($solr_record[$pid][$f])) ? implode("\n", $solr_record[$pid][$f]) : $solr_record[$pid][$f]) : 
+            '';
+        }
+        $rows[$pid] = $a_row;
+      }
     }
   }
+
+  $markup .= theme('table', array(
+     'rows'=>$rows,
+     'header'=> $value_fields_arr,
+     'attributes' =>array('class'=>array('report_table'))
+  ));
+
   $markup .= '</div>';
   mysqli_close($link);
 

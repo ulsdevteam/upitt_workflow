@@ -109,14 +109,14 @@ function upitt_workflow_get_solr_options($solr_query, $key_field, $value_field, 
   return $results;
 }
 
-function upitt_workflow_get_solr_values($solr_query, $key_field, $value_fields_csv, $sort_field = '') {
+function upitt_workflow_get_solr_values($solr_query, $key_field, $value_fields_csv, $sort_field = '', $limit = 5000) {
   $query_processor = new IslandoraSolrQueryProcessor();
   $query_processor->solrQuery = $solr_query;
   if ($sort_field) {
     $query_processor->sort = $sort_field;
   }
   $query_processor->solrStart = 0;
-  $query_processor->solrLimit = 40000;
+  $query_processor->solrLimit = $limit;
   $query_processor->solrParams = array('fl' => $key_field . (($value_fields_csv <> $key_field) ? ',' . $value_fields_csv : ''));
 
   $url = parse_url(variable_get('islandora_solr_url', 'localhost:8080/solr'));
