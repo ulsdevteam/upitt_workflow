@@ -1687,13 +1687,22 @@ function upitt_workflow_get_wf_barcodes_from_batch_for_barcodes($batches) {
   $markup = '<div class="text-report"><h3>Bigfoot paths for barcodes</h3>';
   foreach ($batches_arr as $batch) {
     $batch = trim($batch);
-    $barcodes = upitt_workflow_legacy_barcodes_from_batch($batch, $link);
-    if ($barcodes) {
-      $barcodes_str = implode("<br>", $barcodes);
-      $markup .= '<span class="good"><b>batch "' . $batch . '"</b><br><span class="good">' . $barcodes_str . '</span><br>';
-    }
-    else {
-      $markup .= '<span class="bad">' . $batch . ' not found in item table</span><br>';
+    if ($batch) {
+      $barcodes = upitt_workflow_legacy_barcodes_from_batch($batch, $link);
+      if ($barcodes) {
+        $markup .= '<span class="good"><b>batch "' . $batch . '"</b></span><br>';
+        $barcodes_str = implode("<br>", $barcodes);
+        $barcodes_link = '/workflow/workflowadmin/process_barcodes/?barcodes=' .
+          implode(",", $barcodes) . '&mode=checkobjects';
+        $markup .= '<b>' . count($barcodes) . ' total barcodes</b>.' .
+          ((strlen($barcodes_link) < 2048) ? ' <a href="' . $barcodes_link . '" ' . 
+            'target="_blank">Process these barcodes</a>' :
+          ' <i>There are too many barcodes to pass as a GET link.</i>');
+        $markup .= '<br><span class="good">' . $barcodes_str . '</span><hr><br>';
+      }
+      else {
+        $markup .= '<span class="bad">' . $batch . ' not found in item table</span><br>';
+      }
     }
   }
   $markup .= '</div>';
