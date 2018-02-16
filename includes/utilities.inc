@@ -1537,12 +1537,10 @@ function upitt_workflow_insert_item_for_batch_external_id($batch_external_id, $l
     upitt_workflow_log('item record did not exist');
     // Need to get the $batch record for this object
     $batch = upitt_workflow_batch_load($batch_external_id);
-    // If the passed $islandora_object is not null, use the label from that for this record.
-    $label = (is_null($islandora_object) ? '' : $islandora_object->label);
     // Need to insert the item record.
-    $insert_item = 'INSERT INTO item (do_id, name, type_id, property_owner_id) ' .
+    $insert_item = 'INSERT INTO item (do_id, type_id, property_owner_id) ' .
                    'VALUES ("' . upitt_workflow_safe_qstring($link, $batch_external_id) . '",' .
-                   ' "' . upitt_workflow_safe_qstring($link, $label) . '", ' . $batch['type_id'] . ', ' . $batch['batch_property_owner_id'] . ')';
+                   $batch['type_id'] . ', ' . $batch['batch_property_owner_id'] . ')';
     mysqli_query($link, $insert_item);
 
     $sql = "SELECT id FROM item WHERE `do_id` = '" . $batch_external_id . "'";

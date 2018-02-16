@@ -51,6 +51,7 @@ a.bad {
 .text-report, .report_table {
     font-size: 0.825em;
     font-family: Andale Mono, monospace;
+    max-height: 600px;
 }
 
 .pl_20 {
