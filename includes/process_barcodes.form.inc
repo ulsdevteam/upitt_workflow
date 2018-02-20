@@ -1785,6 +1785,7 @@ function upitt_workflow_query_solr_for_barcodes($values) {
         'TRUE' : '<span title="' . $model . ' != ' . $a_row['default_type_of_resource'] . '">FALSE</span>';
       //   Added to Collection/s?
       // need to iterate and compare the value from solr as well as the batch
+      $batch_record['mapto_collections'] = 'pitt:collection.999';
       $batch_mapto_collections = explode(",", $batch_record['mapto_collections']);
       $solr_collections = explode(",", $a_row['RELS_EXT_isMemberOfCollection_uri_ms']);
       // Assume success until loop through batch values is done
@@ -2193,8 +2194,9 @@ function upitt_workflow_gen_OCR_for_barcodes($barcodes) {
     if (!upitt_workflow_is_paged_object($islandora_object)) {
       $markup .= '<div class="bad">Object found ' . $pid . ', but it is not a paged content object.</div>';
     }
-    $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' upitt_workflow_generate_ocr_datastreams ' .
-                     '--paged_object_pid=' . $pid;
+    $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain .
+      upitt_workflow_drush_switches_ingest_drush_debugmode() .
+      ' upitt_workflow_generate_ocr_datastreams --paged_object_pid=' . $pid;
     $markup .= '<h4>Called upitt_workflow_generate_ocr_datastreams</h4><code>' . $drush_command . '</code>';
 
     $output = $return_var = array();
@@ -2233,7 +2235,9 @@ function upitt_workflow_ingest_prepare_for_barcodes($barcodes) {
         }
 
         $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
-        $ingest_set_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=' . $set;
+        $ingest_set_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain .
+          upitt_workflow_drush_switches_ingest_drush_debugmode() .
+          ' islandora_batch_ingest --ingest_set=' . $set;
 
         if ($set <> 0) {
           // no need to display the output of $drush_generic_markup since the

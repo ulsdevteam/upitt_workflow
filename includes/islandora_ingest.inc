@@ -104,8 +104,10 @@ function upitt_workflow_islandora_ingest($batch_id) {
     $set = upitt_workflow_get_set($batch['batch_external_id']);
 
     $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
-    $ingest_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest';
-    $ingest_set_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=' . $set;
+    $ingest_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain .
+      upitt_workflow_drush_switches_ingest_drush_debugmode() . ' islandora_batch_ingest';
+    $ingest_set_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain .
+      upitt_workflow_drush_switches_ingest_drush_debugmode() . ' islandora_batch_ingest --ingest_set=' . $set;
 
     // If this is a batch request, and the date is before the current date, this can ingest immediately.
     if ($batch['is_batch_request'] == 1 && strtotime($batch['batch_request_due_date']) < strtotime(date('Y-m-d'))) {
@@ -315,6 +317,7 @@ function upitt_workflow_drush_islandora_batch_folder_pids($batch_external_id, $f
     if (array_search($folder_target, $drushed_folders) === FALSE) {
       // TODO: make sure this row is not an empty line
       $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
+                       upitt_workflow_drush_switches_ingest_drush_debugmode() .
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
                        '--type=directory ' . // --overwrite_existing=1 ' .
                        '--assign_pid=' . $ingest_namespace . $barcode_of_filename . ' ' .
@@ -399,6 +402,7 @@ function upitt_workflow_drush_newspaper_issue($batch_external_id, $filepath, $fe
       $ingest_namespace_nocolon = rtrim($ingest_namespace, ":");
 
       $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_newspaper_batch_preprocess ' .
+                       upitt_workflow_drush_switches_ingest_drush_debugmode() .
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
                        ' --namespace=' . $ingest_namespace_nocolon . ' ' .
                        // assuming that only if the parent is set, than the parent_relationship_pred is needed
@@ -460,6 +464,7 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
 
       // TODO: make sure this row is not an empty line
       $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
+                       upitt_workflow_drush_switches_ingest_drush_debugmode() .
                        '--content_models=islandora:' . $fedora_model_name . ' ' .
                        '--type=directory ' . // --overwrite_existing=1 ' .
                        '--assign_pid=' . $csv_file_source['identifier'] . ' ' .
@@ -488,6 +493,7 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
   if (count($files) < 1) {
     $ingest_namespace = upitt_workflow_get_ingest_namespace();
     $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_scan_preprocess ' .
+                     upitt_workflow_drush_switches_ingest_drush_debugmode() .
                      '--content_models=islandora:' . $fedora_model_name . ' ' .
                      // assuming that only if the parent is set, than the parent_relationship_pred is needed
                      '--type=directory ' . // --overwrite_existing=1 ' .
@@ -530,6 +536,7 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
   $ingest_namespace_nocolon = rtrim($ingest_namespace, ":");
 
   $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=' . $ingest_namespace_nocolon . ' --uri=' . $this_domain . ' islandora_book_batch_preprocess ' .
+                   upitt_workflow_drush_switches_ingest_drush_debugmode() .
                    '--content_models=islandora:bookCModel ' .
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
                    '--type=directory ' .
@@ -569,6 +576,7 @@ function upitt_workflow_drush_compound($filepath, $parent, $site, $pid) {
   $ingest_namespace_nocolon = rtrim($ingest_namespace, ":");
 
   $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=' . $ingest_namespace_nocolon . ' --uri=' . $this_domain . ' islandora_compound_batch_preprocess ' .
+                   upitt_workflow_drush_switches_ingest_drush_debugmode() .
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
                    '--target=' . $filepath . ' ' .
                    '--assign_pid=' . $pid . ' ' .
@@ -603,6 +611,7 @@ function upitt_workflow_drush_manuscript($filepath, $parent, $site, $pid) {
   $ingest_namespace_nocolon = rtrim($ingest_namespace, ":");
 
   $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=' . $ingest_namespace_nocolon . ' --uri=' . $this_domain . ' islandora_manuscript_batch_preprocess ' .
+                   upitt_workflow_drush_switches_ingest_drush_debugmode() .
                    '--content_models=islandora:manuscriptCModel ' .
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
                    '--type=directory ' .
@@ -1212,7 +1221,8 @@ function upitt_workflow_ingest_now_redirect_detail_report($do_id) {
   $set = islandora_batch_get_set_for_object($pid);
   $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 
-  $ingest_set_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . ' islandora_batch_ingest --ingest_set=' . $set;
+  $ingest_set_drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain . 
+    upitt_workflow_drush_switches_ingest_drush_debugmode() . ' islandora_batch_ingest --ingest_set=' . $set;
 
   $output = $return_var = array();
   exec($ingest_set_drush_command, $output, $return_var);

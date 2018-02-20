@@ -39,44 +39,54 @@ function upitt_workflow_admin_form() {
       '#description' => t('The email addresses to send notifications of various workflow actions.  Separate multiple address values with semicolon.'),
       '#default_value' => variable_get('upitt_workflow_notification_email', 'digital-collections@pitt.edu'),
     ),
-    'ingest_namespace' => array(
-      '#type' => 'textfield',
-      '#title' => t('Ingest Namespace'),
-      '#description' => t('The namespace to use for ingesting all objects.'),
-      '#default_value' => $ingest_namespace, 
-    ),
-    'ingest_prepared_path' => array(
-      '#type' => 'textfield',
-      '#title' => t('Ingest Working Directory'), // Incoming Ingest Path'),
-      '#description' => t('The working directory for prepared ingest batch files.  This path
-                           should be configured to a location that has plenty of hard space.'),
-      '#default_value' => variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'),
-    ),
-    'ingest_incoming_path' => array(
-      '#type' => 'textfield',
-      '#title' => t('Incoming Directories'),
-      '#description' => t('The incoming batch files directories.  In order to be ingested, the folders
-                           here should be named to match the name of the batch.  The ingest code will convert the files
-                           and the structure of the contents for an Islandora batch.'),
-      '#default_value' => variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'),
-    ),
-    'batch_hosts' => array(
-      '#type' => 'textarea',
-      '#title' => t('Available Host Aliases for Batch ingest'),
-      '#default_value' => variable_get('upitt_workflow_hosts_for_ingest', $box_alias_default),
-      '#description' => t('If the ingestable files are located on a different server, configure an alias
-                           that can direct the batch to use that server.<br>
-                           <ul>
-                             <li>If you do not want to use box.com as a potential source for ingest files, simply remove the entry of <code>' . $box_alias_default . '</code></li>
-                             <li>For any batch that does not specify which host alias to use, the "Default Incoming Ingest Path" above would be used.</li>
-                             <li>Values should each be entered on separate lines in a "name=value" format.  Username, password values are optional.  For example:
-                               <ul>
-                                 <li>The value (part after the "=" character) should not be longer than 255 characters.</li>
-                                 <li><code>ALIAS=username:password@machine_name:/path</code></li>
-                                 <li><code>ALIAS=machine_name:/path</code></li>
-                               </ul>
-                             </li>
-                           </ul>'),
+    'ingest_fields' => array(
+      '#type' => 'fieldset',
+      '#title' => 'Ingest options',
+      'ingest_drush_debugmode' => array(
+        '#type' => 'checkbox',
+        '#title' => t("Drush Debug?"),
+        '#default_value' => variable_get('upitt_workflow_ingest_drush_debugmode', FALSE),
+        '#description' => t('When set, all drush commands will be passed with "debug" and "verbose" switches.'),
+      ),
+      'ingest_namespace' => array(
+        '#type' => 'textfield',
+        '#title' => t('Ingest Namespace'),
+        '#description' => t('The namespace to use for ingesting all objects.'),
+        '#default_value' => $ingest_namespace,
+      ),
+      'ingest_prepared_path' => array(
+        '#type' => 'textfield',
+        '#title' => t('Ingest Working Directory'), // Incoming Ingest Path'),
+        '#description' => t('The working directory for prepared ingest batch files.  This path
+                             should be configured to a location that has plenty of hard space.'),
+        '#default_value' => variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'),
+      ),
+      'ingest_incoming_path' => array(
+        '#type' => 'textfield',
+        '#title' => t('Incoming Directories'),
+        '#description' => t('The incoming batch files directories.  In order to be ingested, the folders
+                             here should be named to match the name of the batch.  The ingest code will convert the files
+                             and the structure of the contents for an Islandora batch.'),
+        '#default_value' => variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'),
+      ),
+      'batch_hosts' => array(
+        '#type' => 'textarea',
+        '#title' => t('Available Host Aliases for Batch ingest'),
+        '#default_value' => variable_get('upitt_workflow_hosts_for_ingest', $box_alias_default),
+        '#description' => t('If the ingestable files are located on a different server, configure an alias
+                             that can direct the batch to use that server.<br>
+                             <ul>
+                               <li>If you do not want to use box.com as a potential source for ingest files, simply remove the entry of <code>' . $box_alias_default . '</code></li>
+                               <li>For any batch that does not specify which host alias to use, the "Default Incoming Ingest Path" above would be used.</li>
+                               <li>Values should each be entered on separate lines in a "name=value" format.  Username, password values are optional.  For example:
+                                 <ul>
+                                   <li>The value (part after the "=" character) should not be longer than 255 characters.</li>
+                                   <li><code>ALIAS=username:password@machine_name:/path</code></li>
+                                   <li><code>ALIAS=machine_name:/path</code></li>
+                                 </ul>
+                               </li>
+                             </ul>'),
+      ),
     ),
     'ftp_panel' => array(
       '#type' => 'fieldset',
@@ -139,6 +149,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_set('upitt_workflow_ingest_namespace', $form_state['values']['ingest_namespace']);
       variable_set('upitt_workflow_ingest_prepared_path', $form_state['values']['ingest_prepared_path']);
       variable_set('upitt_workflow_ingest_incoming', $form_state['values']['ingest_incoming_path']);
+      variable_set('upitt_workflow_ingest_drush_debugmode', $form_state['values']['ingest_drush_debugmode']);
       variable_set('upitt_workflow_ftp_username', $form_state['values']['ftp_username']);
       variable_set('upitt_workflow_ftp_password', $form_state['values']['ftp_password']);
       // variable_set('upitt_workflow_ftp_port', $form_state['values']['ftp_port']);
@@ -151,6 +162,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_del('upitt_workflow_ingest_namespace');
       variable_del('upitt_workflow_ingest_prepared_path');
       variable_del('upitt_workflow_ingest_incoming');
+      variable_del('upitt_workflow_ingest_drush_debugmode');
       variable_del('upitt_workflow_ftp_username');
       variable_del('upitt_workflow_ftp_password');
       // variable_del('upitt_workflow_ftp_port');

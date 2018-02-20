@@ -2330,3 +2330,7 @@ function upitt_workflow_is_model_a_paged_object($model_name) {
   return ($model_name == 'bookCModel' || $model_name == 'manuscriptCModel' 
     || $model_name == 'newspaperIssueCModel');
 }
+
+function upitt_workflow_drush_switches_ingest_drush_debugmode() {
+  return (variable_get('upitt_workflow_ingest_drush_debugmode', FALSE)) ? '-dv ' : '';
+}
