@@ -1736,18 +1736,18 @@ function upitt_workflow_query_solr_for_barcodes($values) {
   $solr_query_prefix = 'PID:*';
   $key_field = 'PID';
   $value_fields_csv = 'dc.title,RELS_EXT_isMemberOfCollection_uri_ms,' .
-    'RELS_EXT_isMemberOfSite_uri_ms,RELS_EXT_hasModel_uri_ms,' .
+    'RELS_EXT_isMemberOfSite_uri_ms,RELS_EXT_hasModel_uri_ms,RELS_EXT_isMemberOf_uri_ms,' .
     'fedora_datastream_latest_TN_LARGE_SIZE_ms,' .
     'fedora_datastream_latest_OCR_SIZE_ms,' .
     'fedora_datastream_latest_PDF_SIZE_ms,fgs_createdDate_dt';
   $value_fields_arr = explode(",", $key_field . ',' . $value_fields_csv);
   $header_solr_fields_arr = $value_fields_arr;
   // Remove the datastream file size fields -- they are only needed for the logic.
-  unset($header_solr_fields_arr[5]);
-  unset($header_solr_fields_arr[6]);
-  unset($header_solr_fields_arr[7]);
+  unset($header_solr_fields_arr[array_search('fedora_datastream_latest_TN_LARGE_SIZE_ms', $header_solr_fields_arr)]);
+  unset($header_solr_fields_arr[array_search('fedora_datastream_latest_OCR_SIZE_ms', $header_solr_fields_arr)]);
+  unset($header_solr_fields_arr[array_search('fedora_datastream_latest_PDF_SIZE_ms', $header_solr_fields_arr)]);
 
-  $logic_arr = array('Same Type?', 'Added to Collection/s?', 'Published?', 'Needs OCR?', 'Needs PDF?', 'Needs TN_LARGE?');
+  $logic_arr = array('Same Type?', 'Added to Collection/s?', 'Published?', 'OCR ok?', 'PDF ok?', 'TN_LARGE ok?');
   $stub_row = array('PID' => 'PID');
   foreach ($logic_arr as $v) {
     $stub_row[$v] = $v;
@@ -1765,6 +1765,18 @@ function upitt_workflow_query_solr_for_barcodes($values) {
         $a_row[$f] = ((array_key_exists($pid, $solr_record)) ? ((array_key_exists($f, $solr_record[$pid])) ?
           str_replace("info:fedora/", "", ((is_array($solr_record[$pid][$f])) ? implode("\n", $solr_record[$pid][$f]) : $solr_record[$pid][$f])) :
           '') : '');
+        if ($f == 'PID' || $f == 'RELS_EXT_isMemberOf_uri_ms' || $f == 'RELS_EXT_isMemberOfCollection_uri_ms') {
+          // make this as HTML to link to the underlying object/s
+          $vals = explode(",", $a_row[$f]);
+          $new_vals = array();
+          foreach ($vals as $obj_identifier) {
+            $obj_identifier = trim($obj_identifier);
+            $new_vals[] = ($f == 'RELS_EXT_isMemberOfCollection_uri_ms') ? 
+              "<a href='/islandora/search_collection/" . $obj_identifier . "' target='_blank'>" . $obj_identifier . "</a>" :
+              "<a href='/islandora/object/" . $obj_identifier . "/viewer' target='_blank'>" . $obj_identifier . "</a>";
+          }
+          $a_row[$f] = implode(", ", $new_vals);
+        }
       }
       // Before adding the a_row to the $rows array... add the values from the
       // batch record to compare
@@ -1777,30 +1789,49 @@ function upitt_workflow_query_solr_for_barcodes($values) {
       }
       foreach ($batch_record_fields as $batch_field_name) {
         $a_row[$batch_field_name] = (array_key_exists($batch_field_name, $batch_record)) ? $batch_record[$batch_field_name] : '';
+        if ($batch_field_name == 'mapto_collections') {
+          // make this as HTML to link to the underlying object/s
+          $vals = explode(",", $a_row[$batch_field_name]);
+          $new_vals = array();
+          foreach ($vals as $obj_identifier) {
+            $obj_identifier = trim($obj_identifier);
+            $new_vals[] = "<a href='/islandora/search_collection/" . $obj_identifier . "' target='_blank'>" . $obj_identifier . "</a>";
+          }
+          $a_row[$batch_field_name] = implode(", ", $new_vals);    
+        }
       }
       // Calculate the $logic_arr field values
       //   Same Type?
       $model = upitt_workflow_remove_namespace($a_row['RELS_EXT_hasModel_uri_ms']);
-      $a_row['Same Type?'] = ($a_row['default_type_of_resource'] == $model) ? 
-        'TRUE' : '<span title="' . $model . ' != ' . $a_row['default_type_of_resource'] . '">FALSE</span>';
+
+      // Allow "newspaperCModel" to be considered the same as "newspaperIssueCModel" since
+      // the batch records use the wrong name for the underlying object... it is correct
+      // once it is ingested and it is in Solr.
+      $a_row['Same Type?'] = ($a_row['default_type_of_resource'] == $model ||
+              ($a_row['default_type_of_resource'] == 'newspaperCModel' && $model == 'newspaperIssueCModel')) ?
+        '<span class="good">TRUE</span>' : '<span title="' . $model . ' != ' . $a_row['default_type_of_resource'] . '" class="bad">FALSE</span>';
       //   Added to Collection/s?
       // need to iterate and compare the value from solr as well as the batch
-      $batch_record['mapto_collections'] = 'pitt:collection.999';
       $batch_mapto_collections = explode(",", $batch_record['mapto_collections']);
       $solr_collections = explode(",", $a_row['RELS_EXT_isMemberOfCollection_uri_ms']);
+      foreach ($solr_collections as $key => $solr_collection) {
+        $solr_collection = trim(strip_tags($solr_collection));
+        $solr_collections[$key] = $solr_collection;
+      }
       // Assume success until loop through batch values is done
       $collections_mapped_success = TRUE;
       foreach ($batch_mapto_collections as $batch_collection) {
+        $batch_collection = trim(strip_tags($batch_collection));
         $collections_mapped_success &= !(array_search($batch_collection, $solr_collections) === FALSE);
       }
       $solr_collection_but_no_batch_collection = ($a_row['RELS_EXT_isMemberOfCollection_uri_ms'] && !$batch_record['mapto_collections']);
       $a_row['Added to Collection/s?'] = $collections_mapped_success ?
         (($solr_collection_but_no_batch_collection) ?
           '<span class="optional" title="Object mapped to a collection, but ' .
-            'batch record did not specify any mapping">TRUE</span>' : 'TRUE') :
+            'batch record did not specify any mapping">TRUE</span>' : '<span class="good">TRUE</span>') :
           '<span class="bad" title="Object and batch have different collections specified.  ' .
-            'Object: &quot;' . $a_row['RELS_EXT_isMemberOfCollection_uri_ms'] .
-            '&quot;, batch record: &quot;' . $batch_record['mapto_collections'] . '&quot;">FALSE';
+            'Object: &quot;' . strip_tags($a_row['RELS_EXT_isMemberOfCollection_uri_ms']) .
+            '&quot;, batch record: &quot;' . strip_tags($a_row['mapto_collections']) . '&quot;">FALSE';
 
       //   Published?
       // need to iterate and compare the value from solr as well as the batch
@@ -1816,22 +1847,22 @@ function upitt_workflow_query_solr_for_barcodes($values) {
       $a_row['Published?'] = $sites_mapped_success ?
         (($solr_site_but_no_batch_site) ?
           '<span class="optional" title="Object mapped to a site, but ' .
-            'batch record did not specify any mapping">TRUE</span>' : 'TRUE') :
+            'batch record did not specify any mapping">TRUE</span>' : '<span class="good">TRUE</span>') :
           '<span class="bad" title="Object and batch have different sites specified.  ' .
             'Object: &quot;' . $a_row['RELS_EXT_isMemberOfSite_uri_ms'] .
             '&quot;, batch record: &quot;' . $batch_record['mapto_site_id_values'] . '&quot;">FALSE';
 
       $is_paged = upitt_workflow_is_model_a_paged_object($model);
-      //   Needs OCR?
-      $a_row['Needs OCR?'] = ($is_paged) ? (($a_row['fedora_datastream_latest_OCR_SIZE_ms'] > 0) ? 'FALSE' : 'TRUE') : 
-        '<span title="' . $model . ' is not paged content" class="optional">FALSE</span>';
+      //   OCR ok?
+      $a_row['OCR ok?'] = ($is_paged) ? (($a_row['fedora_datastream_latest_OCR_SIZE_ms'] > 0) ? '<span class="good">TRUE</span>' : '<span class="bad">FALSE</span>') : 
+        '<span title="' . $model . ' is not paged content" class="optional">n/a</span>';
 
-      //   Needs PDF?
-      $a_row['Needs PDF?'] = ($is_paged) ? (($a_row['fedora_datastream_latest_PDF_SIZE_ms'] > 0) ? 'FALSE' : 'TRUE') :
-        '<span title="' . $model . ' is not paged content" class="optional">FALSE</span>';
+      //   PDF ok?
+      $a_row['PDF ok?'] = ($is_paged) ? (($a_row['fedora_datastream_latest_PDF_SIZE_ms'] > 0) ? '<span class="good">TRUE</span>' : '<span class="bad">FALSE</span>') :
+        '<span title="' . $model . ' is not paged content" class="optional">n/a</span>';
 
-      //   Needs TN_LARGE?
-      $a_row['Needs TN_LARGE?'] = ($a_row['fedora_datastream_latest_TN_LARGE_SIZE_ms'] > 0) ? 'FALSE' : 'TRUE';
+      //   TN_LARGE ok?
+      $a_row['TN_LARGE ok?'] = ($a_row['fedora_datastream_latest_TN_LARGE_SIZE_ms'] > 0) ? '<span class="good">TRUE</span>' : '<span class="bad">FALSE</span>';
 
       unset($a_row['fedora_datastream_latest_TN_LARGE_SIZE_ms']);
       unset($a_row['fedora_datastream_latest_OCR_SIZE_ms']);
