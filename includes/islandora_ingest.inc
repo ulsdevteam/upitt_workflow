@@ -349,6 +349,7 @@ function upitt_workflow_drush_newspaper_issue($batch_external_id, $filepath, $fe
   global $user;
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $retval = '';
+  $alerted_on_err = FALSE;
   $newspaper_parent_pid = FALSE;
   // Get the parent by looking up the (OCoLC) value in the related marcxml.xml file
   $files = upitt_workflow_file_scan_directory($filepath . '/newspaper_parent', '--METADATA--.xml');
@@ -387,9 +388,12 @@ function upitt_workflow_drush_newspaper_issue($batch_external_id, $filepath, $fe
     $OCoLC = str_replace("(OCoLC)", "", $OCoLC);
     // given the OCoLC value, look for this with Solr query now to find the parent newspaper if it exists
     $newspaper_parent_pid = upitt_workflow_get_PID_of_oclc($OCoLC);
+
     // It is now safe to remove the /newspaper_parent folder and all of its contents.
     $pi = pathinfo($marcxml_filename);
-    exec('rm -rf ' . $pi['dirname']);
+    if (isset($pi['dirname']) && $pi['dirname'] <> '.') {
+      exec('rm -rf ' . $pi['dirname']);
+    }
 
     if (!$newspaper_parent_pid) {
       $markup .= '<div class="bad">Could not derive the newspaper parent PID value using the (OCoLC) value ' .

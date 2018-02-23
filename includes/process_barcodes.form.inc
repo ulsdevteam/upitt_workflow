@@ -2245,7 +2245,7 @@ function upitt_workflow_gen_OCR_for_barcodes($barcodes) {
 function upitt_workflow_ingest_prepare_for_barcodes($barcodes) {
   global $user;
   $barcodes_arr = explode("\n", $barcodes);
-
+  $alerted_on_err = FALSE;
   module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
   $markup = '<div class="text-report">';
   $markup .= '<h2>Islandora Ingest Preprocess for These Barcodes</h2><pre style="color:blue">' . implode("\n", $barcodes_arr) . '</pre><hr>';
