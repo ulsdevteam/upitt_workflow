@@ -378,7 +378,7 @@ function upitt_workflow_delete_update_copy_ingest_for_barcodes($barcodes) {
  */
 function upitt_workflow_delete_batch_tempfiles_for_barcodes($barcodes) {
   $barcodes_arr = explode("\n", $barcodes);
-  $v = file_directory_temp();
+  $v = variable_get('upitt_workflow_ingest_prepared_path', '/ingest/tmp');
   $markup = '<div class="text-report">';
   foreach ($barcodes_arr as $barcode) {
     $folder = $v . '/batch_' . trim($barcode);
