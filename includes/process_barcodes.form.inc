@@ -1813,7 +1813,7 @@ function upitt_workflow_query_solr_for_barcodes($values) {
       //   Added to Collection/s?
       // need to iterate and compare the value from solr as well as the batch
       $batch_mapto_collections = explode(",", $batch_record['mapto_collections']);
-      $solr_collections = explode(",", $a_row['RELS_EXT_isMemberOfCollection_uri_ms']);
+      $solr_collections = explode("\n", $a_row['RELS_EXT_isMemberOfCollection_uri_ms']);
       foreach ($solr_collections as $key => $solr_collection) {
         $solr_collection = trim(strip_tags($solr_collection));
         $solr_collections[$key] = $solr_collection;
@@ -1837,7 +1837,7 @@ function upitt_workflow_query_solr_for_barcodes($values) {
       // need to iterate and compare the value from solr as well as the batch
       // $batch_record['mapto_site_id_values'] = 'pitt:site-xyz';
       $batch_mapto_sites = explode(",", $batch_record['mapto_site_id_values']);
-      $solr_sites = explode(",", $a_row['RELS_EXT_isMemberOfSite_uri_ms']);
+      $solr_sites = explode("\n", $a_row['RELS_EXT_isMemberOfSite_uri_ms']);
       // Assume success until loop through batch values is done
       $sites_mapped_success = TRUE;
       foreach ($batch_mapto_sites as $batch_site) {
