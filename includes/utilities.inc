@@ -752,7 +752,7 @@ function upitt_workflow_MODStoDC($pid, $modsxml_filename) {
   // Get the DC by transforming from MODS.
   $new_DC = ($mods_file) ? upitt_workflow_runXslTransform(
             array(
-              'xsl' => drupal_get_path('module', 'islandora_batch') . '/transforms/mods_to_dc.xsl',
+              'xsl' => drupal_get_path('module', 'islandora_batch') . '/transforms/upitt_mods_to_dc.xsl',
               'input' => $mods_file,
             )
           ) : '';
@@ -2321,9 +2321,14 @@ function upitt_workflow_get_jp2_dimensions($object) {
   }
 }
 
-function upitt_workflow_remove_namespace($pid) {
-  @list($namespace, $barcode) = explode(":", $pid);
-  return $barcode;
+function upitt_workflow_remove_namespace($in) {
+  if (strstr($in, ":") <> '') {
+    @list($namespace, $barcode) = explode(":", $in);
+    return $barcode;
+  }
+  else {
+    return $in;
+  }
 }
 
 function upitt_workflow_is_model_a_paged_object($model_name) {

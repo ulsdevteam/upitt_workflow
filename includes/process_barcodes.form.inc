@@ -143,8 +143,36 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
  * @return markup HTML
  */
 function upitt_workflow_checkobjects_for_barcodes($barcodes) {
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
+  $objects_missing_pages = array();
+  if (count($check_results['found_pid_links']) > 0) {
+    $ingest_namespace = upitt_workflow_get_ingest_namespace();
+
+    foreach (array_keys($check_results['found_pid_links']) as $barcode) {
+      $barcode = trim($barcode);
+      if ($barcode) {
+        $pid = $ingest_namespace . $barcode;
+        $islandora_object = islandora_object_load($pid);
+        $is_paged = upitt_workflow_is_paged_object($islandora_object);
+        if ($is_paged) {
+          $pages = islandora_paged_content_get_pages_solr($islandora_object);
+          $all_pages = TRUE;
+          foreach ($pages as $page_pid => $values) {
+            $page_obj = islandora_object_load($page_pid);
+            $all_pages &= is_object($page_obj);
+          }
+          if (!$all_pages) {
+            $objects_missing_pages[] = $barcode;
+          }
+        }
+      }
+    }
+  }
+
   $markup = '<div class="text-report"><h3>Found in Islandora</h3><div class="found">' . implode("<br>", $check_results['found_pid_links']) . '</div><hr>' .
+            ((count($objects_missing_pages) > 0) ? '<h3>Objects missing pages</h3><div class="not-found">' . implode("<br>", $objects_missing_pages) . '</div>': '') .
             '<h3>NOT found in Islandora</h3><div class="not-found">' . implode("<br>", $check_results['not_found_pids']) . '</div></div>';
   return $markup;
 }
@@ -949,12 +977,12 @@ function upitt_workflow_child_object_results($object, $ingest_namespace) {
     }
   }
   $total_OCR_size = 0;
-  $all_childs_had_OCR = $all_childs_had_PDF = TRUE;
+  $all_childs_had_OCR = $all_childs_had_PDF = FALSE;
   foreach ($object_members as $member_solr_doc) {
     $member_object = islandora_object_load($member_solr_doc['PID']);
     if (is_object($member_object)) {
-      $all_childs_had_OCR &= isset($member_object['OCR']);
-      $all_childs_had_PDF &= isset($member_object['PDF']);
+      $all_childs_had_OCR |= !isset($member_object['OCR']);
+      $all_childs_had_PDF |= !isset($member_object['PDF']);
       $results = upitt_workflow_datastream_results($member_object, $ingest_namespace, TRUE);
       $total_OCR_size += $results['OCR_size'];
       $markup .= $results['markup'] . "<br>";
@@ -1436,7 +1464,7 @@ function upitt_workflow_hopper_remove_from_hopper_for_barcodes($barcodes) {
   module_load_include('inc', 'upitt_workflow', 'includes/hopper');
   $barcodes_arr = explode("\n", $barcodes);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
-  $markup = '<div class="text-report"><h3>Add to Hopper Ingest queue for barcodes</h3>';
+  $markup = '<div class="text-report"><h3>Remove from Hopper Ingest queue for barcodes</h3>';
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   foreach ($barcodes_arr as $barcode) {
     if (trim($barcode)) {
@@ -1722,7 +1750,16 @@ function upitt_workflow_query_solr_for_barcodes($values) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $missing_barcodes = array();
+  
   $barcode_batch_array = upitt_workflow_barcode_or_batch_barcodes($values);
+  foreach ($barcode_batch_array as $key => $barcode_batch) {
+    // update the values in this array in case they have namespace prefixes!
+    if (array_key_exists('barcode', $barcode_batch) && $barcode_batch['barcode']) {
+      $barcode = upitt_workflow_remove_namespace(trim($barcode_batch['barcode']));
+      $barcode_batch_array[$key]['barcode'] = $barcode;      
+    }
+  }
+
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
 
   $batch_record_fields = array(
@@ -2063,7 +2100,7 @@ function upitt_workflow_do_publish_for_barcodes($values) {
   foreach ($values_arr as $value) {
     // The values provided MAY be true "batches", so try to get the barcodes  
     $barcodes = upitt_workflow_legacy_barcodes_from_batch($value, $link);
-    if (is_array($barcodes)) {
+    if (is_array($barcodes) && count($barcodes) > 0) {
       foreach ($barcodes as $barcode) {
         $barcodes_arr[] = $barcode;
       }
@@ -2072,7 +2109,6 @@ function upitt_workflow_do_publish_for_barcodes($values) {
       $barcodes_arr[] = $value;
     }
   }
-
   $markup = '<div class="text-report">';
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   foreach ($barcodes_arr as $barcode) {
