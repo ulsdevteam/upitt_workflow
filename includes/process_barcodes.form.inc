@@ -1243,6 +1243,7 @@ function upitt_workflow_get_common_batchvalues_for_barcodes($values) {
 
   $markup = '<div class="text-report">';
   $last_batch_name = '';
+
   foreach ($barcode_batch_array as $barcode_batch) {
     // 1. load the batch record for the given barcode - and pass to the function that does the copy operation
     $batch_record = upitt_workflow_batch_load_by_batch_external_id($barcode_batch['barcode']);
@@ -1984,12 +1985,24 @@ function upitt_workflow_get_wf_model_for_barcodes($barcodes) {
 function upitt_workflow_barcode_to_pid_for_barcodes($vals) {
   $barcodes_arr = explode("\n", $vals);
   $markup = '<div class="text-report"><h3>PIDs to barcodes</h3>';
+  $markup_contents = '';
   $ingest_namespace = upitt_workflow_get_ingest_namespace();
   foreach ($barcodes_arr as $barcode) {
-    $pid = $ingest_namespace . trim($barcode);
-    $markup .= $pid . '<br>';
+    $barcode = trim($barcode);
+    if ($barcode) {
+      $pid = $ingest_namespace . trim($barcode);
+      $markup_contents .= $pid . '<br>';
+    }
   }
-  $markup .= '</div>';
+  $barcodes_str = implode("<br>", $barcodes_arr);
+  $barcodes_link = '/workflow/workflowadmin/process_barcodes/?barcodes=' .
+    implode(",", $barcodes_arr) . '&mode=checkobjects';
+  $process_barcodes_link = '<b>' . count($barcodes_arr) . ' total barcodes</b>.' .
+    ((strlen($barcodes_link) < 2048) ? ' <a href="' . $barcodes_link . '" ' .
+    'target="_blank">Process these barcodes</a>' :
+    ' <i>There are too many barcodes to pass as a GET link.</i>') . "<br>";
+
+  $markup .= $process_barcodes_link . $markup_contents . '</div>';
 
   return $markup;
 }
@@ -2011,6 +2024,14 @@ function upitt_workflow_pid_to_barcode_for_barcodes($vals, $raw_output = FALSE) 
       $barcodes[] = str_replace($ingest_namespace, "", $pid);
     }
   }
+  $barcodes_str = implode("<br>", $barcodes);
+  $barcodes_link = '/workflow/workflowadmin/process_barcodes/?barcodes=' .
+    implode(",", $barcodes) . '&mode=checkobjects';
+  $markup .= '<b>' . count($barcodes) . ' total barcodes</b>.' .
+    ((strlen($barcodes_link) < 2048) ? ' <a href="' . $barcodes_link . '" ' .
+    'target="_blank">Process these barcodes</a>' :
+    ' <i>There are too many barcodes to pass as a GET link.</i>') . "<br>";
+
   $markup .= implode(($raw_output ? "\n" : '<br>'), $barcodes);
   if (!$raw_output) {
     $markup .= '</div>';
