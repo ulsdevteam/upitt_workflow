@@ -196,56 +196,58 @@ function upitt_workflow_check_islandora_for_barcodes(&$barcodes) {
   $barcodes_arr = explode("\n", $barcodes);
 
   foreach ($barcodes_arr as $barcode) {
-    $barcode = trim($barcode);
-    if ($barcode) {
-      $pid = $ingest_namespace . $barcode;
-      $islandora_object = islandora_object_load($pid);
-      if (!is_object($islandora_object)) {
-        $not_found_pids[$barcode] = $pid;
-      }
-      else {
-        $is_paged = upitt_workflow_is_paged_object($islandora_object);
-        $pages = ($is_paged) ? islandora_paged_content_get_pages($islandora_object) : array();
-
-        $regen_jp2_link = '';
-        $page_count = count($pages);
-        $first_page = array_pop($pages);
-        if ($first_page) {
-          $page_object = islandora_object_load($first_page['pid']);
-          $page_jp2_dimensions = upitt_workflow_get_jp2_dimensions($page_object);
-          if ((isset($first_page['width']) && $first_page['width'] <> $page_jp2_dimensions['width']) ||
-              (isset($first_page['height']) && $first_page['height'] <> $page_jp2_dimensions['height'])) {
-            @list($namespace, $barcode_of_object) = explode(":", $islandora_object->id);
-            $link_options = array(
-              'query' => array(
-                'mode' => 'make_jp2',
-                'barcodes' => $barcode_of_object,
-              ),
-              'attributes' => array(
-                'target'=>'_blank',
-                'class' => 'bad',
-              ),
-            );
-
-            $regen_jp2_link  = '<br><b>' .
-                l('Regenerate JP2 for ' . $islandora_object->id, '/workflow/workflowadmin/process_barcodes/', $link_options) .
-                '</b><br>';
-          }
+    if (strstr($barcode, "total barcodes") == '') {
+      $barcode = trim($barcode);
+      if ($barcode) {
+        $pid = $ingest_namespace . $barcode;
+        $islandora_object = islandora_object_load($pid);
+        if (!is_object($islandora_object)) {
+          $not_found_pids[$barcode] = $pid;
         }
+        else {
+          $is_paged = upitt_workflow_is_paged_object($islandora_object);
+          $pages = ($is_paged) ? islandora_paged_content_get_pages($islandora_object) : array();
 
-        $found_pid_manage_links[$barcode] = $pid . ': ' .
-                ($page_count ? '(' . number_format($page_count) . ' pages) ' : '') .
-                $regen_jp2_link .
-                l('DELETE', 'islandora/object/' . $pid . '/delete', array('attributes' => array('title' => 'DELETE object', 'class' => 'bad'))) . ' | ' .
-                l('Regen', 'islandora/object/' . $pid . '/regenerate', array('attributes' => array('title' => 'Regenerate all derivatives', 'class' => 'bad'))) . ' | ' .
-                l('Manage', 'islandora/object/' . $pid . '/manage', array('attributes' => array('title' => 'Manage object'))) . ' | ' .
-                l('Datastreams', 'islandora/object/' . $pid . '/manage/datastreams', array('attributes' => array('title' => 'Manage | Datastreams'))) . ' | ' .
-                l('Workflow' , 'workflow/object/' . $barcode, array('attributes' => array('title' => 'View workflow record for this object'))) . ' | ' .
-                l('Publish' , 'workflow/object/' . $barcode . '/do_publish', array('attributes' => array('title' => 'Publish object to sites and relate to collections'))) . ' | ' .
-                l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid, array('attributes' => array('title' => 'Navigate to "' . htmlspecialchars($islandora_object->label) . '"')));
-        $found_pid_links[$barcode] = '"' . $pid . '": ' .
-                l($islandora_object->label, 'islandora/object/' . $pid);
-        $found_pids[$barcode] = $pid;
+          $regen_jp2_link = '';
+          $page_count = count($pages);
+          $first_page = array_pop($pages);
+          if ($first_page) {
+            $page_object = islandora_object_load($first_page['pid']);
+            $page_jp2_dimensions = upitt_workflow_get_jp2_dimensions($page_object);
+            if ((isset($first_page['width']) && $first_page['width'] <> $page_jp2_dimensions['width']) ||
+                (isset($first_page['height']) && $first_page['height'] <> $page_jp2_dimensions['height'])) {
+              @list($namespace, $barcode_of_object) = explode(":", $islandora_object->id);
+              $link_options = array(
+                'query' => array(
+                  'mode' => 'make_jp2',
+                  'barcodes' => $barcode_of_object,
+                ),
+                'attributes' => array(
+                  'target'=>'_blank',
+                  'class' => 'bad',
+                ),
+              );
+
+              $regen_jp2_link  = '<br><b>' .
+                  l('Regenerate JP2 for ' . $islandora_object->id, '/workflow/workflowadmin/process_barcodes/', $link_options) .
+                  '</b><br>';
+            }
+          }
+
+          $found_pid_manage_links[$barcode] = $pid . ': ' .
+                  ($page_count ? '(' . number_format($page_count) . ' pages) ' : '') .
+                  $regen_jp2_link .
+                  l('DELETE', 'islandora/object/' . $pid . '/delete', array('attributes' => array('title' => 'DELETE object', 'class' => 'bad'))) . ' | ' .
+                  l('Regen', 'islandora/object/' . $pid . '/regenerate', array('attributes' => array('title' => 'Regenerate all derivatives', 'class' => 'bad'))) . ' | ' .
+                  l('Manage', 'islandora/object/' . $pid . '/manage', array('attributes' => array('title' => 'Manage object'))) . ' | ' .
+                  l('Datastreams', 'islandora/object/' . $pid . '/manage/datastreams', array('attributes' => array('title' => 'Manage | Datastreams'))) . ' | ' .
+                  l('Workflow' , 'workflow/object/' . $barcode, array('attributes' => array('title' => 'View workflow record for this object'))) . ' | ' .
+                  l('Publish' , 'workflow/object/' . $barcode . '/do_publish', array('attributes' => array('title' => 'Publish object to sites and relate to collections'))) . ' | ' .
+                  l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid, array('attributes' => array('title' => 'Navigate to "' . htmlspecialchars($islandora_object->label) . '"')));
+          $found_pid_links[$barcode] = '"' . $pid . '": ' .
+                  l($islandora_object->label, 'islandora/object/' . $pid);
+          $found_pids[$barcode] = $pid;
+        }
       }
     }
   }
@@ -327,12 +329,13 @@ function upitt_workflow_make_batch_records_for_barcodes($barcodes, $mode) {
              (($collections) ? "mapto_collections = '" . mysqli_real_escape_string($link, $collections) . "', " : '') .
              "batch_description = '" . mysqli_real_escape_string($link, $description) . "', " .
              // Only update if there was a value
-             (($model) ? "default_type_of_resource, '" . mysqli_real_escape_string($link, $model) . "', " : '') .
+             (($model) ? "default_type_of_resource = '" . mysqli_real_escape_string($link, $model) . "', " : '') .
              // Only update if there was a value
-             (($sites) ? "mapto_site_id_values, '" . mysqli_real_escape_string($link, $sites) . "', " : '') .
+             (($sites) ? "mapto_site_id_values = '" . mysqli_real_escape_string($link, $sites) . "', " : '') .
              "overwrite_if_exists = " . $overwrite_if_exists . ", " .
              "batch_host = '" . (($batch_host_path) ? $batch_host_path : variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming')) . "'," .
-             "user = " . $user->uid;
+             "user = " . $user->uid . " " .
+             "WHERE batch_external_id = '" . $barcode . "'";
     }
     else {
       $sql = "REPLACE INTO `batch` (batch_external_id, " .
