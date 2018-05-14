@@ -2030,7 +2030,8 @@ function upitt_workflow_pid_to_barcode_for_barcodes($vals, $raw_output = FALSE) 
   $markup .= '<b>' . count($barcodes) . ' total barcodes</b>.' .
     ((strlen($barcodes_link) < 2048) ? ' <a href="' . $barcodes_link . '" ' .
     'target="_blank">Process these barcodes</a>' :
-    ' <i>There are too many barcodes to pass as a GET link.</i>') . "<br>";
+    ' <i>There are too many barcodes to pass as a GET link.</i>') .
+    ($raw_output ? "\n" : '<br>');
 
   $markup .= implode(($raw_output ? "\n" : '<br>'), $barcodes);
   if (!$raw_output) {
