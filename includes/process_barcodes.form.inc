@@ -196,58 +196,56 @@ function upitt_workflow_check_islandora_for_barcodes(&$barcodes) {
   $barcodes_arr = explode("\n", $barcodes);
 
   foreach ($barcodes_arr as $barcode) {
-    if (strstr($barcode, "total barcodes") == '') {
-      $barcode = trim($barcode);
-      if ($barcode) {
-        $pid = $ingest_namespace . $barcode;
-        $islandora_object = islandora_object_load($pid);
-        if (!is_object($islandora_object)) {
-          $not_found_pids[$barcode] = $pid;
-        }
-        else {
-          $is_paged = upitt_workflow_is_paged_object($islandora_object);
-          $pages = ($is_paged) ? islandora_paged_content_get_pages($islandora_object) : array();
+    $barcode = trim($barcode);
+    if ($barcode) {
+      $pid = $ingest_namespace . $barcode;
+      $islandora_object = islandora_object_load($pid);
+      if (!is_object($islandora_object)) {
+        $not_found_pids[$barcode] = $pid;
+      }
+      else {
+        $is_paged = upitt_workflow_is_paged_object($islandora_object);
+        $pages = ($is_paged) ? islandora_paged_content_get_pages($islandora_object) : array();
 
-          $regen_jp2_link = '';
-          $page_count = count($pages);
-          $first_page = array_pop($pages);
-          if ($first_page) {
-            $page_object = islandora_object_load($first_page['pid']);
-            $page_jp2_dimensions = upitt_workflow_get_jp2_dimensions($page_object);
-            if ((isset($first_page['width']) && $first_page['width'] <> $page_jp2_dimensions['width']) ||
-                (isset($first_page['height']) && $first_page['height'] <> $page_jp2_dimensions['height'])) {
-              @list($namespace, $barcode_of_object) = explode(":", $islandora_object->id);
-              $link_options = array(
-                'query' => array(
-                  'mode' => 'make_jp2',
-                  'barcodes' => $barcode_of_object,
-                ),
-                'attributes' => array(
-                  'target'=>'_blank',
-                  'class' => 'bad',
-                ),
-              );
+        $regen_jp2_link = '';
+        $page_count = count($pages);
+        $first_page = array_pop($pages);
+        if ($first_page) {
+          $page_object = islandora_object_load($first_page['pid']);
+          $page_jp2_dimensions = upitt_workflow_get_jp2_dimensions($page_object);
+          if ((isset($first_page['width']) && $first_page['width'] <> $page_jp2_dimensions['width']) ||
+              (isset($first_page['height']) && $first_page['height'] <> $page_jp2_dimensions['height'])) {
+            @list($namespace, $barcode_of_object) = explode(":", $islandora_object->id);
+            $link_options = array(
+              'query' => array(
+                'mode' => 'make_jp2',
+                'barcodes' => $barcode_of_object,
+              ),
+              'attributes' => array(
+                'target'=>'_blank',
+                'class' => 'bad',
+              ),
+            );
 
-              $regen_jp2_link  = '<br><b>' .
-                  l('Regenerate JP2 for ' . $islandora_object->id, '/workflow/workflowadmin/process_barcodes/', $link_options) .
-                  '</b><br>';
-            }
+            $regen_jp2_link  = '<br><b>' .
+                l('Regenerate JP2 for ' . $islandora_object->id, '/workflow/workflowadmin/process_barcodes/', $link_options) .
+                '</b><br>';
           }
-
-          $found_pid_manage_links[$barcode] = $pid . ': ' .
-                  ($page_count ? '(' . number_format($page_count) . ' pages) ' : '') .
-                  $regen_jp2_link .
-                  l('DELETE', 'islandora/object/' . $pid . '/delete', array('attributes' => array('title' => 'DELETE object', 'class' => 'bad'))) . ' | ' .
-                  l('Regen', 'islandora/object/' . $pid . '/regenerate', array('attributes' => array('title' => 'Regenerate all derivatives', 'class' => 'bad'))) . ' | ' .
-                  l('Manage', 'islandora/object/' . $pid . '/manage', array('attributes' => array('title' => 'Manage object'))) . ' | ' .
-                  l('Datastreams', 'islandora/object/' . $pid . '/manage/datastreams', array('attributes' => array('title' => 'Manage | Datastreams'))) . ' | ' .
-                  l('Workflow' , 'workflow/object/' . $barcode, array('attributes' => array('title' => 'View workflow record for this object'))) . ' | ' .
-                  l('Publish' , 'workflow/object/' . $barcode . '/do_publish', array('attributes' => array('title' => 'Publish object to sites and relate to collections'))) . ' | ' .
-                  l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid, array('attributes' => array('title' => 'Navigate to "' . htmlspecialchars($islandora_object->label) . '"')));
-          $found_pid_links[$barcode] = '"' . $pid . '": ' .
-                  l($islandora_object->label, 'islandora/object/' . $pid);
-          $found_pids[$barcode] = $pid;
         }
+
+        $found_pid_manage_links[$barcode] = $pid . ': ' .
+                ($page_count ? '(' . number_format($page_count) . ' pages) ' : '') .
+                $regen_jp2_link .
+                l('DELETE', 'islandora/object/' . $pid . '/delete', array('attributes' => array('title' => 'DELETE object', 'class' => 'bad'))) . ' | ' .
+                l('Regen', 'islandora/object/' . $pid . '/regenerate', array('attributes' => array('title' => 'Regenerate all derivatives', 'class' => 'bad'))) . ' | ' .
+                l('Manage', 'islandora/object/' . $pid . '/manage', array('attributes' => array('title' => 'Manage object'))) . ' | ' .
+                l('Datastreams', 'islandora/object/' . $pid . '/manage/datastreams', array('attributes' => array('title' => 'Manage | Datastreams'))) . ' | ' .
+                l('Workflow' , 'workflow/object/' . $barcode, array('attributes' => array('title' => 'View workflow record for this object'))) . ' | ' .
+                l('Publish' , 'workflow/object/' . $barcode . '/do_publish', array('attributes' => array('title' => 'Publish object to sites and relate to collections'))) . ' | ' .
+                l('"' . $islandora_object->label . '"', 'islandora/object/' . $pid, array('attributes' => array('title' => 'Navigate to "' . htmlspecialchars($islandora_object->label) . '"')));
+        $found_pid_links[$barcode] = '"' . $pid . '": ' .
+                l($islandora_object->label, 'islandora/object/' . $pid);
+        $found_pids[$barcode] = $pid;
       }
     }
   }
@@ -329,13 +327,12 @@ function upitt_workflow_make_batch_records_for_barcodes($barcodes, $mode) {
              (($collections) ? "mapto_collections = '" . mysqli_real_escape_string($link, $collections) . "', " : '') .
              "batch_description = '" . mysqli_real_escape_string($link, $description) . "', " .
              // Only update if there was a value
-             (($model) ? "default_type_of_resource = '" . mysqli_real_escape_string($link, $model) . "', " : '') .
+             (($model) ? "default_type_of_resource, '" . mysqli_real_escape_string($link, $model) . "', " : '') .
              // Only update if there was a value
-             (($sites) ? "mapto_site_id_values = '" . mysqli_real_escape_string($link, $sites) . "', " : '') .
+             (($sites) ? "mapto_site_id_values, '" . mysqli_real_escape_string($link, $sites) . "', " : '') .
              "overwrite_if_exists = " . $overwrite_if_exists . ", " .
              "batch_host = '" . (($batch_host_path) ? $batch_host_path : variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming')) . "'," .
-             "user = " . $user->uid . " " .
-             "WHERE batch_external_id = '" . $barcode . "'";
+             "user = " . $user->uid;
     }
     else {
       $sql = "REPLACE INTO `batch` (batch_external_id, " .
@@ -1753,7 +1750,7 @@ function upitt_workflow_get_wf_barcodes_from_batch_for_barcodes($batches) {
 function upitt_workflow_query_solr_for_barcodes($values) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
-  $missing_barcodes = array();
+  $missing_barcodes = $missing_ocr = $missing_pdf = $missing_tn_large = $needs_collection_mapping = $need_published = array();
   
   $barcode_batch_array = upitt_workflow_barcode_or_batch_barcodes($values);
   foreach ($barcode_batch_array as $key => $barcode_batch) {
@@ -1812,9 +1809,15 @@ function upitt_workflow_query_solr_for_barcodes($values) {
           $new_vals = array();
           foreach ($vals as $obj_identifier) {
             $obj_identifier = trim($obj_identifier);
-            $new_vals[] = ($f == 'RELS_EXT_isMemberOfCollection_uri_ms') ? 
-              "<a href='/islandora/search_collection/" . $obj_identifier . "' target='_blank'>" . $obj_identifier . "</a>" :
-              "<a href='/islandora/object/" . $obj_identifier . "/viewer' target='_blank'>" . $obj_identifier . "</a>";
+            if ($obj_identifier == '') {
+              $new_vals[] = '<span class="bad">' . $pid . '</span>';
+              $missing_barcodes[$barcode] = $barcode;
+            }
+            else {
+              $new_vals[] = ($f == 'RELS_EXT_isMemberOfCollection_uri_ms') ?
+                "<a href='/islandora/search_collection/" . $obj_identifier . "' target='_blank'>" . $obj_identifier . "</a>" :
+                "<a href='/islandora/object/" . $obj_identifier . "/viewer' target='_blank'>" . $obj_identifier . "</a>";
+            }
           }
           $a_row[$f] = implode(", ", $new_vals);
         }
@@ -1874,6 +1877,11 @@ function upitt_workflow_query_solr_for_barcodes($values) {
             'Object: &quot;' . strip_tags($a_row['RELS_EXT_isMemberOfCollection_uri_ms']) .
             '&quot;, batch record: &quot;' . strip_tags($a_row['mapto_collections']) . '&quot;">FALSE';
 
+      // Same logic to populate separate array to display barcodes that need collection mapping
+      if (!$collections_mapped_success) {
+        $needs_collection_mapping[$barcode] = $barcode;
+      }
+
       //   Published?
       // need to iterate and compare the value from solr as well as the batch
       // $batch_record['mapto_site_id_values'] = 'pitt:site-xyz';
@@ -1893,6 +1901,11 @@ function upitt_workflow_query_solr_for_barcodes($values) {
             'Object: &quot;' . $a_row['RELS_EXT_isMemberOfSite_uri_ms'] .
             '&quot;, batch record: &quot;' . $batch_record['mapto_site_id_values'] . '&quot;">FALSE';
 
+      // Same logic to populate separate array to display barcodes that need collection mapping
+      if (!$sites_mapped_success) {
+        $need_published[$barcode] = $barcode;
+      }
+
       $is_paged = upitt_workflow_is_model_a_paged_object($model);
       //   OCR ok?
       $a_row['OCR ok?'] = ($is_paged) ? (($a_row['fedora_datastream_latest_OCR_SIZE_ms'] > 0) ? '<span class="good">TRUE</span>' : '<span class="bad">FALSE</span>') : 
@@ -1902,9 +1915,20 @@ function upitt_workflow_query_solr_for_barcodes($values) {
       $a_row['PDF ok?'] = ($is_paged) ? (($a_row['fedora_datastream_latest_PDF_SIZE_ms'] > 0) ? '<span class="good">TRUE</span>' : '<span class="bad">FALSE</span>') :
         '<span title="' . $model . ' is not paged content" class="optional">n/a</span>';
 
+      if ($is_paged) {
+        if (!($a_row['fedora_datastream_latest_PDF_SIZE_ms'] > 0)) {
+          $missing_pdf[$barcode] = $barcode;
+        }
+        if (!($a_row['fedora_datastream_latest_PDF_SIZE_ms'] > 0)) {
+          $missing_ocr[$barcode] = $barcode;
+        }
+      }
+
       //   TN_LARGE ok?
       $a_row['TN_LARGE ok?'] = ($a_row['fedora_datastream_latest_TN_LARGE_SIZE_ms'] > 0) ? '<span class="good">TRUE</span>' : '<span class="bad">FALSE</span>';
-
+      if (!($a_row['fedora_datastream_latest_TN_LARGE_SIZE_ms'] > 0)) {
+        $missing_tn_large[$barcode] = $barcode;
+      }
       unset($a_row['fedora_datastream_latest_TN_LARGE_SIZE_ms']);
       unset($a_row['fedora_datastream_latest_OCR_SIZE_ms']);
       unset($a_row['fedora_datastream_latest_PDF_SIZE_ms']);
@@ -1914,6 +1938,18 @@ function upitt_workflow_query_solr_for_barcodes($values) {
 
   // Remove the redundant "PID" field -- doesn't need to show up twice!
   unset($header_solr_fields_arr[0]);
+  $markup .= (count($missing_barcodes) > 0) ? 
+      '<h5>Not ingested</h5><textarea rows="6" readonly class="short-text-report">' . implode("\n", $missing_barcodes) . '</textarea>' : '';
+  $markup .= (count($needs_collection_mapping) > 0) ? 
+      '<h5>Not related to collection</h5><textarea rows="6" readonly class="short-text-report">' . implode("\n", $needs_collection_mapping) . '</textarea>' : '';
+  $markup .= (count($need_published) > 0) ? 
+      '<h5>Needs Published</h5><textarea rows="6" readonly class="short-text-report">' . implode("\n", $need_published) . '</textarea>' : '';
+  $markup .= (count($missing_pdf) > 0) ? 
+      '<h5>Missing PDF</h5><textarea rows="6" readonly class="short-text-report">' . implode("\n", $missing_pdf) . '</textarea>' : '';
+  $markup .= (count($missing_ocr) > 0) ? 
+      '<h5>Missing OCR</h5><textarea rows="6" readonly class="short-text-report">' . implode("\n", $missing_ocr) . '</textarea>' : '';
+  $markup .= (count($missing_tn_large) > 0) ? 
+      '<h5>Missing TN_LARGE</h5><textarea rows="6" readonly class="short-text-report">' . implode("\n", $missing_tn_large) . '</textarea>' : '';
   $markup .= theme('table', array(
      'rows'=>$rows,
      'header'=> array_merge($stub_row, $header_solr_fields_arr, $batch_record_fields),
