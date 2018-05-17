@@ -14,7 +14,15 @@ set_time_limit(0);
 
 function upitt_workflow_process_barcodes_form($form, &$form_state) {
   $admin = user_access('administer users');
-
+  if (array_key_exists('build_info', $form_state) &&
+      array_key_exists('args', $form_state['build_info']) &&
+      array_key_exists(0, $form_state['build_info']['args']) &&
+      array_key_exists('values', $form_state['build_info']['args'][0])) {
+    $form_state['values'] = $form_state['build_info']['args'][0]['values'];
+    // "rebuild" will cause this to return the form rebuilt to the call from
+    // upitt_workflow_process_set to drupal_get_form.
+    $form_state['rebuild'] = TRUE;
+  }
   if (!isset($form_state['values']['barcodes']) && isset($_GET['barcodes']) && isset($_GET['mode'])) {
     $form_state['values']['barcodes'] = str_replace(array(';', ','), "\n", filter_xss($_GET['barcodes']));
     $form_state['values']['mode'] = filter_xss($_GET['mode']);
@@ -134,6 +142,24 @@ function upitt_workflow_process_barcodes_form_submit($form, &$form_state) {
     $form_state['rebuild'] = TRUE;
     $form_state['storage']['process_results'] = theme('upitt_simple_markup', array('markup' => $markup));
   }
+}
+
+function upitt_workflow_process_set($process_set_id = '') {
+  if (!$process_set_id) {
+    drupal_set_message('A bad set_id value was provided.  Redirected to the Process Barcodes form.');
+    drupal_goto('/workflow/workflowadmin/process_barcodes');
+  }
+  // Fetch the process_set record and return the Process Barcodes form already
+  // preloaded with those values.
+  upitt_workflow_get_process_set_records($process_set_id, $mode, $items);
+  $form_state = array();
+  $form_state['values'] = array(
+      'mode' => $mode,
+      'barcodes' => implode("\n", $items),
+  );
+  $form_name = 'upitt_workflow_process_barcodes_form';
+  $form = drupal_get_form($form_name, $form_state);
+  return drupal_render($form);
 }
 
 /**
@@ -1658,6 +1684,9 @@ function upitt_workflow_update_workflow_values_for_barcodes($values) {
               '<b class="good">{BARCODE_or_BATCHNAME}|{fieldname}=value|{fieldname}=value|{fieldname}=value.</b>  ' .
               'To set any of the optional values, the line value must include ' .
               'the name of the field and the value to set for that field.</b>  <p>Examples:</p> ' .
+              '<li>31735066984000|collection=pitt:collection.3|site=pitt:site.documenting-pitt' . 
+              '|type=bookCModel</li>' .
+              '<li>31735066984000|site=pitt:site.documenting-pitt,pitt:site.historic-pittsburgh,pitt:site.uls-digital-collections</li>' .
               '<li>31735066984000|site=pitt:site.historic-pittsburgh,pitt:site.uls-digital-collections' .
               '|type=bookCModel</li><li>20160201-ulsnewspaper|collection=' .
               'pitt:collection.3|type=newspaperCModel</li><li>31735066984000|type=bookCModel</li></ul>' .
@@ -1809,7 +1838,7 @@ function upitt_workflow_query_solr_for_barcodes($values) {
           $new_vals = array();
           foreach ($vals as $obj_identifier) {
             $obj_identifier = trim($obj_identifier);
-            if ($obj_identifier == '') {
+            if ($obj_identifier == '' && $f == 'PID') {
               $new_vals[] = '<span class="bad">' . $pid . '</span>';
               $missing_barcodes[$barcode] = $barcode;
             }
@@ -1938,18 +1967,12 @@ function upitt_workflow_query_solr_for_barcodes($values) {
 
   // Remove the redundant "PID" field -- doesn't need to show up twice!
   unset($header_solr_fields_arr[0]);
-  $markup .= (count($missing_barcodes) > 0) ? 
-      '<h5>Not ingested</h5><textarea rows="6" readonly class="short-text-report">' . implode("\n", $missing_barcodes) . '</textarea>' : '';
-  $markup .= (count($needs_collection_mapping) > 0) ? 
-      '<h5>Not related to collection</h5><textarea rows="6" readonly class="short-text-report">' . implode("\n", $needs_collection_mapping) . '</textarea>' : '';
-  $markup .= (count($need_published) > 0) ? 
-      '<h5>Needs Published</h5><textarea rows="6" readonly class="short-text-report">' . implode("\n", $need_published) . '</textarea>' : '';
-  $markup .= (count($missing_pdf) > 0) ? 
-      '<h5>Missing PDF</h5><textarea rows="6" readonly class="short-text-report">' . implode("\n", $missing_pdf) . '</textarea>' : '';
-  $markup .= (count($missing_ocr) > 0) ? 
-      '<h5>Missing OCR</h5><textarea rows="6" readonly class="short-text-report">' . implode("\n", $missing_ocr) . '</textarea>' : '';
-  $markup .= (count($missing_tn_large) > 0) ? 
-      '<h5>Missing TN_LARGE</h5><textarea rows="6" readonly class="short-text-report">' . implode("\n", $missing_tn_large) . '</textarea>' : '';
+  $markup .= upitt_workflow_make_process_set('Not ingested', 'query_solr', $missing_barcodes);
+  $markup .= upitt_workflow_make_process_set('Not related to collection', 'update_workflow_values', $needs_collection_mapping);
+  $markup .= upitt_workflow_make_process_set('Needs Published', 'do_publish', $need_published);
+  $markup .= upitt_workflow_make_process_set('Missing PDF', 'make_page_pdfs', $missing_pdf);
+  $markup .= upitt_workflow_make_process_set('Missing OCR', 'gen_OCR', $missing_ocr);
+  $markup .= upitt_workflow_make_process_set('Missing TN_LARGE', 'make_tn_large', $missing_tn_large);
   $markup .= theme('table', array(
      'rows'=>$rows,
      'header'=> array_merge($stub_row, $header_solr_fields_arr, $batch_record_fields),

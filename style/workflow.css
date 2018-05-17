@@ -31,10 +31,30 @@ h5 {
     white-space: nowrap;
 }
 
+.process_set {
+    background-color: #f5f5f5;
+    border: 2px solid #ddd;    
+    border-radius: 8px;
+    text-align: center;
+    margin: 4px 0;
+    padding-bottom: 8px;    
+}
+
+.process_set h3 {
+    margin: 0 4px;
+    float: left;
+}
+
+.process_set a {
+    float: right;
+    line-height: 2em;
+    margin-right: 8px;
+}
+
 .short-text-report {
-    width: 100%;
+    width: 98%;
     font-size: 0.825em;
-    font-family: Andale Mono, monospace;    
+    font-family: Andale Mono, monospace;
 }
 
 .text-report {

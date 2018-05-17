@@ -42,12 +42,12 @@ function upitt_workflow_admin_form() {
     'ingest_fields' => array(
       '#type' => 'fieldset',
       '#title' => 'Ingest options',
-      'ingest_drush_debugmode' => array(
-        '#type' => 'checkbox',
-        '#title' => t("Drush Debug?"),
-        '#default_value' => variable_get('upitt_workflow_ingest_drush_debugmode', FALSE),
-        '#description' => t('When set, all drush commands will be passed with "debug" and "verbose" switches.'),
-      ),
+//      'ingest_drush_debugmode' => array(
+//        '#type' => 'checkbox',
+//        '#title' => t("Drush Debug?"),
+//        '#default_value' => variable_get('upitt_workflow_ingest_drush_debugmode', FALSE),
+//        '#description' => t('When set, all drush commands will be passed with "debug" and "verbose" switches.'),
+//      ),
       'ingest_namespace' => array(
         '#type' => 'textfield',
         '#title' => t('Ingest Namespace'),
@@ -56,7 +56,7 @@ function upitt_workflow_admin_form() {
       ),
       'ingest_prepared_path' => array(
         '#type' => 'textfield',
-        '#title' => t('Ingest Working Directory'), // Incoming Ingest Path'),
+        '#title' => t('Ingest Working Directory'),
         '#description' => t('The working directory for prepared ingest batch files.  This path
                              should be configured to a location that has plenty of hard space.'),
         '#default_value' => variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'),
@@ -69,6 +69,14 @@ function upitt_workflow_admin_form() {
                              and the structure of the contents for an Islandora batch.'),
         '#default_value' => variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'),
       ),
+      'ingest_server_host' => array(
+        '#type' => 'textfield',
+        '#title' => t('Gearman Server Host'),
+        '#description' => t('The host name for the gearman server.  This is needed
+                             for the drush commands to populate the value for uri.'),
+        '#default_value' => variable_get('upitt_workflow_ingest_server_host', 'http://gamera.library.pitt.edu'),
+      ),
+
       'batch_hosts' => array(
         '#type' => 'textarea',
         '#title' => t('Available Host Aliases for Batch ingest'),
@@ -77,7 +85,7 @@ function upitt_workflow_admin_form() {
                              that can direct the batch to use that server.<br>
                              <ul>
                                <li>If you do not want to use box.com as a potential source for ingest files, simply remove the entry of <code>' . $box_alias_default . '</code></li>
-                               <li>For any batch that does not specify which host alias to use, the "Default Incoming Ingest Path" above would be used.</li>
+                               <li>For any batch that does not specify which host alias to use, the "Ingest Working Directory" above would be used.</li>
                                <li>Values should each be entered on separate lines in a "name=value" format.  Username, password values are optional.  For example:
                                  <ul>
                                    <li>The value (part after the "=" character) should not be longer than 255 characters.</li>
@@ -100,6 +108,7 @@ function upitt_workflow_admin_form() {
         '#type' => 'password',
         '#title' => t('Password'),
         '#description' => $password_field_description,
+        '#post_render' => array('upitt_workflow_admin_form_setpass'),
       ),
       /* 'ftp_port' => array(
         '#type' => 'textfield',
@@ -125,8 +134,21 @@ function upitt_workflow_admin_form() {
       '#value' => t('Save configuration'),
     ),
   );
-
+  
   return $form;
+}
+
+/**
+ * This is just used to put the value into the form field that is a password field since
+ * this field is not encrypted.
+ *
+ * @param type $form
+ * @return type
+ */
+function upitt_workflow_admin_form_setpass(&$form) {
+  // TODO: encrypt this ftp pass!!!
+  $form = str_replace('input type="password"', 'input type="password" value="' . variable_get('upitt_workflow_ftp_password') . '" ', $form);
+  return($form);
 }
 
 /**
@@ -142,6 +164,7 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
   $id = $form_state['triggering_element']['#id'];
   switch ($id) {
     case 'edit-submit':
+      dpm($form_state['values']);
       $batch_hosts_array = explode("\r\n", $form_state['values']['batch_hosts']);
       upitt_workflow_create_host_paths($batch_hosts_array);
       variable_set('upitt_workflow_admin_only_process_barcode_modes', $form_state['values']['admin_only_process_barcode_modes']);
@@ -149,7 +172,8 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_set('upitt_workflow_ingest_namespace', $form_state['values']['ingest_namespace']);
       variable_set('upitt_workflow_ingest_prepared_path', $form_state['values']['ingest_prepared_path']);
       variable_set('upitt_workflow_ingest_incoming', $form_state['values']['ingest_incoming_path']);
-      variable_set('upitt_workflow_ingest_drush_debugmode', $form_state['values']['ingest_drush_debugmode']);
+      variable_set('upitt_workflow_ingest_server_host', $form_state['values']['ingest_server_host']);
+      // variable_set('upitt_workflow_ingest_drush_debugmode', $form_state['values']['ingest_drush_debugmode']);
       variable_set('upitt_workflow_ftp_username', $form_state['values']['ftp_username']);
       variable_set('upitt_workflow_ftp_password', $form_state['values']['ftp_password']);
       // variable_set('upitt_workflow_ftp_port', $form_state['values']['ftp_port']);
@@ -162,7 +186,8 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_del('upitt_workflow_ingest_namespace');
       variable_del('upitt_workflow_ingest_prepared_path');
       variable_del('upitt_workflow_ingest_incoming');
-      variable_del('upitt_workflow_ingest_drush_debugmode');
+      variable_del('upitt_workflow_ingest_server_host');
+      // variable_del('upitt_workflow_ingest_drush_debugmode');
       variable_del('upitt_workflow_ftp_username');
       variable_del('upitt_workflow_ftp_password');
       // variable_del('upitt_workflow_ftp_port');

@@ -2340,3 +2340,82 @@ function upitt_workflow_drush_switches_ingest_drush_debugmode() {
   return '';
   // return (variable_get('upitt_workflow_ingest_drush_debugmode', FALSE)) ? '-dv ' : '';
 }
+
+function upitt_workflow_make_process_set($title, $mode, $items) {
+  // If there are items, look up the identifiers' item_id values from the
+  // items table, else return an empty string.
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $item_ids = upitt_workflow_get_item_ids($link, $items);
+  $process_set_id = upitt_workflow_make_process_set_records($link, $mode, $item_ids);
+  // Before leaving, close the mysql connection.
+  mysqli_close($link);
+  return theme('upitt_workflow_process_set_display', array(
+          'title' => $title,
+          'process_set_id' => $process_set_id,
+          'items' => $items));
+}
+
+function upitt_workflow_make_process_set_records($link, $mode, $item_ids) {
+  if (count($item_ids) > 0) {
+    $sql = "INSERT INTO process_set (`set_mode`) VALUES ('" . $mode . "')";
+    $result = mysqli_query($link, $sql);
+    if (!$result) {
+      upitt_workflow_sql_error_die($link, $sql);
+    }
+    $query = mysqli_query($link, 'SELECT `process_set_id` FROM process_set ' .
+        'ORDER BY `process_set_id` DESC LIMIT 1');
+    $row = mysqli_fetch_assoc($query);
+    $process_set_id = $row['process_set_id'];
+
+    // Insert the process_set_items records.
+    foreach ($item_ids as $item_id) {
+      $insert_sql = 'INSERT INTO process_set_items (`process_set_id`, `item_id`) VALUES ' .
+          '(' . $process_set_id . ', ' . $item_id . ')';
+      mysqli_query($link, $insert_sql);
+    }
+
+    // Delete old process_set and process_set_items records (3 days = 259200 seconds)
+    $sql = "SELECT process_set_id FROM process_set WHERE `timestamp` < NOW() - 259200";
+    $result = mysqli_query($link, $sql);
+    while ($row = mysqli_fetch_assoc($result)) {
+      $delete_items_sql = "DELETE FROM process_set_items WHERE process_set_id = " . $row['process_set_id'];
+      mysqli_query($link, $delete_items_sql);
+      $delete_sql = "DELETE FROM process_set WHERE process_set_id = " . $row['process_set_id'];
+      mysqli_query($link, $delete_sql);
+    }
+    return $process_set_id;
+  }
+}
+
+function upitt_workflow_get_process_set_records($process_set_id, &$mode, &$items) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $query = mysqli_query($link, 'SELECT `set_mode` FROM process_set WHERE `process_set_id` = ' . $process_set_id);
+  $row = mysqli_fetch_assoc($query);
+  $mode = $row['set_mode'];
+  $items = array();
+  $sql = "SELECT i.`do_id` FROM item i " .
+         "JOIN process_set_items pi ON pi.item_id = i.id " .
+         "WHERE pi.process_set_id = " . $process_set_id;
+  $result = mysqli_query($link, $sql);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+  while ($row = mysqli_fetch_assoc($result)) {
+    $items[] = $row['do_id'];
+  }
+  // Before leaving, close the mysql connection.
+  mysqli_close($link);
+}
+
+function upitt_workflow_get_item_ids($link, $items) {
+  $ret = array();
+  $sql = "SELECT `id` FROM item WHERE do_id IN ('" . implode("', '", $items) . "')";
+  $result = mysqli_query($link, $sql);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+  while ($row = mysqli_fetch_assoc($result)) {
+    $ret[] = $row['id'];
+  }
+  return $ret;
+}

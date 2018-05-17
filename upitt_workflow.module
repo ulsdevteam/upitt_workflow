@@ -213,6 +213,15 @@ function upitt_workflow_menu() {
       'access arguments' => array(ISLANDORA_WORKFLOW_PROCESS_BARCODES),
       'access callback' => 'upitt_workflow_workflowadmin_manage_access_callback',
     ),
+    'workflow/workflowadmin/process_set/%' => array(
+      'title' => ('Process Set'),
+      'page callback' => 'upitt_workflow_process_set',
+      'page arguments' => array(3),
+      'type' => MENU_CALLBACK,
+      'file' => 'includes/process_barcodes.form.inc',
+      'access arguments' => array(ISLANDORA_WORKFLOW_PROCESS_BARCODES),
+      'access callback' => 'upitt_workflow_workflowadmin_manage_access_callback',
+    ),
     'workflow/workflowadmin' => array(
       'title' => t('Workflow Admin'),
       'page callback' => 'upitt_workflow_workflowadmin',
@@ -331,6 +340,14 @@ function upitt_workflow_theme() {
       'variables' => array('markup' => '', 'breadcrumb' => ''),
       'render_element' => 'form',
       'template' => 'theme/upitt-workflow-batchmove-report',
+    ),
+    'upitt_workflow_process_set_display' => array(
+      'variables' => array(
+          'title' => '', 
+          'process_set_id' => '',
+          'items' => array(),
+      ),
+      'template' => 'theme/upitt-workflow-process-set-display',
     ),
   );
 }
