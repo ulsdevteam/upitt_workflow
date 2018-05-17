@@ -1947,7 +1947,7 @@ function upitt_workflow_query_solr_for_barcodes($values) {
         if (!($a_row['fedora_datastream_latest_PDF_SIZE_ms'] > 0)) {
           $missing_pdf[$barcode] = $barcode;
         }
-        if (!($a_row['fedora_datastream_latest_PDF_SIZE_ms'] > 0)) {
+        if (!($a_row['fedora_datastream_latest_OCR_SIZE_ms'] > 0)) {
           $missing_ocr[$barcode] = $barcode;
         }
       }
