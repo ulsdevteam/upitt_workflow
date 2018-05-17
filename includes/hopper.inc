@@ -16,18 +16,13 @@ function upitt_workflow_add_barcode_to_hopper($pid, $link) {
   if (!$size) { 
     $size = 999999;
   }
-  $existed = upitt_workflow_get_hopper_for_pid($pid, FALSE, $link);
-  if (!$existed) {
-    $query = "INSERT INTO `ingest_hopper_queue` (`PID`, `files_size`) VALUES ('" . mysqli_real_escape_string($link, $pid) . "', " . $size . ")";
-    $result = mysqli_query($link, $query);
-    if (!$result) {
-      upitt_workflow_sql_error_die($link, $query);
-    }
-    return TRUE;
+  $query = "REPLACE INTO `ingest_hopper_queue` (`PID`, `files_size`, `ingest_start_timestamp`) " .
+           "VALUES ('" . mysqli_real_escape_string($link, $pid) . "', " . $size . ", NULL)";
+  $result = mysqli_query($link, $query);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $query);
   }
-  else {
-    return FALSE;
-  }
+  return TRUE;
 }
 
 /**
