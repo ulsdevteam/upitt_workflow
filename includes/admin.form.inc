@@ -119,7 +119,14 @@ function upitt_workflow_admin_form() {
     ),
     'process_barcodes_panel' => array(
       '#type' => 'fieldset',
-      '#title' => t('Process Barcodes Admin-only modes.'),
+      '#title' => t('Process Barcodes'),
+      'dpi' => array(
+        '#type' => 'select',
+        '#title' => t('PDF derivative default DPI - Dots Per Inch'),
+        '#description' => t('Set the DPI for the generated PDF. The higher the resolution the longer the process will take.'),
+        '#options' => drupal_map_assoc(array('72', '96', '300', '600')),
+        '#default_value' => variable_get('upitt_workflow_pdf_dpi_default', 96),
+      ),
       'admin_only_process_barcode_modes' => array(
         '#type' => 'textarea',
         '#title' => t('List the mode values that ONLY administrators should have access to use.'),
@@ -167,7 +174,6 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       dpm($form_state['values']);
       $batch_hosts_array = explode("\r\n", $form_state['values']['batch_hosts']);
       upitt_workflow_create_host_paths($batch_hosts_array);
-      variable_set('upitt_workflow_admin_only_process_barcode_modes', $form_state['values']['admin_only_process_barcode_modes']);
       variable_set('upitt_workflow_notification_email', $form_state['values']['notification_email']);
       variable_set('upitt_workflow_ingest_namespace', $form_state['values']['ingest_namespace']);
       variable_set('upitt_workflow_ingest_prepared_path', $form_state['values']['ingest_prepared_path']);
@@ -178,10 +184,11 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_set('upitt_workflow_ftp_password', $form_state['values']['ftp_password']);
       // variable_set('upitt_workflow_ftp_port', $form_state['values']['ftp_port']);
       variable_set('upitt_workflow_hosts_for_ingest', $form_state['values']['batch_hosts']);
+      variable_set('upitt_workflow_admin_only_process_barcode_modes', $form_state['values']['admin_only_process_barcode_modes']);
+      variable_set('upitt_workflow_pdf_dpi_default', $form_state['values']['dpi']);
       break;
 
     case 'edit-reset':
-      variable_del('upitt_workflow_admin_only_process_barcode_modes');
       variable_del('upitt_workflow_notification_email');
       variable_del('upitt_workflow_ingest_namespace');
       variable_del('upitt_workflow_ingest_prepared_path');
@@ -192,6 +199,8 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
       variable_del('upitt_workflow_ftp_password');
       // variable_del('upitt_workflow_ftp_port');
       variable_del('upitt_workflow_hosts_for_ingest');
+      variable_del('upitt_workflow_admin_only_process_barcode_modes');
+      variable_del('upitt_workflow_pdf_dpi_default');
       break;
   }
   // Set this message after the folders may be created in case there are any error messages.

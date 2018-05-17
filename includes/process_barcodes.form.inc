@@ -42,6 +42,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'do_copy' => ' - Copy files from incoming to ingest location',
       'ingest_prepare' => ' - Islandora Ingest Preprocess',
       'gen_OCR' => ' - Generate OCR',
+      'make_page_pdfs' => ' - Make page PDF derivatives',
       'do_publish' => ' - Publish objects to site',
     '2' => 'Special Functionality',
       'update_workflow_values' => ' - Override Workflow Values (type,site,collection)',
@@ -50,7 +51,6 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'make_tn_large' => ' - Make TN_LARGE derivative',
       'make_jpg' => ' - Make JPG derivative',
       'make_jp2' => ' - Make JP2 derivative',
-      'make_page_pdfs' => ' - (Make page PDF derivatives)',
       'aggregate' => ' - Aggregate OCR and PDF, make TN_LARGE',
       'set_status' => ' - Set Status',
       'solr_reindex' => ' - Solr reindex objects',
@@ -509,7 +509,7 @@ function upitt_workflow_delete_batch_for_barcodes($barcodes) {
   return $markup;
 }
 
-function upitt_workflow_purge_OCR_PDF_for_barcodes($barcodes) {
+function upitt_workflow_purge_ds_for_barcodes($barcodes, $dsid) {
   module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
 
@@ -524,9 +524,8 @@ function upitt_workflow_purge_OCR_PDF_for_barcodes($barcodes) {
     if (is_object($islandora_object)) {
       $is_paged = upitt_workflow_is_paged_object($islandora_object);
       $pages = ($is_paged) ? islandora_paged_content_get_pages($islandora_object) : array();
-      upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 'OCR');
-      upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 'PDF');
-      $markup .= '<div class="good">Successfully purged OCR or PDF datastream for ' . $pid . '.</div>';
+      upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, $dsid);
+      $markup .= '<div class="good">Successfully purged ' . $dsid . ' datastream for ' . $pid . '.</div>';
     }
     else {
       if ($barcode) {
@@ -2322,9 +2321,40 @@ function upitt_workflow_do_copy_for_barcodes($barcodes, $measure_size_only = FAL
   return $markup;
 }
 
+function upitt_workflow_make_page_pdfs_for_barcodes($barcodes) {
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+  module_load_include('inc', 'islandora_paged_content', 'includes/batch');
+
+  $markup = upitt_workflow_purge_ds_for_barcodes($barcodes, 'PDF');
+  global $user;
+
+  $barcodes_arr = explode("\n", $barcodes);
+
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+    $ingest_namespace = upitt_workflow_get_ingest_namespace();
+    $pid = $ingest_namespace . $barcode;
+
+    $islandora_object = islandora_object_load($pid);
+
+    if (is_object($islandora_object)) {
+      $pages = array_keys(islandora_paged_content_get_pages($islandora_object));
+      $options = array(
+        '-density' => variable_get('upitt_workflow_pdf_dpi_default', 96),
+        '-compress' => 'LZW',
+      );
+      $batch = islandora_paged_content_create_pdf_batch($islandora_object, $pages, $options);
+      $batch['url'] = '/workflow/workflowadmin/process_barcodes';
+      batch_set($batch);
+    ////  $batch =& batch_get();
+
+    }
+  }
+}
 
 function upitt_workflow_gen_OCR_for_barcodes($barcodes) {
-  $markup = upitt_workflow_purge_OCR_PDF_for_barcodes($barcodes);
+  $markup = upitt_workflow_purge_ds_for_barcodes($barcodes, 'OCR');
   global $user;
   $barcodes_arr = explode("\n", $barcodes);
 
