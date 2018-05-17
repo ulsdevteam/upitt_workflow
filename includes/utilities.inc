@@ -2419,3 +2419,18 @@ function upitt_workflow_get_item_ids($link, $items) {
   }
   return $ret;
 }
+
+function upitt_workflow_update_batch_host($link, $barcode, $batch_host_path) {
+  $batch_host_path = str_replace("/usr/local/", "/ingest/", $batch_host_path);
+
+  $sql = "UPDATE batch SET `batch_host` = '" . $batch_host_path . "' " .
+      "WHERE `batch_external_id` = '" . $barcode . "' AND " . 
+      "`batch_host` <> '" . $batch_host_path . "'";
+  $result = mysqli_query($link, $sql);
+  $affected_rows = mysqli_affected_rows($link);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $sql);
+  }
+  return ($affected_rows > 0);
+}
+
