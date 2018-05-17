@@ -223,7 +223,7 @@ function upitt_workflow_check_islandora_for_barcodes(&$barcodes) {
 
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
-    if ($barcode) {
+    if ($barcode && (strstr($barcode, "total barcodes") == '')) {
       $pid = $ingest_namespace . $barcode;
       $islandora_object = islandora_object_load($pid);
       if (!is_object($islandora_object)) {
