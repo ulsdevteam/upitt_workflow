@@ -655,32 +655,30 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
         upitt_workflow_log('ingested_pid = ' . print_r($ingested_pid, true));
         $ingested_object = islandora_object_load($ingested_pid);
         if (is_object($ingested_object)) {
-          // See whether or not this is a paged-content object in order to call the
-          // "aggregate PDF" and "aggregate OCR/HOCR" batch commands on it now.
-
-          // Now, the code seems to handle creating TN_LARGE for all pages --
-          // so, removing this block unless it is needed later:
-          /* -- REMOVING
+          // Can not call "aggregate PDF" and "aggregate OCR/HOCR" batch commands now
+          // due to how derivatives are deferred and they may not exist yet, but can
+          // trigger the "Generate OCR" at this point.  
+          // See whether or not this is a paged-content object.
           if (upitt_workflow_is_paged_object($ingested_object)) {
             upitt_workflow_log('it is a paged object');
-            // Calling the next two functions while gearman is being used does NOT
-            // work anymore because the derivatives needed to aggregate these objects
-            // are now deferred.  This step must be done after the pages have ALL been
-            // completely ingested and finished with making their OCR / PDF deriviatives.
-            //
-            // upitt_workflow_aggregate_pdf_derivative($ingested_object);
-            // upitt_workflow_aggregate_ocr_derivative($ingested_object);
-
             $pages = islandora_paged_content_get_pages($ingested_object);
             if (count($pages)) {
-              module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
-              $page = array_shift($pages);
-              $page_object = islandora_object_load($page['pid']);
-              upitt_workflow_log('calling to make tn_large for page ' . $page['pid']);
-              upitt_workflow_make_tn_large($page_object, $ingested_object);
+              global $user;
+              $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+              $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain .
+                upitt_workflow_drush_switches_ingest_drush_debugmode() .
+                ' upitt_workflow_generate_ocr_datastreams --paged_object_pid=' . $ingested_pid;
+              $loginfo = 'Called upitt_workflow_generate_ocr_datastreams ' . $drush_command;
+
+              $output = $return_var = array();
+              exec($drush_command, $output, $return_var);
+
+              if (($return_var == -1 || $return_var == 255 || $return_var == 1)) {
+                drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+              }
             }
           }
-          * REMOVING -- */
+
           // Update the batch status record for the matching batch record for this set's $ingested_pid
           upitt_workflow_set_status_for_pid($ingested_object, UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY, TRUE);
 

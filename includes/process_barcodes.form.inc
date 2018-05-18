@@ -60,7 +60,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'deep_info_on_objects' => ' - Deep info on objects',
       'check_batch' => ' - Check batch for completedness',
       'get_common_batchvalues' => ' - Get batch values (site, collection, type)',
-      'get_wf_paths' => ' - Get (and fix) Bigfoot paths',
+      'get_wf_paths' => ' - Get Bigfoot paths',
       'get_wf_barcodes_from_batch' => ' - Get barcodes from legacy batches',
       'query_solr' => ' - Query Solr for common values',
       'purge_OCR_PDF' => ' - Purge page OCR and PDF derivative',
@@ -1741,13 +1741,21 @@ function upitt_workflow_update_workflow_values_for_barcodes($values) {
 function upitt_workflow_get_wf_barcodes_from_batch_for_barcodes($batches) {
   $batches_arr = explode("\n", $batches);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
-  $markup = '<div class="text-report"><h3>Identifiers for batch</h3>';
+  $markup = '<div class="text-report"><h3>Bigfoot paths for barcodes</h3>';
   foreach ($batches_arr as $batch) {
     $batch = trim($batch);
     if ($batch) {
       $barcodes = upitt_workflow_legacy_barcodes_from_batch($batch, $link);
       if ($barcodes) {
-        $markup .= upitt_workflow_make_process_set('Query Solr for common values', 'query_solr', $barcodes);
+        $markup .= '<span class="good"><b>batch "' . $batch . '"</b></span><br>';
+        $barcodes_str = implode("<br>", $barcodes);
+        $barcodes_link = '/workflow/workflowadmin/process_barcodes/?barcodes=' .
+          implode(",", $barcodes) . '&mode=checkobjects';
+        $markup .= '<b>' . count($barcodes) . ' total barcodes</b>.' .
+          ((strlen($barcodes_link) < 2048) ? ' <a href="' . $barcodes_link . '" ' . 
+            'target="_blank">Process these barcodes</a>' :
+          ' <i>There are too many barcodes to pass as a GET link.</i>');
+        $markup .= '<br><span class="good">' . $barcodes_str . '</span><hr><br>';
       }
       else {
         $markup .= '<span class="bad">' . $batch . ' not found in item table</span><br>';
@@ -1939,7 +1947,7 @@ function upitt_workflow_query_solr_for_barcodes($values) {
         if (!($a_row['fedora_datastream_latest_PDF_SIZE_ms'] > 0)) {
           $missing_pdf[$barcode] = $barcode;
         }
-        if (!($a_row['fedora_datastream_latest_OCR_SIZE_ms'] > 0)) {
+        if (!($a_row['fedora_datastream_latest_PDF_SIZE_ms'] > 0)) {
           $missing_ocr[$barcode] = $barcode;
         }
       }
@@ -1983,28 +1991,19 @@ function upitt_workflow_query_solr_for_barcodes($values) {
  * @return string HTML markup
  */
 function upitt_workflow_get_wf_paths_for_barcodes($barcodes) {
-  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $barcodes_arr = explode("\n", $barcodes);
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $markup = '<div class="text-report"><h3>Bigfoot paths for barcodes</h3>';
-  $updated_count = 0;
-  $barcode_markup_results = array();
   foreach ($barcodes_arr as $barcode) {
     $barcode = trim($barcode);
     $path = upitt_workflow_batch_file_path($barcode, $link);
     if ($path) {
-      $updated = upitt_workflow_update_batch_host($link, $barcode, $path);
-      $updated_count += $updated;
-      $barcode_markup_results[] = '<span class="good">' . $barcode . "\t" . $path . '</span>' .
-         ($updated ? ' <span class="bad" title="updated"> *</span>' : '') . '<br>';
+      $markup .= '<span class="good">' . $barcode . "\t" . $path . '</span><br>';
     }
     else {
-      $barcode_markup_results[] = '<span class="bad">' . $barcode . ' not found in item table</span><br>';
+      $markup .= '<span class="bad">' . $barcode . ' not found in item table</span><br>';
     }
   }
-  $markup = '<div class="text-report"><h3>Bigfoot paths for barcodes' . (($updated_count) ? 
-      ' (' . $updated_count . ' updated)' : '') . '</h3>';
-  $markup .= implode("\n", $barcode_markup_results);
   $markup .= '</div>';
   mysqli_close($link);
 
@@ -2375,19 +2374,20 @@ function upitt_workflow_gen_OCR_for_barcodes($barcodes) {
     }
     if (!upitt_workflow_is_paged_object($islandora_object)) {
       $markup .= '<div class="bad">Object found ' . $pid . ', but it is not a paged content object.</div>';
-    }
-    $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain .
-      upitt_workflow_drush_switches_ingest_drush_debugmode() .
-      ' upitt_workflow_generate_ocr_datastreams --paged_object_pid=' . $pid;
-    $markup .= '<h4>Called upitt_workflow_generate_ocr_datastreams</h4><code>' . $drush_command . '</code>';
+    } else {
+      $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain .
+        upitt_workflow_drush_switches_ingest_drush_debugmode() .
+        ' upitt_workflow_generate_ocr_datastreams --paged_object_pid=' . $pid;
+      $markup .= '<h4>Called upitt_workflow_generate_ocr_datastreams</h4><code>' . $drush_command . '</code>';
 
-    $output = $return_var = array();
-    exec($drush_command, $output, $return_var);
+      $output = $return_var = array();
+      exec($drush_command, $output, $return_var);
 
-    if (($return_var == -1 || $return_var == 255 || $return_var == 1) && !$alerted_on_err) {
-      drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+      if (($return_var == -1 || $return_var == 255 || $return_var == 1) && !$alerted_on_err) {
+        drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+      }
+      $markup .= "<hr>drush command return = " . $return_var . "<br>drush command output = " . print_r($output, true) . "</pre>";
     }
-    $markup .= "<hr>drush command return = " . $return_var . "<br>drush command output = " . print_r($output, true) . "</pre>";
   }
   $markup .= '</div>';
   return $markup;
