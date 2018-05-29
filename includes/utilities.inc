@@ -1770,6 +1770,7 @@ function upitt_workflow_get_depositor_model_and_datastreams_sizes($pid) {
   $fields = array();
   $datastreams = upitt_workflow_get_datastreams($pid);
   $size_field_multistring = $size_field_integer = '';
+  $size_fields = array();
   foreach ($datastreams as $dsid => $datastream) {
     if (strstr($datastream, '(0)') == '') {
       $dsid =  strtoupper($dsid);
