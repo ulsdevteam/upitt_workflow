@@ -1978,7 +1978,7 @@ function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_ac
 
 // TODO - finish this function and call 
 function upitt_workflow_update_batch_file($batch_external_id, $local_name) {
-  $link = upitt_workflow_get_databaselink('islandora_jobs_monitor');
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $sql = "UPDATE batch SET file = '" . $local_name . "' WHERE batch_external_id = '" . $batch_external_id . "'";
   $result = mysqli_query($link, $sql);
   if (!$result) {
