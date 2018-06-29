@@ -88,9 +88,6 @@ function upitt_workflow_get_pending_hopper_queue_items($link, $limit = 0) {
   while ($row = mysqli_fetch_assoc($result)) {
     $rows[] = $row;
   }
-  foreach ($rows as $row) {
-    upitt_workflow_set_next_ingest_start_timestamp_for_hopper_by_pid($row['PID']);
-  }
   return $rows;
 }
 

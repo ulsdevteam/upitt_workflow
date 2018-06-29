@@ -1582,13 +1582,14 @@ function upitt_workflow_hopper_list_pending_for_barcodes($barcodes) {
   module_load_include('inc', 'upitt_workflow', 'includes/hopper');
   $link = upitt_workflow_get_databaselink('mysql_new_workflow');
   $markup = '<div class="text-report"><h3>Pending Hopper items</h3>';
-  $markup .= "<b>PID</b>\t<b>Files size</b>\t<b>weight</b><br>";
 
   if ($barcodes) {
     drupal_set_message('Barcode values not needed for this function', 'info');
   }
 
   $rows = upitt_workflow_get_pending_hopper_queue_items($link);
+  $markup .= "There are " . number_format(count($rows)) . " pending hopper items<hr>";
+  $markup .= "<b>PID</b>\t<b>Files size</b>\t<b>weight</b><br>";
   foreach ($rows as $hopper_row) {
     $markup .= $hopper_row['PID'] . "\t" . number_format($hopper_row['files_size']) . "\t" . $hopper_row['weight'] . '<br>';
   }
