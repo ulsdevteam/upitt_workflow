@@ -2306,20 +2306,20 @@ function upitt_workflow_get_jp2_dimensions($object) {
     // use getimagesize on it
     $saved_jp2 = tempnam(variable_get('file_temporary_path', '/tmp'), '_jp2_dimensions_check_');
     $object["JP2"]->getContent($saved_jp2);
-    $image_size = getimagesize($saved_jp2);
-    @unlink($saved_jp2);
-    list($width, $height, $type, $attr) = $image_size;
-    return array(
-        'width' => $width, 
-        'height' => $height
-    );
+    if (file_exists($saved_jp2)) {
+      $image_size = getimagesize($saved_jp2);
+      @unlink($saved_jp2);
+      list($width, $height, $type, $attr) = $image_size;
+      return array(
+          'width' => $width, 
+          'height' => $height
+      );
+    }
   }
-  else {
-    return array(
-        'width' => 0, 
-        'height' => 0
-    );
-  }
+  return array(
+      'width' => 0, 
+      'height' => 0
+  );
 }
 
 function upitt_workflow_remove_namespace($in) {

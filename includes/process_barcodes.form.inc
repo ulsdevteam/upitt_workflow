@@ -2145,16 +2145,23 @@ function upitt_workflow_purge_objects_for_barcodes($barcodes) {
   foreach ($check_results['not_found_pids'] as $key => $pid) {
     if ($pid) {
       // Try a SOLR query to get child PID values that are not attached to the book (orphans)
-      $solr_query = "PID:" . str_replace(":", "\:", $pid) . "*";
+      // $solr_query = "PID:" . str_replace(":", "\:", $pid) . "*";
+      @list($ns, $bc) = explode(":", $pid);
+      $solr_query = "PID:*" . $bc . "*";
       $child_pids = upitt_workflow_get_solr_options($solr_query, 'PID', 'PID');
-      if (strstr($pid, '-') == '') {
-        for ($i = 1; $i < 50; $i++) {
-          $seq = $pid . (($i < 10) ? '-000' . $i : '-00' . $i);
-          if (!array_key_exists($seq, $child_pids)) {
-            $child_pids[$seq] = $seq;
-          }
-        }
-      }
+      // NO longer delete 50 pages in sequence to be safe... the solr query should find all objects that need to be deleted.
+      /*
+       *
+       if (strstr($pid, '-') == '') {
+         for ($i = 1; $i < 50; $i++) {
+           $seq = $pid . (($i < 10) ? '-000' . $i : '-00' . $i);
+           if (!array_key_exists($seq, $child_pids)) {
+             $child_pids[$seq] = $seq;
+           }
+         }
+       }
+      *
+      */
       foreach ($child_pids as $k => $child_pid) {
         if (isset($child_pid)) {
           $child = islandora_object_load($child_pid);
@@ -2175,7 +2182,7 @@ function upitt_workflow_purge_objects_for_barcodes($barcodes) {
   return $markup;
 }
 
-function upitt_workflow_do_publish_for_barcodes($values) {
+function upitt_workflow_do_publish_for_barcodes($values) 	{
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('inc', 'upitt_workflow', 'includes/batch.form');
 
