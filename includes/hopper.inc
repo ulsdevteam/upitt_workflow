@@ -88,6 +88,14 @@ function upitt_workflow_get_pending_hopper_queue_items($link, $limit = 0) {
   while ($row = mysqli_fetch_assoc($result)) {
     $rows[] = $row;
   }
+  // Set the timestamp on this record ONLY if this is a call from the ingest
+  // hopper routine and not being called from the interface.
+  if ($limit == 1) {
+    foreach ($rows as $row) {
+      upitt_workflow_set_next_ingest_start_timestamp_for_hopper_by_pid($row['PID']);
+    }
+  }
+
   return $rows;
 }
 
