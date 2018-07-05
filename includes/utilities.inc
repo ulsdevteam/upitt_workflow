@@ -1892,7 +1892,7 @@ function upitt_workflow_set_status_for_pid($ingested_object, $transaction_action
 function upitt_workflow_set_status_for_batch($batch_external_id, $transaction_action_id, $islandora_object = NULL, $allow_duplicates = TRUE) {
   global $user;
   $retval = TRUE; // Assume success, unless something something doesn't work, it'll set this to FALSE.
-  upitt_workflow_log('in upitt_workflow_set_status_for_batch, batch_external_id = ' . $batch_external_id);
+  upitt_workflow_log('in upitt_workflow_set_status_for_batch, batch_external_id = ' . $batch_external_id . ', transaction_action_id = ' . $transaction_action_id);
 
   // will need the batch record for this object.
   $batch_id = upitt_workflow_get_batch_id($batch_external_id, FALSE);
