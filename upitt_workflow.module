@@ -372,6 +372,11 @@ function upitt_workflow_islandora_job_register_jobs() {
       'module' => 'upitt_workflow',
       'name' => 'includes/jobs',
     ),
+    'upitt_workflow_generate_notimelimit_ocr_datastreams' => array(
+      'type' => 'inc',
+      'module' => 'upitt_workflow',
+      'name' => 'includes/jobs',
+    ),
   );
 }
 
@@ -907,10 +912,10 @@ function upitt_workflow_islandora_paged_content_OCR_batch_operation_finished($pa
       exit();
     }
 
-    $delete_sql = "DELETE from gearman_queue WHERE data like '%\"" . $pid . "\",[]]%' AND function_name = 'upitt_workflow_generate_ocr_datastreams';";
+    $delete_sql = "DELETE from gearman_queue WHERE data like '%\"" . $pid . "\",[]]%' AND function_name IN ('upitt_workflow_generate_ocr_datastreams', 'upitt_workflow_generate_notimelimit_ocr_datastreams');";
     drush_log($delete_sql, 'ok');
 
-    $result = mysqli_query($link, $delete_sql);
+    $result = @mysqli_query($link, $delete_sql);
 
     @mysqli_close($link);  
 

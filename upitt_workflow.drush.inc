@@ -36,6 +36,22 @@ function upitt_workflow_drush_command() {
     ),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
   );
+
+  $items['upitt_workflow_generate_notimelimit_ocr_datastreams'] = array(
+    'aliases' => array('uwgntod'),
+    'description' => 'Create OCR datastreams for paged content object\'s pages without a time limit (see gearman CRON jobs for one that kills tesseract tasks longer than a threshold).',
+    'drupal dependencies' => array('islandora_batch','islandora_ocr'),
+    'examples' => array(
+      'drush -v --user=admin --uri=http://gamera.library.pitt.edu upitt_workflow_generate_notimelimit_ocr_datastreams --paged_object_pid=pitt:00awc1789m',
+    ),
+    'options' => array(
+      'paged_object_pid' => array(
+        'description' => 'The PID value of the paged content object.',
+        'required' => TRUE,
+      ),
+    ),
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
+  );
   return $items;
 }
 
@@ -125,3 +141,33 @@ function drush_upitt_workflow_generate_ocr_datastreams() {
 
   islandora_job_submit_background('upitt_workflow_generate_ocr_datastreams', $paged_object_pid, array());
 }
+
+/**
+ * Implements hook_islandora_batch_ingest().
+ *
+ * Ingests for the specified amount of time, if there is anything already
+ * preprocessed.
+ */
+function drush_upitt_workflow_generate_notimelimit_ocr_datastreams() {
+  module_load_include('inc', 'islandora', 'includes/derivatives');
+  $paged_object_pid = drush_get_option('paged_object_pid', NULL);
+
+  $paged_content = islandora_object_load($paged_object_pid);
+  if (!$paged_content) {
+    drush_print('Object ' . $paged_object_pid . ' does not exist');
+    return;
+  }
+
+  module_load_include('inc', 'islandora_job', 'includes/utilities');
+  $total_args = array_merge(func_get_args(), array($paged_object_pid, ));
+
+  // REMOVE the dedupe record so that this will be forced to be added to queue when called.
+  $payload = str_replace("[]", '["' . $paged_object_pid . '",[]]', islandora_job_format_payload('upitt_workflow_generate_notimelimit_ocr_datastreams', func_get_args()));
+  db_delete('islandora_job_job_status')
+    ->condition('data', $payload)
+    ->execute();
+
+  islandora_job_submit_background('upitt_workflow_generate_notimelimit_ocr_datastreams', $paged_object_pid, array());
+}
+
+

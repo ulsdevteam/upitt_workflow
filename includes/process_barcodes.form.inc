@@ -42,6 +42,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'do_copy' => ' - Copy files from incoming to ingest location',
       'ingest_prepare' => ' - Islandora Ingest Preprocess',
       'gen_OCR' => ' - Generate OCR',
+      'gen_notimelimit_OCR' => ' - Generate OCR (no time limit for tesseract)',
       'make_page_pdfs' => ' - Make page PDF derivatives',
       'do_publish' => ' - Publish objects to site',
     '2' => 'Special Functionality',
@@ -2389,6 +2390,46 @@ function upitt_workflow_gen_OCR_for_barcodes($barcodes) {
         upitt_workflow_drush_switches_ingest_drush_debugmode() .
         ' upitt_workflow_generate_ocr_datastreams --paged_object_pid=' . $pid;
       $markup .= '<h4>Called upitt_workflow_generate_ocr_datastreams</h4><code>' . $drush_command . '</code>';
+
+      $output = $return_var = array();
+      exec($drush_command, $output, $return_var);
+
+      if (($return_var == -1 || $return_var == 255 || $return_var == 1) && !$alerted_on_err) {
+        drupal_set_message('There was an error calling the drush command : ' . $drush_command);
+      }
+      $markup .= "<hr>drush command return = " . $return_var . "<br>drush command output = " . print_r($output, true) . "</pre>";
+    }
+  }
+  $markup .= '</div>';
+  return $markup;
+}
+
+function upitt_workflow_gen_notimelimit_OCR_for_barcodes($barcodes) {
+  $markup = upitt_workflow_purge_ds_for_barcodes($barcodes, 'OCR');
+  global $user;
+  $barcodes_arr = explode("\n", $barcodes);
+
+  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+  $markup .= '<div class="text-report">';
+  $markup .= '<h2>Generate OCR derivatives for These Barcodes (no time limit)</h2><pre style="color:blue">' . implode("\n", $barcodes_arr) . '</pre><hr>';
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
+    $pid = $ingest_namespace . $barcode;
+
+    $islandora_object = islandora_object_load($pid);
+    if (!is_object($islandora_object)) {
+      $markup .= '<div class="bad">Object not found ' . $pid . '</div>';
+    }
+    if (!upitt_workflow_is_paged_object($islandora_object)) {
+      $markup .= '<div class="bad">Object found ' . $pid . ', but it is not a paged content object.</div>';
+    } else {
+      $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain .
+        upitt_workflow_drush_switches_ingest_drush_debugmode() .
+        ' upitt_workflow_generate_notimelimit_ocr_datastreams --paged_object_pid=' . $pid;
+      $markup .= '<h4>Called upitt_workflow_generate_notimelimit_ocr_datastreams</h4><code>' . $drush_command . '</code>';
 
       $output = $return_var = array();
       exec($drush_command, $output, $return_var);
