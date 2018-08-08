@@ -52,6 +52,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'make_tn_large' => ' - Make TN_LARGE derivative',
       'make_jpg' => ' - Make JPG derivative',
       'make_jp2' => ' - Make JP2 derivative',
+      'fix_batch_host' => ' - Fix batch record file path',
       'aggregate' => ' - Aggregate OCR and PDF, make TN_LARGE',
       'set_status' => ' - Set Status',
       'solr_reindex' => ' - Solr reindex objects',
@@ -401,6 +402,75 @@ function upitt_workflow_make_batch_records_for_barcodes($barcodes, $mode) {
              (($model) ? "'" . mysqli_real_escape_string($link, $model) . "', " : '') .
              (($sites) ? "'" . mysqli_real_escape_string($link, $sites) . "', " : '') .
              $overwrite_if_exists . ", " .
+             "'" . (($batch_host_path) ? $batch_host_path : variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming')) . "'," .
+             $user->uid . ");";
+      mysqli_query($link, $sql);
+    }
+    upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link);
+  }
+
+  $markup .= '</div>';
+  mysqli_close($link);
+  return $markup;
+}
+
+function upitt_workflow_fix_batch_host_for_barcodes($barcodes) {
+  module_load_include('inc', 'upitt_workflow', 'includes/utilities');
+
+  global $user;
+
+  $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
+  $markup = '<div class="text-report">';
+  $markup .= '<h2>Fix batch_host value for batch records</h2>';
+  $use_pids = $check_results['found_pids'] + $check_results['not_found_pids']; // array_merge($check_results['found_pids'], $check_results['not_found_pids']);
+  asort($use_pids);
+
+  $markup .= '<h2>Process these Islandora PID values</h2><pre style="color:blue">' . implode("\n", $use_pids) . '</pre><hr>';
+
+  $markup .= '<h2>Found in Islandora</h2><pre class="good">' . implode("\n", $check_results['found_pids']) . '</pre>' .
+            '<h2>NOT found in Islandora</h2><pre class="bad">' . implode("\n", $check_results['not_found_pids']) . '</pre>';
+
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+  $toggle = FALSE;
+
+  foreach ($use_pids as $barcode => $pid) {
+    $toggle = !$toggle;
+    $markup .= "<div style='border-bottom: 1px solid black; padding-bottom: 8px; background-color:#" . ($toggle ? 'FFF' : 'F3F3F3') . "'>";
+    $markup .= "  <br>barcode '" . $barcode . "' = islandora PID '" . $pid . "'<br>";
+
+    $batch_host_path = upitt_workflow_batch_file_path($barcode, $link);
+    $batch_host_path = str_replace("/usr/local/", "/ingest/", $batch_host_path);
+
+    $collections = upitt_workflow_wf_item_get_collection($barcode, $link);
+    $sites = upitt_workflow_wf_item_get_site($barcode, $link);
+    $markup .= 'path = <b>' . $batch_host_path . "</b><br>";
+    $markup .= "</div>";
+    $batch_record = upitt_workflow_batch_load_by_batch_external_id($barcode);
+    if (array_key_exists('batch_external_id', $batch_record)) {
+      $sql = "UPDATE `batch` SET " .
+             // Only update if there was a value
+             "batch_host = '" . (($batch_host_path) ? $batch_host_path : variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming')) . "', " .
+             "user = " . $user->uid . ' ' .
+             "WHERE batch_external_id = '" . $batch_record['batch_external_id'] . "'";
+    }
+    else {
+      $sql = "REPLACE INTO `batch` (batch_external_id, " .
+             "batch_host, " .
+             "user) VALUES (" .
+             "'" . mysqli_real_escape_string($link, $barcode) . "', " .
+             "'" . (($batch_host_path) ? $batch_host_path : variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming')) . "'," .
+             $user->uid . ");";
+    }
+    mysqli_query($link, $sql);
+
+    $batch_id = upitt_workflow_get_batch_id($barcode, FALSE);
+    $item_id = upitt_workflow_insert_item_for_batch_external_id($barcode, $link);
+    if (!$batch_id) {
+      $batch_id = upitt_workflow_get_batch_id($barcode, TRUE);
+      $sql = "REPLACE INTO `batch` (batch_external_id, " .
+             "batch_host, " .
+             "user) VALUES (" .
+             "'" . mysqli_real_escape_string($link, $barcode) . "', " .
              "'" . (($batch_host_path) ? $batch_host_path : variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming')) . "'," .
              $user->uid . ");";
       mysqli_query($link, $sql);
