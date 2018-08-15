@@ -72,6 +72,11 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'pid_to_barcode' => ' - Convert PIDs to barcodes',
       'barcode_to_pid' => ' - Convert barcodes to PIDs',
   );
+  $mode = (isset($_POST['mode'])) ?
+      $_POST['mode'] : '';
+  $ocr_language_display = ($mode == 'gen_OCR' || $mode == 'gen_notimelimit_OCR') ?
+      array() :
+      array('class' => array('display_none'));
 
   // The easiest way to remove some of the options is to unset them if not $admin.
   if (!$admin) {
@@ -81,6 +86,13 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
     }
   }
 
+  $islandora_ocr_tesseract_enabled_languages = variable_get('islandora_ocr_tesseract_enabled_languages');
+  $selected_languages = array();
+  foreach ($islandora_ocr_tesseract_enabled_languages as $k => $v) {
+    if ($v) {
+      $selected_languages[$k] = $v;
+    }
+  }
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
     'barcodes' => array(
@@ -97,6 +109,20 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       '#type' => 'select',
       '#options' => $process_options,
       '#default_value' => isset($form_state['values']['mode']) ? $form_state['values']['mode'] : '',
+      '#attributes' => array(
+        'onchange' => 'processing_mode_selected(this)',
+      ),
+    ),
+    'language_options' => array(
+      '#type' => 'fieldset',
+      '#attributes' => $ocr_language_display,
+      'ocr_language' => array(
+        '#type' => 'select',
+        '#title' => 'OCR Language',
+        '#description' => 'Select the language to use for performing the OCR. ' . l('configure the available languages', '/admin/islandora/tools/ocr') . '.',
+        '#options' => $selected_languages,
+        '#default_value' => 'eng',
+      ),
     ),
     'submit' => array(
       '#type' => 'submit',
@@ -2438,6 +2464,7 @@ function upitt_workflow_gen_OCR_for_barcodes($barcodes) {
   $markup = upitt_workflow_purge_ds_for_barcodes($barcodes, 'OCR');
   global $user;
   $barcodes_arr = explode("\n", $barcodes);
+  $ocr_language = isset($_POST['ocr_language']) ? $_POST['ocr_language'] : 'eng';
 
   module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
   $markup .= '<div class="text-report">';
@@ -2458,13 +2485,13 @@ function upitt_workflow_gen_OCR_for_barcodes($barcodes) {
     } else {
       $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain .
         upitt_workflow_drush_switches_ingest_drush_debugmode() .
-        ' upitt_workflow_generate_ocr_datastreams --paged_object_pid=' . $pid;
+        ' upitt_workflow_generate_ocr_datastreams --paged_object_pid=' . $pid . ' --ocr_language=' . $ocr_language;
       $markup .= '<h4>Called upitt_workflow_generate_ocr_datastreams</h4><code>' . $drush_command . '</code>';
 
       $output = $return_var = array();
       exec($drush_command, $output, $return_var);
 
-      if (($return_var == -1 || $return_var == 255 || $return_var == 1) && !$alerted_on_err) {
+      if (($return_var == -1 || $return_var == 255 || $return_var == 1)) {
         drupal_set_message('There was an error calling the drush command : ' . $drush_command);
       }
       $markup .= "<hr>drush command return = " . $return_var . "<br>drush command output = " . print_r($output, true) . "</pre>";
@@ -2478,6 +2505,7 @@ function upitt_workflow_gen_notimelimit_OCR_for_barcodes($barcodes) {
   $markup = upitt_workflow_purge_ds_for_barcodes($barcodes, 'OCR');
   global $user;
   $barcodes_arr = explode("\n", $barcodes);
+  $ocr_language = isset($_POST['ocr_language']) ? $_POST['ocr_language'] : 'eng';
 
   module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
   $markup .= '<div class="text-report">';
@@ -2498,13 +2526,13 @@ function upitt_workflow_gen_notimelimit_OCR_for_barcodes($barcodes) {
     } else {
       $drush_command = 'drush -v -u ' . $user->uid . ' --uri=' . $this_domain .
         upitt_workflow_drush_switches_ingest_drush_debugmode() .
-        ' upitt_workflow_generate_notimelimit_ocr_datastreams --paged_object_pid=' . $pid;
+        ' upitt_workflow_generate_notimelimit_ocr_datastreams --paged_object_pid=' . $pid . ' --ocr_language=' . $ocr_language;
       $markup .= '<h4>Called upitt_workflow_generate_notimelimit_ocr_datastreams</h4><code>' . $drush_command . '</code>';
 
       $output = $return_var = array();
       exec($drush_command, $output, $return_var);
 
-      if (($return_var == -1 || $return_var == 255 || $return_var == 1) && !$alerted_on_err) {
+      if (($return_var == -1 || $return_var == 255 || $return_var == 1)) {
         drupal_set_message('There was an error calling the drush command : ' . $drush_command);
       }
       $markup .= "<hr>drush command return = " . $return_var . "<br>drush command output = " . print_r($output, true) . "</pre>";

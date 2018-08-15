@@ -179,3 +179,7 @@ a.bad {
 .optional {
     color: #999;
 }
+
+.display_none {
+    display: none !important;
+}

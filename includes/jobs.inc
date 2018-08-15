@@ -20,7 +20,7 @@ function upitt_workflow_aggregate_ocr_pdf($object_in, array $options = array(), 
  *
  * @see islandora_do_derivatives()
  */
-function upitt_workflow_generate_ocr_datastreams($object_in, array $options = array(), $entrances = 0) {
+function upitt_workflow_generate_ocr_datastreams($object_in, $options, $entrances = 0) {
   module_load_include('inc', 'islandora', 'includes/derivatives');
   module_load_include('inc', 'islandora', 'includes/utilities');
   module_load_include('inc', 'islandora_job_jobs', 'includes/utilities');
@@ -110,10 +110,11 @@ function upitt_workflow_do_ocr(AbstractObject $islandora_object, $options) {
     module_invoke_all('islandora_job_started', $payload);
 
     $aggregate_ocr = drush_get_option('aggregate_ocr', 0);
+    $ocr_language = drush_get_option('ocr_language', 'eng');
     $pages = array_keys(islandora_paged_content_get_pages($islandora_object));
     $page_count = count($pages);
     $options = array(
-      'language' => 'eng',
+      'language' => ((array_key_exists('language', $options) === FALSE) ? $ocr_language : $options['language']),
       'preprocess' => FALSE,
       'aggregate_ocr' => $aggregate_ocr,
     );

@@ -26,12 +26,16 @@ function upitt_workflow_drush_command() {
     'description' => 'Create OCR datastreams for paged content object\'s pages.',
     'drupal dependencies' => array('islandora_batch','islandora_ocr'),
     'examples' => array(
-      'drush -v --user=admin --uri=http://gamera.library.pitt.edu upitt_workflow_generate_ocr_datastreams --paged_object_pid=pitt:00awc1789m',
+      'drush -v --user=admin --uri=http://gamera.library.pitt.edu upitt_workflow_generate_ocr_datastreams --paged_object_pid=pitt:00awc1789m --ocr_language=chi_sim',
     ),
     'options' => array(
       'paged_object_pid' => array(
         'description' => 'The PID value of the paged content object.',
         'required' => TRUE,
+      ),
+      'ocr_language' => array(
+        'description' => 'The language to use for OCR.',
+        'required' => FALSE,
       ),
     ),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
@@ -42,12 +46,16 @@ function upitt_workflow_drush_command() {
     'description' => 'Create OCR datastreams for paged content object\'s pages without a time limit (see gearman CRON jobs for one that kills tesseract tasks longer than a threshold).',
     'drupal dependencies' => array('islandora_batch','islandora_ocr'),
     'examples' => array(
-      'drush -v --user=admin --uri=http://gamera.library.pitt.edu upitt_workflow_generate_notimelimit_ocr_datastreams --paged_object_pid=pitt:00awc1789m',
+      'drush -v --user=admin --uri=http://gamera.library.pitt.edu upitt_workflow_generate_notimelimit_ocr_datastreams --paged_object_pid=pitt:00awc1789m --ocr_language=fra',
     ),
     'options' => array(
       'paged_object_pid' => array(
         'description' => 'The PID value of the paged content object.',
         'required' => TRUE,
+      ),
+      'ocr_language' => array(
+        'description' => 'The language to use for OCR.',
+        'required' => FALSE,
       ),
     ),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN,
@@ -123,6 +131,7 @@ function drush_upitt_workflow_ingest_via_hopper() {
 function drush_upitt_workflow_generate_ocr_datastreams() {
   module_load_include('inc', 'islandora', 'includes/derivatives');
   $paged_object_pid = drush_get_option('paged_object_pid', NULL);
+  $ocr_language = drush_get_option('ocr_language', 'eng');
 
   $paged_content = islandora_object_load($paged_object_pid);
   if (!$paged_content) {
@@ -139,7 +148,8 @@ function drush_upitt_workflow_generate_ocr_datastreams() {
     ->condition('data', $payload)
     ->execute();
 
-  islandora_job_submit_background('upitt_workflow_generate_ocr_datastreams', $paged_object_pid, array());
+  $options = array('language' => $ocr_language);
+  islandora_job_submit_background('upitt_workflow_generate_ocr_datastreams', $paged_object_pid, $options);
 }
 
 /**
@@ -151,6 +161,7 @@ function drush_upitt_workflow_generate_ocr_datastreams() {
 function drush_upitt_workflow_generate_notimelimit_ocr_datastreams() {
   module_load_include('inc', 'islandora', 'includes/derivatives');
   $paged_object_pid = drush_get_option('paged_object_pid', NULL);
+  $ocr_language = drush_get_option('ocr_language', 'eng');
 
   $paged_content = islandora_object_load($paged_object_pid);
   if (!$paged_content) {
@@ -167,7 +178,8 @@ function drush_upitt_workflow_generate_notimelimit_ocr_datastreams() {
     ->condition('data', $payload)
     ->execute();
 
-  islandora_job_submit_background('upitt_workflow_generate_notimelimit_ocr_datastreams', $paged_object_pid, array());
+  $options = array('language' => $ocr_language);
+  islandora_job_submit_background('upitt_workflow_generate_notimelimit_ocr_datastreams', $paged_object_pid, $options);
 }
 
 
