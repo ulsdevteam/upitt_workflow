@@ -19,6 +19,7 @@ function host_selected(control, site_url) {
     jQuery('#edit-box-files-wrapper').show();
 //    jQuery('#edit-box-files').show();
     var current_path = jQuery('[name="initial_ftp_path"]').val();
+
     current_path = current_path.replace("ftp:", "");
     ftp_change_path(current_path, site_url);
   }
@@ -29,10 +30,14 @@ function host_selected(control, site_url) {
   } 
 }
 
-function ftp_change_path(path, site_url) {
+function ftp_change_path(path, notused_site_url) {
   if (!path.includes("Digital Collections Contributors")) {
     path = 'Digital Collections Contributors';
   }
+  var protocol = window.location.protocol;
+  var hostname = window.location.host;
+  var site_url = protocol + '//' + hostname;
+
   var get_ftp_files_url = site_url + '/ajax/workflow/browse_ftp/' + path;
   jQuery('#box-files-output').remove();
   jQuery('#edit-box-files').html('<div id="edit-box-files-loading-img"><h3>Loading results from FTP</h3><p>Please be patient...</p></div>');

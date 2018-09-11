@@ -83,7 +83,7 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
   if ($initial_ftp_path == '') {
     $initial_ftp_path = 'Digital Collections Contributors';
   }
-  $site = 'http://' . $_SERVER['HTTP_HOST'];
+  $site = 'http' . ($_SERVER['HTTPS'] ? 's' : '') . '://' . $_SERVER['HTTP_HOST'];
 
   $form = array(
     'breadcrumb' => array('#markup' => upitt_workflow_get_breadcrumb_path()),
