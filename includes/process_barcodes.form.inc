@@ -1144,10 +1144,10 @@ function upitt_workflow_object_model_datastream_requirements($islandora_object, 
             $model_pids[] = $model_pid;
             $ds_reqs = islandora_get_datastreams_requirements_from_content_model($model);
             if (array_key_exists('RELS-EXT', $ds_reqs)) {
-              if ($ds_reqs['RELS-EXT']['optional']) {
+              if (isset($ds_reqs['RELS-EXT']) && $ds_reqs['RELS-EXT']['optional']) {
                 $ds_reqs['RELS-EXT']['optional'] = FALSE;
               }
-              if ($ds_reqs['TN']['optional']) {
+              if (isset($ds_reqs['TN']) && $ds_reqs['TN']['optional']) {
                 $ds_reqs['TN']['optional'] = FALSE;
               }
             }
