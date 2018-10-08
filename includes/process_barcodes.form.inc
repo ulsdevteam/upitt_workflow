@@ -54,6 +54,8 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'make_jp2' => ' - Make JP2 derivative',
       'fix_batch_host' => ' - Fix batch record file path',
       'aggregate' => ' - Aggregate OCR and PDF, make TN_LARGE',
+      'aggregate_OCR_only' => ' - Aggregate OCR only',
+      'aggregate_PDF_only' => ' - Aggregate PDF only',
       'set_status' => ' - Set Status',
       'solr_reindex' => ' - Solr reindex objects',
     '3' => 'Info / Cleanup',
@@ -1144,10 +1146,10 @@ function upitt_workflow_object_model_datastream_requirements($islandora_object, 
             $model_pids[] = $model_pid;
             $ds_reqs = islandora_get_datastreams_requirements_from_content_model($model);
             if (array_key_exists('RELS-EXT', $ds_reqs)) {
-              if (isset($ds_reqs['RELS-EXT']) && $ds_reqs['RELS-EXT']['optional']) {
+              if ($ds_reqs['RELS-EXT']['optional']) {
                 $ds_reqs['RELS-EXT']['optional'] = FALSE;
               }
-              if (isset($ds_reqs['TN']) && $ds_reqs['TN']['optional']) {
+              if ($ds_reqs['TN']['optional']) {
                 $ds_reqs['TN']['optional'] = FALSE;
               }
             }
@@ -2727,7 +2729,14 @@ function upitt_workflow_wf_item_get_site($barcode, $link) {
   return implode(",", $rows);
 }
 
-function upitt_workflow_aggregate_for_barcodes($barcodes) {
+function upitt_workflow_aggregate_OCR_only_for_barcodes($barcodes, $OCR_only_flag = FALSE, $PDF_only_flag = FALSE) {
+  return upitt_workflow_aggregate_for_barcodes($barcodes, TRUE, FALSE);
+}
+function upitt_workflow_aggregate_PDF_only_for_barcodes($barcodes, $OCR_only_flag = FALSE, $PDF_only_flag = FALSE) {
+  return upitt_workflow_aggregate_for_barcodes($barcodes, FALSE, TRUE);
+}
+
+function upitt_workflow_aggregate_for_barcodes($barcodes, $OCR_only_flag = FALSE, $PDF_only_flag = FALSE) {
   module_load_include('inc', 'islandora', 'includes/manage_deleted_objects');
   module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
   $check_results = upitt_workflow_check_islandora_for_barcodes($barcodes);
@@ -2737,16 +2746,20 @@ function upitt_workflow_aggregate_for_barcodes($barcodes) {
     $ingested_object = islandora_object_load($pid);
     if (is_object($ingested_object)) {
       $markup .= '<div class="good"><b>' . $pid . '</b></div>';
+      $is_paged = upitt_workflow_is_paged_object($ingested_object);
       // See whether or not this is a paged-content object in order to call the
       // "aggregate PDF" and "aggregate OCR/HOCR" batch commands on it now.
-      if (upitt_workflow_is_paged_object($ingested_object)) {
-        upitt_workflow_aggregate_pdf_derivative($ingested_object);
-        $markup .= 'PDF aggregate created<br>';
-        upitt_workflow_aggregate_ocr_derivative($ingested_object);
-        $markup .= 'OCR aggregate created<br>';
+      if ($is_paged) {
+        if (!$OCR_only_flag) {
+          upitt_workflow_aggregate_pdf_derivative($ingested_object);
+          $markup .= 'PDF aggregate created<br>';
+        }
+        if (!$PDF_only_flag) {
+          upitt_workflow_aggregate_ocr_derivative($ingested_object);
+          $markup .= 'OCR aggregate created<br>';
+        }
 
-        $is_paged = upitt_workflow_is_paged_object($ingested_object);
-        $pages = ($is_paged) ? islandora_paged_content_get_pages($ingested_object) : array();
+        $pages = (!$OCR_only_flag && !$PDF_only_flag && $is_paged) ? islandora_paged_content_get_pages($ingested_object) : array();
         if (count($pages)) {
           module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
           $page = array_shift($pages);
