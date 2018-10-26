@@ -59,7 +59,7 @@ function upitt_workflow_ftp_listing($current_path) {
     $files = $folders = array();
     foreach ($contents as $ftp_file_or_folder) {
       if ($ftp_file_or_folder <> '.') {
-        $full_path_file_or_folder = (($current_path) ? $current_path . '/' : '') . $ftp_file_or_folder;
+        $full_path_file_or_folder = (($current_path) ? $current_path . '/' : '') . urlencode($ftp_file_or_folder);
         if (!ftp_chdir($conn_id, $full_path_file_or_folder)) {
           $files[$full_path_file_or_folder] = $ftp_file_or_folder;
         }
@@ -84,7 +84,7 @@ function upitt_workflow_ftp_listing($current_path) {
       else {
         $thisfolder_path = $current_path_no_leftslash . '|' . $folder;
       }
-      echo '<div class="ftp_folder"><a href="#" onclick="ftp_change_path(\'' . $thisfolder_path . '\', \'' . $site . '\');return false;">' . $folder . '</a></div>';
+      echo '<div class="ftp_folder"><a href="#" onclick="ftp_change_path(\'' . addslashes($thisfolder_path) . '\', \'' . $site . '\');return false;">' . $folder . '</a></div>';
     }
     foreach ($files as $file) {
       $pathinfo = pathinfo($file);
@@ -133,7 +133,7 @@ function upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $download_to, $bat
     $zip_files = array();
     foreach ($folder_contents as $ftp_file_or_folder) {
       if ($ftp_file_or_folder <> '.' && $ftp_file_or_folder <> '..') {
-        $full_path_file_or_folder = (($ftp_folder) ? $ftp_folder . '/' : '') . $ftp_file_or_folder;
+        $full_path_file_or_folder = (($ftp_folder) ? $ftp_folder . '/' : '') . urlencode($ftp_file_or_folder);
         $full_local_path_to_file = (($download_to) ? $download_to . '/' : '') . $ftp_file_or_folder;
         if (!@ftp_chdir($conn_id, $full_path_file_or_folder)) {
           $pathinfo = pathinfo($ftp_file_or_folder);

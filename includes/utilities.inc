@@ -1540,7 +1540,8 @@ function upitt_workflow_insert_item_for_batch_external_id($batch_external_id, $l
     // Need to insert the item record.
     $insert_item = 'REPLACE INTO item (do_id, type_id, property_owner_id) ' .
                    'VALUES ("' . upitt_workflow_safe_qstring($link, $batch_external_id) . '",' .
-                   $batch['type_id'] . ', ' . $batch['batch_property_owner_id'] . ')';
+                   ((array_key_exists('type_id', $batch) && $batch['type_id']) ? $batch['type_id'] : 0) . ', ' . 
+                   ((array_key_exists('batch_property_owner_id', $batch) && $batch['batch_property_owner_id']) ? $batch['batch_property_owner_id'] : 0) . ')';
     mysqli_query($link, $insert_item);
 
     $sql = "SELECT id FROM item WHERE `do_id` = '" . $batch_external_id . "'";
