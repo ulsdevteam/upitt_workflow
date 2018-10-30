@@ -40,13 +40,12 @@ function ftp_change_path(path, notused_site_url) {
 
   var get_ftp_files_url = site_url + '/ajax/workflow/browse_ftp/' + path;
   jQuery('#box-files-output').remove();
-  jQuery('#edit-box-files').html('<div id="edit-box-files-loading-img"><h3>Loading results from FTP</h3><p>Please be patient...</p></div>');
+  jQuery('#edit-box-files').html('<div id="edit-box-files-loading-img"><h3>Loading results from FTP. &nbsp;Please be patient...</h3></div>');
   var ajaxcall = jQuery.get(get_ftp_files_url, function( data ) {
     jQuery('#edit-box-files').html( data );
     path = path.replace("ftp:", "");
     jQuery('[name="initial_ftp_path"]').val('ftp:' + path);
     jQuery('#edit-box-files-wrapper').show();
-//    jQuery('#edit-box-files').show();
   });
 }
 

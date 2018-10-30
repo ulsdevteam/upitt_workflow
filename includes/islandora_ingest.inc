@@ -451,13 +451,17 @@ function upitt_workflow_drush_newspaper_issue($batch_external_id, $filepath, $fe
  * @param string $batch_default_depositor
  * @return string
  */
-function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filepath, $fedora_model_name, $parent, $site, $batch_default_depositor) {
+function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filepath, $fedora_model_name, $parent,
+    $site, $batch_default_depositor) {
   global $user;
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
 
   $retval = '';
 
   $files = upitt_workflow_file_scan_directory($filepath, 'metadata.csv');
+  if (count($files < 1)) {
+    $files = upitt_workflow_file_scan_directory($filepath, '.csv');
+  }
 
   $this_domain = 'http://' . $_SERVER['HTTP_HOST'];
 

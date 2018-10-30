@@ -1386,7 +1386,7 @@ function upitt_workflow_save_batch($values, $collection_options) {
     $sql_fields[] = 'batch_id';
     $sql_values[] = $batch_id;
   }
-  $valid_upload = NULL;
+  $valid_upload = TRUE;
   $model = NULL;
   $batch_path = upitt_workflow_batch_path($values);
   // assume all fields need to be escaped and wrapped with '' characters -- EXCEPT for the integer fields.
@@ -1466,7 +1466,7 @@ function upitt_workflow_save_batch($values, $collection_options) {
   upitt_workflow_relate_batch_to_item($batch_id, $item_id, $link);
 
   mysqli_close($link);
-  if (is_null($valid_upload) && upitt_workflow_model_uses_csv_to_make_mods($model)) {
+  if (!$valid_upload && upitt_workflow_model_uses_csv_to_make_mods($model)) {
     drupal_set_message('There was no CSV file uploaded for this batch.', 'warning');
   }
   return $batch_id;
@@ -1639,6 +1639,9 @@ function upitt_workflow_validate_csv($csv_filename, $batch_path) {
 
   foreach ($file_rows as $k => $row) {
     // If there is a filename_index, check that the file exists.
+    /* You know, to hell with validation on contrib CSV.. they always contain
+     * problems or missed filename pointers especially.
+     *
     if (!$filename_index === FALSE) {
       $row_filename = $batch_path . '/' . $row[$filename_index];
       if (!file_exists($row_filename)) {
@@ -1648,7 +1651,7 @@ function upitt_workflow_validate_csv($csv_filename, $batch_path) {
           '.  The file must be stored at "' . $batch_path . '/".  Please upload ' .
           'fix this issue to be able to ingest this batch.'), 'error');
       }
-    }
+    } */
 
     // If there is a normalized_date in the header, check this row's date value
     if (!($date_index === FALSE)) {

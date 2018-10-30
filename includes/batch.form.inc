@@ -1,5 +1,7 @@
 <?php
 
+set_time_limit(0);
+
 function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch = NULL) {
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   module_load_include('module', 'islandora_basic_collection', 'islandora_basic_collection');
@@ -465,6 +467,14 @@ function upitt_workflow_new_batch_form_validate(&$elements, &$form_state, $form_
       form_set_error($element, theme('item_list', array('items' => $messages)));
   }
 
+
+  if ($form_state['values']['batch_host'] == 'ftp') {
+    $form_state['values']['batch_host'] = 'ftp:' . str_replace(
+            array("|", "ftp:"),
+            array("/", ""),
+            $form_state['values']['initial_ftp_path']);
+  }
+
   // Validate the input values for the files related to this batch to see if it has enough space
   $batch_external_id = $form_state['values']['batch_external_id'];
   $incoming_folder = $form_state['values']['source_incoming_folder'];
@@ -472,6 +482,7 @@ function upitt_workflow_new_batch_form_validate(&$elements, &$form_state, $form_
   $incoming_folder = (isset($form_state['values']['batch_host']) && strstr($form_state['values']['batch_host'], 'ftp:')) ?
           $form_state['values']['batch_host'] :
           rtrim(variable_get('upitt_workflow_ingest_incoming', '/ingest/incoming'), '/') . '/' . $incoming_folder;
+
   $content_model = isset($form_state['values']['default_type_of_resource']) ? $form_state['values']['default_type_of_resource'] : 'sp_large_image_cmodel';
   $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
   $do_download = isset($form_state['values']['do_download']) ? $form_state['values']['do_download'] : FALSE;
@@ -542,9 +553,12 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
     drupal_set_message('New node created ' . $node->nid);
   }
   if ($markup) {
+    drupal_goto('workflow/batch/' . $batch_id);
+    /* Redirect -- do not render the form yet again... 
     $form_state['rebuild'] = TRUE;
     $markup = l('Return to batch', '/workflow/batch/' . $batch_id) . "<br>" . $markup;
     $form_state['storage']['process_results'] = theme('upitt_simple_markup', array('markup' => $markup));
+    */
   }
 }
 
@@ -617,12 +631,12 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
   module_load_include('inc', 'upitt_workflow', 'includes/utilities');
   $ingest_space = upitt_workflow_get_ingest_temp_space();
 
+  $keep_batch_folder = FALSE;
   if (strstr($incoming_folder, 'ftp:') && $do_download) {
     // make a temp folder - unzip all files there - and set $incoming_folder to this
     // temp path -- and proceed as if they were local files.
-    $temp_folder = tempnam(variable_get('file_temporary_path', '/tmp'), 'ftp_unzip');
-    upitt_workflow_unzip_ftp_zipfiles_to_tempfolder($incoming_folder, $temp_folder, $batch_external_id);
-    $incoming_folder = $temp_folder;
+    $incoming_folder = upitt_workflow_unzip_ftp_zipfiles_to_tempfolder($incoming_folder, $batch_external_id);
+    $keep_batch_folder = TRUE;
   }
 
   $model_filemasks = upitt_workflow_content_model_filemask($content_model);
@@ -751,7 +765,7 @@ function upitt_workflow_copyfiles_incoming_folder_to_batch($incoming_folder, $ba
 
     if ($is_child_of_compound || $content_model == 'compoundCModel') {
     } else {
-      if (file_exists($batch_path)) {
+      if (file_exists($batch_path) && !$keep_batch_folder) {
         $command = 'rm -rf ' . $batch_path;
         exec($command);
       }
@@ -1219,12 +1233,57 @@ function upitt_workflow_array_flat_count_values($array) {
   return $count;
 }
 
-function upitt_workflow_unzip_ftp_zipfiles_to_tempfolder($ftp_folder, $temp_folder, $batch_external_id) {
+function upitt_workflow_unzip_ftp_zipfiles_to_tempfolder($ftp_folder, $batch_external_id) {
+  $temp_folder = tempnam(variable_get('file_temporary_path', '/tmp'), 'ftp_unzip');
   module_load_include('inc', 'upitt_workflow', 'includes/ftp_ops');
+  $batch_path = '';
   if ($results_array = upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $temp_folder, $batch_external_id)) {
-drupal_set_message($results_array);
     if ($results_array['downloaded']) {
-      drupal_set_message('There was ' . $results_array['num_zip_files_unzipped'] . ' zip file' . ($results_array['num_zip_files_unzipped'] == 1 ? '' : 's') .
+      $csv_as_array = upitt_workflow_csv_file_as_array($temp_folder . '/' . $results_array['csv_file']);
+      $file_header = (isset($csv_as_array['header']) ? $csv_as_array['header'] : array());
+      $file_rows = (isset($csv_as_array['rows']) ? $csv_as_array['rows'] : array());      
+      $identifier_column = $filename_column = FALSE;
+      foreach ($file_header as $col_index => $field) {
+        $up = strtoupper($field);
+        if (!$identifier_column && $up == 'IDENTIFIER') {
+          $identifier_column = $col_index;
+        }
+        if (!$filename_column && ($up == 'FILENAME' || $up == 'FILE_NAME')) {
+          $filename_column = $col_index;
+        }
+      }
+      if ($identifier_column && $filename_column) {
+        $filenames_identiers = array();
+        foreach ($file_rows as $row) {
+          if (array_key_exists($filename_column, $row) && array_key_exists($identifier_column, $row)) {
+            $filenames_identiers[trim($row[$filename_column])] = trim($row[$identifier_column]);
+          }
+        }
+      
+        // Copy the files from the temp folder to the working folder
+        $batch_path = rtrim(variable_get('upitt_workflow_ingest_prepared_path', '/ingest/islandora_ingest'), '/') . '/batch_' . $batch_external_id;
+        if (!file_exists($batch_path)) {
+          mkdir($batch_path);
+        }
+        foreach ($results_array['files_unzipped'] as $unzipped_filename) {
+          $unzipped_filename = trim($unzipped_filename);
+          $file_pathinfo = pathinfo($unzipped_filename);
+          $item_identifier = @$filenames_identiers[$unzipped_filename];
+          if ($item_identifier <> '') {
+            $item_path = $batch_path . '/' . $item_identifier;
+            if (!file_exists($item_path)) {
+              mkdir($item_path);
+            }
+            $ext = (array_key_exists('extension', $file_pathinfo) ? '.' . $file_pathinfo['extension'] : '');
+            copy($temp_folder . '/' . $unzipped_filename, $item_path . '/' . $unzipped_filename); //. 'OBJ' . $ext);
+          }
+        }
+
+        // STILL NEED TO make a MODS file for each of these from the csv row
+
+      }
+      
+      drupal_set_message($results_array['num_zip_files_unzipped'] . ' zip file' . ($results_array['num_zip_files_unzipped'] == 1 ? '' : 's') .
         'downloaded from the FTP location `' . $ftp_folder . '`.' . "\n\n" . 
         'The batch record has been updated to point to the CSV file that was in the FTP folder `' . $results_array['csv_file'] . '`.' . "\n\n" .
         'The zip files were extracted to `' . $temp_folder . '` and contained ' . count($results_array['files_unzipped']) . ' file' .
@@ -1236,4 +1295,5 @@ drupal_set_message($results_array);
       $csv_file = $results_array['csv_file'];
     }
   }
+  return $batch_path;
 }

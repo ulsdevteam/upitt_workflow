@@ -171,7 +171,6 @@ function upitt_workflow_admin_form_submit(array $form, array &$form_state) {
   $id = $form_state['triggering_element']['#id'];
   switch ($id) {
     case 'edit-submit':
-      dpm($form_state['values']);
       $batch_hosts_array = explode("\r\n", $form_state['values']['batch_hosts']);
       upitt_workflow_create_host_paths($batch_hosts_array);
       variable_set('upitt_workflow_notification_email', $form_state['values']['notification_email']);

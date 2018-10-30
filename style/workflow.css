@@ -130,7 +130,12 @@ a.bad {
     vertical-align:middle;
     background: url('../images/Loading_icon.gif');
     background-repeat: no-repeat;
-    background-position: center; 
+    background-position: top; 
+}
+
+#edit-box-files-loading-img h3 {
+    font-size: 1.2em;
+    margin-bottom: 6px;
 }
 
 .ftp_file_zip {

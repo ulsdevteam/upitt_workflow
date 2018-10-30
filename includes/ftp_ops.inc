@@ -59,7 +59,7 @@ function upitt_workflow_ftp_listing($current_path) {
     $files = $folders = array();
     foreach ($contents as $ftp_file_or_folder) {
       if ($ftp_file_or_folder <> '.') {
-        $full_path_file_or_folder = (($current_path) ? $current_path . '/' : '') . urlencode($ftp_file_or_folder);
+        $full_path_file_or_folder = (($current_path) ? $current_path . '/' : '') . $ftp_file_or_folder;
         if (!ftp_chdir($conn_id, $full_path_file_or_folder)) {
           $files[$full_path_file_or_folder] = $ftp_file_or_folder;
         }
@@ -115,6 +115,7 @@ function upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $download_to, $bat
     // 1. Change to the $ftp_folder directory
     // 2. For each of the *.zip files in that directory, save in $download_to -
     //    and finally change to the newly created local directory.
+
     $make_folder_command = 'rm -rf ' . $download_to . ';mkdir ' . $download_to;
     exec($make_folder_command);
 
@@ -185,7 +186,7 @@ function upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $download_to, $bat
         $num_zip_files_unzipped++;
       } elseif (strstr($output, 'inflating:')) {
         $extracted_filename_only = str_replace("inflating: ", "", $output);
-        $files_unzipped[] = $extracted_filename_only;
+        $files_unzipped[] = trim($extracted_filename_only);
       }
     }
 
