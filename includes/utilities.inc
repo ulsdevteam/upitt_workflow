@@ -1639,19 +1639,17 @@ function upitt_workflow_validate_csv($csv_filename, $batch_path) {
 
   foreach ($file_rows as $k => $row) {
     // If there is a filename_index, check that the file exists.
-    /* You know, to hell with validation on contrib CSV.. they always contain
-     * problems or missed filename pointers especially.
-     *
     if (!$filename_index === FALSE) {
       $row_filename = $batch_path . '/' . $row[$filename_index];
       if (!file_exists($row_filename)) {
         $validation_success = FALSE;
-        drupal_set_message(t('There is a filename referenced that does not exist on ' .
-          'the file system.  "' . $row[$filename_index] . '" on row #' . $k . 
-          '.  The file must be stored at "' . $batch_path . '/".  Please upload ' .
-          'fix this issue to be able to ingest this batch.'), 'error');
+        drupal_set_message('<span class="bad">' . t('There is a filename referenced ' .
+          'on row #' . $k . ' that does not exist on ' .
+          'the file system.') . '</span><br><b class="bad">' . t('The row expects a file named EXACTLY "' .
+          $row[$filename_index] . '" to be stored at "' . $batch_path . '/".  ' .
+          'You must fix this issue in order be able to ingest this batch.</b>'), 'error');
       }
-    } */
+    }
 
     // If there is a normalized_date in the header, check this row's date value
     if (!($date_index === FALSE)) {
