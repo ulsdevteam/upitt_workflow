@@ -96,6 +96,7 @@ a.bad {
     max-height: 330px;
     height: 330px;
     overflow: scroll;
+    width: auto !important;
 }
 
 #current_directory {

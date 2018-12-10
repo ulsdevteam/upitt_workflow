@@ -184,12 +184,11 @@ function upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $download_to, $bat
     foreach ($unzip_output as $output) {
       if (strstr($output, 'Archive:')) {
         $num_zip_files_unzipped++;
-      } elseif (strstr($output, 'inflating:')) {
-        $extracted_filename_only = str_replace("inflating: ", "", $output);
+      } elseif (strstr($output, 'inflating:') || strstr($output, 'extracting:')) {
+        $extracted_filename_only = str_replace(array("inflating: ", "extracting: "), "", $output);
         $files_unzipped[] = trim($extracted_filename_only);
       }
     }
-
     ftp_close($conn_id);
   }
   if ($cwd) {
