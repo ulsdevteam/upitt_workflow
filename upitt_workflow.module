@@ -651,6 +651,7 @@ function upitt_workflow_islandora_batch_process_finished($sets) {
   module_load_include('inc', 'upitt_workflow', 'includes/process_barcodes.form');
 
   if (!empty($sets)) {
+    module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
     foreach ($sets as $set) {
       // Delete set and associated queued items.
       $queued_items = islandora_batch_get_queued_items_for_set($set);

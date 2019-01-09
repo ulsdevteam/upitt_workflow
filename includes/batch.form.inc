@@ -165,7 +165,6 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
     ),
 
     // Collection: select box
-    //   THIS SELECTBOX WILL BE A PROBLEM SINCE WE MAP TO MORE THAN ONE COLLECTION
     'mapto_collections' => array(
       '#type' => 'select',
       '#description' => 'Hold down Ctrl to select multiple collections',
@@ -197,40 +196,6 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
       '#title' => t('Description'),
       '#default_value' => ($batch && isset($batch['batch_description']))? $batch['batch_description'] : '',
     ),
-/*
-    // Priority: textfield
-    'batch_priority' => array(
-      '#type' => 'textfield',
-      '#title' => t('Priority'),
-      '#default_value' => ($batch && isset($batch['batch_priority']))? $batch['batch_priority'] : '',
-    ),
-    // Default copyright status: select (hard-coded options)
-    'batch_default_CR_status' => array(
-      '#type' => 'select',
-      '#title' => t('Default Copyright Status'),
-      '#options' => array(''=>'Select Default Copyright Status',
-        'copyrighted' => 'copyrighted',
-        'pd' => 'public domain',
-        'pd_usfed' => 'public domain - us federal document',
-        'pd_holder' => 'public domain - dedicated by rights holder',
-        'pd_expired' => 'public domain - expired copyright',
-        'unknown' => 'unknown',
-      ),
-      '#default_value' => ($batch && isset($batch['batch_default_CR_status']))? $batch['batch_default_CR_status'] : '',
-    ),
-    // Default publication status: select (hard-coded options)
-    'batch_default_pub_status' => array(
-      '#type' => 'select',
-      '#title' => t('Default Publication Status'),
-      '#options' => array(''=>'Select Default Publication Status',
-        'published' => 'published',
-        'unpublished' => 'unpublished',
-        'unknown' => 'unknown',
-      ),
-      '#default_value' => ($batch && isset($batch['batch_default_pub_status']))? $batch['batch_default_pub_status'] : '',
-    ),
- */
-
     // Is a request? checkbox
     'batch_request' => array(
       '#title' => 'Batch Request?',
@@ -275,156 +240,6 @@ function upitt_workflow_new_batch_form(array $form, array &$form_state, $batch =
           theme('table', array('rows' => $file_rows, 'header' => $file_header, 'attributes' => array('class' => array('report_table')))) .
         '</div>'  : ''),
     ),
-
-/*
-    // Type: select (get options from `batch_item_type`)
-    'batch_item_type_id' => array(
-      '#type' => 'select',
-      '#title' => t('Type'),
-      '#options' => $batch_item_type_options,
-      '#default_value' => ($batch && isset($batch['content_type_id']))? $batch['content_type_id'] : '',
-    ),
-*/
-/*    // Property owner: select (get options from `property_owners`)
-    'batch_property_owner_id' => array(
-      '#type' => 'select',
-      '#title' => t('Property Owner'),
-      '#options' => $batch_property_owners,
-      '#default_value' => ($batch && isset($batch['property_owner_id']))? $batch['property_owner_id'] : '',
-    ),
- */
-/*    // Sequence: select (get options from `workflow_sequence`)
-    'batch_sequence_id' => array(
-      '#type' => 'select',
-      '#title' => t('Sequence'),
-      '#options' => $batch_workflow_sequences,
-      '#default_value' => ($batch && isset($batch['sequence_id']))? $batch['sequence_id'] : '',
-    ), */
-    // Active? checkbox
-/*    'is_batch_active' => array(
-      '#type' => 'checkbox',
-      '#title' => t('Active?'),
-      '#default_value' => ($batch && isset($batch['is_batch_active']))? $batch['is_batch_active'] : '',
-    ),
- */
-/*    // Source identifier: textfield
-    'batch_source_identifier' => array(
-      '#type' => 'textfield',
-      '#title' => t('Source Identifier'),
-      '#default_value' => ($batch && isset($batch['batch_source_identifier']))? $batch['batch_source_identifier'] : '',
-    ), */
-/*    // Condition handling: textarea
-    'batch_condition_handling' => array(
-      '#type' => 'textarea',
-      '#title' => t('Condition Handling'),
-      '#default_value' => ($batch && isset($batch['batch_condition_handling']))? $batch['batch_condition_handling'] : '',
-    ),
-    // File type: textfield
-    'file_type' => array(
-      '#type' => 'textfield',
-      '#title' => t('File Type'),
-      '#default_value' => ($batch && isset($batch['file_type']))? $batch['file_type'] : '',
-    ),
-    // File naming scheme: textfield
-    'file_naming_scheme' => array(
-      '#type' => 'textfield',
-      '#title' => t('File Naming Scheme'),
-      '#default_value' => ($batch && isset($batch['file_naming_scheme']))? $batch['file_naming_scheme'] : '',
-    ),
-    // Image resolution in ppi: textfield
-    'image_resolution' => array(
-      '#type' => 'textfield',
-      '#title' => t('Image Resolution in ppi'),
-      '#default_value' => ($batch && isset($batch['image_resolution']))? $batch['image_resolution'] : '',
-    ),
-    // Image color type and bit depth: textfield
-    'image_color_type_and_bitdepth' => array(
-      '#type' => 'textfield',
-      '#title' => t('Image Color Type and Bit Depth'),
-      '#default_value' => ($batch && isset($batch['image_color_type_and_bitdepth']))? $batch['image_color_type_and_bitdepth'] : '',
-    ),
-    // Output target size: textfield
-    'output_target_size' => array(
-      '#type' => 'textfield',
-      '#title' => t('Output target size'),
-      '#default_value' => ($batch && isset($batch['output_target_size']))? $batch['output_target_size'] : '',
-    ),
-    // Page edge treatment: textarea
-    'page_edge_treatment' => array(
-      '#type' => 'textarea',
-      '#title' => t('Page Edge Treatment'),
-      '#default_value' => ($batch && isset($batch['page_edge_treatment']))? $batch['page_edge_treatment'] : '',
-    ),
-    // Use a color target? checkbox
-    'use_color_target' => array(
-      '#type' => 'checkbox',
-      '#title' => t('Use Color Target?'),
-      '#default_value' => ($batch && isset($batch['use_color_target']))? $batch['use_color_target'] : '',
-    ),
-    // Blank and missing page treatment: textarea
-    'blank_and_missing_treatment' => array(
-      '#type' => 'textarea',
-      '#title' => t('Blank and Missing Page Treatment'),
-      '#default_value' => ($batch && isset($batch['blank_and_missing_treatment']))? $batch['blank_and_missing_treatment'] : '',
-    ),
-
-    // Image editing treatment: textarea
-    'image_editing_treatment' => array(
-      '#type' => 'textarea',
-      '#title' => t('Image Editing Treatment'),
-      '#default_value' => ($batch && isset($batch['image_editing_treatment']))? $batch['image_editing_treatment'] : '',
-    ),
-
-    // Structural metadata treatment: textarea
-    'structural_metadata_treatment' => array(
-      '#type' => 'textarea',
-      '#title' => t('Description'),
-      '#default_value' => ($batch && isset($batch['structural_metadata_treatment']))? $batch['structural_metadata_treatment'] : '',
-    ),
-
-    // Default voyager id: textfield
-    'default_voyager_id' => array(
-      '#type' => 'textfield',
-      '#title' => t('Default Voyager ID'),
-      '#default_value' => ($batch && isset($batch['default_voyager_id']))? $batch['default_voyager_id'] : '',
-    ),
-    // Default EAD id: textfield
-    'default_ead_id' => array(
-      '#type' => 'textfield',
-      '#title' => t('Default EAD_id'),
-      '#default_value' => ($batch && isset($batch['default_ead_id']))? $batch['default_ead_id'] : '',
-    ), */
-
-/*
-    // Default copyright holder name: textarea
-    'batch_default_CR_holder' => array(
-      '#type' => 'textarea',
-      '#title' => t('Default Copyright Holder Name'),
-      '#default_value' => ($batch && isset($batch['batch_default_CR_holder']))? $batch['batch_default_CR_holder'] : '',
-    ),
-    // Default permission notes: textarea
-    'batch_default_perm_notes' => array(
-      '#type' => 'textarea',
-      '#title' => t('Default Permission Notes'),
-      '#default_value' => ($batch && isset($batch['batch_default_perm_notes']))? $batch['batch_default_perm_notes'] : '',
-    ),
-*/
-/*
-    // Default genre: textfield
-    'default_genre' => array(
-      '#type' => 'textfield',
-      '#title' => t('Default Genre'),
-      '#default_value' => ($batch && isset($batch['default_genre']))? $batch['default_genre'] : '',
-    ),
-*/
-/*
-    // Has file: checkbox
-    'has_file' => array(
-      '#type' => 'checkbox',
-      '#title' => t('Has File?'),
-      '#default_value' => ($batch && isset($batch['has_file']))? $batch['has_file'] : '',
-    ),
-*/
     'submit' => array(
       '#type' => 'submit',
       '#value' => t('Save batch'),
@@ -553,12 +368,8 @@ function upitt_workflow_new_batch_form_submit(array $form, array &$form_state) {
     drupal_set_message('New node created ' . $node->nid);
   }
   if ($markup) {
+    // Redirect -- do not render the form again...
     drupal_goto('workflow/batch/' . $batch_id);
-    /* Redirect -- do not render the form yet again... 
-    $form_state['rebuild'] = TRUE;
-    $markup = l('Return to batch', '/workflow/batch/' . $batch_id) . "<br>" . $markup;
-    $form_state['storage']['process_results'] = theme('upitt_simple_markup', array('markup' => $markup));
-    */
   }
 }
 
