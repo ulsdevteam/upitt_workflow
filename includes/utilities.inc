@@ -1786,6 +1786,7 @@ function upitt_workflow_get_depositor_model_and_datastreams_sizes($pid) {
   // Add the depositor and hasModel fields to the fields array
   $fields[] = 'mods_name_depositor_namePart_s';
   $fields[] = 'RELS_EXT_hasModel_uri_s';
+  $fields[] = 'fgs_createdDate_dt';
   
   module_load_include('inc', 'islandora_solr', 'includes/utilities');
   $query_processor = new IslandoraSolrQueryProcessor();
