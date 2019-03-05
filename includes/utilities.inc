@@ -1180,7 +1180,7 @@ function upitt_workflow_get_datastreams($pid = '') {
  * @throws Exception
  */
 function upitt_workflow_csv_file_as_array($csv_file) {
-  $max_csv_rows_for_display = 200;
+  $max_csv_rows_for_display = 99999;
   $file_rows = $file_header = array();
   if (file_exists($csv_file)) {
     $row = 0;

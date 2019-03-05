@@ -841,31 +841,30 @@ function upitt_workflow_fix_page_size($pageObject) {
   $jp2_datastream = $pageObject['JP2'];
   $rels = $jp2_datastream->relationships;
   $width_rels_in = $rels->get(ISLANDORA_RELS_INT_URI, 'width');
-  $width_rels = $width_rels_in[0]['object']['value'];
   $height_rels_in = $rels->get(ISLANDORA_RELS_INT_URI, 'height');
-  $height_rels = $height_rels_in[0]['object']['value'];
+  if (array_key_exists(0, $width_rels_in) && array_key_exists(0, $height_rels_in)) {
+    $width_rels = $width_rels_in[0]['object']['value'];
+    $height_rels = $height_rels_in[0]['object']['value'];
 
-  # Get the actual image dimensions.
-  $DSID = "OBJ";
-  $obj_datastream = $pageObject['OBJ'];
-  $mimetype = $obj_datastream->mimetype;
-  $fileextension = upitt_workflow_getMimetypeToFileExtension($mimetype);
-  $filename = tempnam("temporary://", "$DSID.$fileextension");
-  $retval = upitt_workflow_getDatastreamToFile($pageObject,"OBJ","$filename");
-  @list($width, $height) = getimagesize($filename);
-  @unlink($filename);
+    # Get the actual image dimensions.
+    $DSID = "OBJ";
+    $obj_datastream = $pageObject['OBJ'];
+    $mimetype = $obj_datastream->mimetype;
+    $fileextension = upitt_workflow_getMimetypeToFileExtension($mimetype);
+    $filename = tempnam("temporary://", "$DSID.$fileextension");
+    $retval = upitt_workflow_getDatastreamToFile($pageObject,"OBJ","$filename");
+    @list($width, $height) = getimagesize($filename);
+    @unlink($filename);
 
-  // REMOVE any RELS_EXT width/height - that value would be wrong!
-  $rels->remove(ISLANDORA_RELS_EXT_URI, 'width', NULL);
-  $rels->remove(ISLANDORA_RELS_EXT_URI, 'height', NULL);
+    // REMOVE any RELS_EXT width/height - that value would be wrong!
+    $rels->remove(ISLANDORA_RELS_EXT_URI, 'width', NULL);
+    $rels->remove(ISLANDORA_RELS_EXT_URI, 'height', NULL);
 
-  upitt_workflow_set_relationship($rels, ISLANDORA_RELS_INT_URI, 'width', $width, 1);
-  upitt_workflow_set_relationship($rels, ISLANDORA_RELS_INT_URI, 'height', $height, 1);
+    upitt_workflow_set_relationship($rels, ISLANDORA_RELS_INT_URI, 'width', $width, 1);
+    upitt_workflow_set_relationship($rels, ISLANDORA_RELS_INT_URI, 'height', $height, 1);
 
-  return sqrt(($width - $width_rels) * ($width - $width_rels) + ($height == $height_rels) * ($height == $height_rels));
-  # Report on the differences.
-  error_log("Actual Width: $width, Height: $height,  \n" .
-            "RELS-INT Width: $width_rels, Height: $height_rels");
+    return sqrt(($width - $width_rels) * ($width - $width_rels) + ($height == $height_rels) * ($height == $height_rels));
+  }
 }
 
 function upitt_workflow_make_tn_for_barcodes($barcodes) {
@@ -1964,7 +1963,7 @@ function upitt_workflow_query_solr_for_barcodes($values) {
       // by updating the batch records' value here for default_type_of_resource
       // so that the comparison evaluates to TRUE for newspaperCModel compared to newspaperIssueCModel
       // ... the model value is correct once it is ingested and it is in Solr.
-      if ($batch_record['default_type_of_resource'] == 'newspaperCModel') {
+      if (array_key_exists('default_type_of_resource', $batch_record) && $batch_record['default_type_of_resource'] == 'newspaperCModel') {
         $batch_record['default_type_of_resource'] = 'newspaperIssueCModel';
       }
       if (!array_key_exists('batch_external_id', $batch_record)) {
@@ -1988,7 +1987,7 @@ function upitt_workflow_query_solr_for_barcodes($values) {
       // Calculate the $logic_arr field values
       //   Same Type?
       $solr_rec_normalized_model_value = upitt_workflow_remove_namespace($solr_rec_row['RELS_EXT_hasModel_uri_ms']);
-      $solr_rec_row['Same Type?'] = ($batch_record['default_type_of_resource'] == $solr_rec_normalized_model_value) ?
+      $solr_rec_row['Same Type?'] = (array_key_exists('default_type_of_resource', $batch_record) && $batch_record['default_type_of_resource'] == $solr_rec_normalized_model_value) ?
         '<span class="good">TRUE</span>' : '<span title="' . $solr_rec_normalized_model_value . ' != ' . $batch_record['default_type_of_resource'] . '" class="bad">FALSE</span>';
       //   Added to Collection/s?
       // need to iterate and compare the value from solr as well as the batch
