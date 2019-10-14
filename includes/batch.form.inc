@@ -884,9 +884,13 @@ function upitt_workflow_make_newspaper_parent_now($marcxml_filename, $batch_exte
           $datastream->mimetype = 'application/xml';
           $datastream->setContentFromFile($dc_temp_filename, TRUE);
           $newspaper_parent->ingestDatastream($datastream);
-          @unlink($dc_temp_filename);
+          if (file_exists($dc_temp_filename)) {
+            @unlink($dc_temp_filename);
+          }
         }
-        @unlink($mods_temp_filename);
+        if (file_exists($mods_temp_filename)) {
+          @unlink($mods_temp_filename);
+        }
       }
       $repository->ingestObject($newspaper_parent);
     }

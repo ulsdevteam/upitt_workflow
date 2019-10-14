@@ -175,7 +175,7 @@ function upitt_workflow_ftp_get_zipfiles_and_csv($ftp_folder, $download_to, $bat
         $output = array();
         exec($unzip_command, $output, $return_var);
         $unzip_output = array_merge($output, $unzip_output);
-        if (!unlink($local_filename)) {
+        if (file_exists($local_filename) && !unlink($local_filename)) {
           dpm('There was a problem deleting the file ' . $zip_file);
         }
       }

@@ -758,10 +758,14 @@ function upitt_workflow_aggregate_pdf_derivative($islandora_object) {
       error_log('page aggregation of PDF failed');
       error_log(implode("\r\n",$pdf_files));
     }
-    @unlink($consolidated_pdf_temp_file);
+    if (file_exists($consolidated_pdf_temp_file)) {
+      @unlink($consolidated_pdf_temp_file);
+    }
     foreach ($pdf_files as $file) {
       upitt_workflow_log('delete temp file for pages PDF file "' . $file . '"');
-      @unlink($file);
+      if (file_exists($file)) {
+        @unlink($file);
+      }
     }
     if ($success) {
       upitt_workflow_purge_childpages_datastreams($islandora_object, $pages, 'PDF');

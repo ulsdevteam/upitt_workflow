@@ -2311,7 +2311,9 @@ function upitt_workflow_get_jp2_dimensions($object) {
     $object["JP2"]->getContent($saved_jp2);
     if (file_exists($saved_jp2)) {
       $image_size = getimagesize($saved_jp2);
-      @unlink($saved_jp2);
+      if (file_exists($saved_jp2)) {
+        @unlink($saved_jp2);
+      }
       list($width, $height, $type, $attr) = $image_size;
       return array(
           'width' => $width, 

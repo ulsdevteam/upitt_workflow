@@ -854,7 +854,9 @@ function upitt_workflow_fix_page_size($pageObject) {
     $filename = tempnam("temporary://", "$DSID.$fileextension");
     $retval = upitt_workflow_getDatastreamToFile($pageObject,"OBJ","$filename");
     @list($width, $height) = getimagesize($filename);
-    @unlink($filename);
+    if (file_exists($file)) {
+      @unlink($filename);
+    }
 
     // REMOVE any RELS_EXT width/height - that value would be wrong!
     $rels->remove(ISLANDORA_RELS_EXT_URI, 'width', NULL);
