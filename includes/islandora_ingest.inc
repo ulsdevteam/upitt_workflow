@@ -867,7 +867,9 @@ function upitt_workflow_make_tn_large($object, $save_on_object) {
     if ($ingest) {
       $save_on_object->ingestDatastream($ds);
     }
-    file_unmanaged_delete($temp_dest_file_uri);
+    if (file_exists($temp_dest_file_uri)) {
+      file_unmanaged_delete($temp_dest_file_uri);
+    }
 
     return array(
       'success' => TRUE,
@@ -978,7 +980,9 @@ function upitt_workflow_make_tn($object, $save_on_object) {
     if ($ingest) {
       $save_on_object->ingestDatastream($ds);
     }
-    file_unmanaged_delete($temp_dest_file_uri);
+    if (file_exists($temp_dest_file_uri)) {
+      file_unmanaged_delete($temp_dest_file_uri);
+    }
 
     return array(
       'success' => TRUE,
@@ -1059,7 +1063,9 @@ function upitt_workflow_create_TN_file($obj_ds, $thumbnail_id, $models) {
     watchdog('islandora_large_image', 'ImageMagick failed to convert.<br/>Error: @ret<br/>Command: @command <br/>Output !output', $variables, WATCHDOG_ERROR);
     return FALSE;
   }
-  file_unmanaged_delete($obj_ds_file);
+  if (file_exists($obj_ds_file)) {
+    file_unmanaged_delete($obj_ds_file);
+  }
   $derivative_file = $dest_file;
   return $derivative_file;
 }
@@ -1125,7 +1131,9 @@ function upitt_workflow_create_TN_LARGE_file($object, $obj_ds, $thumbnail_id, $m
     watchdog('islandora_large_image', 'ImageMagick failed to convert.<br/>Error: @ret<br/>Command: @command <br/>Output !output', $variables, WATCHDOG_ERROR);
     return FALSE;
   }
-  file_unmanaged_delete($obj_ds_file);
+  if (file_exists($obj_ds_file)) {
+    file_unmanaged_delete($obj_ds_file);
+  }
   $derivative_file = $dest_file;
   return $derivative_file;
 }
@@ -1184,8 +1192,12 @@ function upitt_workflow_create_TN_LARGE_file_for_video($object, $dest_file) {
         watchdog('islandora_large_image', 'ImageMagick failed to convert.<br/>Error: @ret<br/>Command: @command <br/>Output !output', $variables, WATCHDOG_ERROR);
         return FALSE;
       }
-      file_unmanaged_delete($obj_ds_file);
-      file_unmanaged_delete($out_file);
+      if (file_exists($obj_ds_file)) {
+        file_unmanaged_delete($obj_ds_file);
+      }
+      if (file_exists($out_file)) {
+        file_unmanaged_delete($out_file);
+      }
 
       return islandora_video_add_datastream($object, 'TN_LARGE', $dest_file);
     }
