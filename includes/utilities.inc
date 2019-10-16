@@ -1134,6 +1134,29 @@ function upitt_workflow_batch_load($batch_id) {
   return $batch;
 }
 
+function upitt_workflow_batch_load_item_identifiers($batch_id) {
+  $link = upitt_workflow_get_databaselink('mysql_new_workflow');
+
+  $batch_detail = 'SELECT i.do_id ' .
+                  'FROM item i ' .
+                  'JOIN batch_item bi ON (bi.item_id = i.id) ' .
+                  'WHERE bi.batch_id = \'' . $batch_id . '\'';
+
+  $identifiers = array();
+
+  $result = mysqli_query($link, $batch_detail);
+  if (!$result) {
+    upitt_workflow_sql_error_die($link, $batch_detail);
+  }
+
+  while ($row = mysqli_fetch_assoc($result)) {
+    $identifiers['pitt:' . $row['do_id']] = $row['do_id'];
+  }
+
+  mysqli_close($link);
+  return $identifiers;
+}
+
 /**
  * Helper function that will return the list of datastreams that are currently in
  * use from running a Solr query.

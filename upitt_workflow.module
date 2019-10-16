@@ -279,7 +279,7 @@ function upitt_workflow_menu() {
       'page arguments' => array(4),
       'type' => MENU_CALLBACK,
       'file' => 'includes/datastreams_export.inc',
-      'access arguments' => user_access(ISLANDORA_DATASTREAMS_IO),
+      'access arguments' => array(ISLANDORA_DATASTREAMS_IO),
     );
   }
 
