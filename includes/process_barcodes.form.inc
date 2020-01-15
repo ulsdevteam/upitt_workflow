@@ -1598,6 +1598,68 @@ function upitt_workflow_hopper_list_pending_for_barcodes($barcodes) {
 }
 
 /**
+ * This will create new DC derivatives.
+ *
+ * @param type $barcodes
+ * @return string HTML markup
+ */
+function upitt_workflow_make_dc_for_barcodes($barcodes) {
+  //upitt_workflow_MODStoDC
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+  $missing_barcodes = array();
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '<div class="text-report">';
+  $markup .= "<b>Start " . date('Y-m-d H:i:s') . "</b><br>";
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $pid = $ingest_namespace . $barcode;
+	//get the record we want to update
+    $islandora_object = islandora_object_load($pid);
+    if (is_object($islandora_object)) {
+      //define $mods_temp_filename location, but how?
+      // taken from code that makes the DC originally on ingest  
+      // use the MODS to make the DC
+        $dc_temp_filename = upitt_workflow_MODStoDC($pid, $mods_temp_filename);
+        if (!$dc_temp_filename) {
+            $markup .= '<div class="bad">Could not derive DC from the MODS xml file "' . $mods_temp_filename . '"</div>';
+		    error_log('Start converting MODS to DC for ' . $pid);
+            $missing_barcodes[] = $barcode;
+        }
+        else {
+		  //not sure what this markup looks like in the end	even if I have the syntax right
+          $markup .= '<div class="good">derived DC from MODS.  Temp file saved as ' . $dc_temp_filename . '</div>';
+		  $markup .= '<div>DC created for ' . $pid . "</div>";
+          $datastream = $islandora_object->constructDatastream('DC');
+          $datastream->label = 'DC Record';
+          $datastream->mimetype = 'application/xml';
+          $datastream->setContentFromFile($dc_temp_filename, TRUE);
+          $islandora_object->ingestDatastream($datastream);
+          if (file_exists($dc_temp_filename)) {
+            @unlink($dc_temp_filename);
+          }
+        }
+        if (file_exists($mods_temp_filename)) {
+          @unlink($mods_temp_filename);
+        }
+      }
+      $repository->ingestObject($islandora_object);
+	  
+    }
+    else {
+      $markup .= '<b>' . $mapto_collections . "</b>";
+    }
+	if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes or their OBJ datastream could not be found  ' . implode(", ", $missing_barcodes), 'warning');
+	}
+  $markup .= "<b>Done " . date('Y-m-d H:i:s') . "</b><br>";
+  $markup .= "<b>" . count($barcodes_arr) . " objects processed</b><br>";
+  $markup .= '</div>';
+  return $markup;
+  }
+
+/**
  * This mode is tricky -- it will take either a batch or individual barcodes
  * AND will require at least one of the following values set:
  *   site
