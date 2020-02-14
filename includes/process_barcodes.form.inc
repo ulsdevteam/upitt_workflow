@@ -52,6 +52,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
       'make_tn_large' => ' - Make TN_LARGE derivative',
       'make_jpg' => ' - Make JPG derivative',
       'make_jp2' => ' - Make JP2 derivative',
+      'make_dc' =>  ' - Make DC derivative',
       'fix_batch_host' => ' - Fix batch record file path',
       'aggregate' => ' - Aggregate OCR and PDF, make TN_LARGE',
       'aggregate_OCR_only' => ' - Aggregate OCR only',
@@ -1405,6 +1406,89 @@ function upitt_workflow_common_batch_values_markup($prefix = '', $batch_record) 
     return '<i>Batch record missing</i><br>';
   }
 }
+
+/**
+ * This will create new DC derivatives.
+ *
+ * @param type $barcodes
+ * @return string HTML markup
+ */
+function upitt_workflow_make_dc_for_barcodes($barcodes) {
+  //upitt_workflow_MODStoDC
+  module_load_include('inc', 'islandora_paged_content', 'includes/utilities');
+  module_load_include('inc', 'upitt_workflow', 'includes/islandora_ingest');
+
+//we want to know when objects fail to create this derivative
+  $missing_barcodes = array();
+  $barcodes_arr = explode("\n", $barcodes);
+  $markup = '<div class="text-report">';
+  $markup .= "<b>Start " . date('Y-m-d H:i:s') . "</b><br>";
+  $ingest_namespace = upitt_workflow_get_ingest_namespace();
+  foreach ($barcodes_arr as $barcode) {
+    $barcode = trim($barcode);
+    $pid = $ingest_namespace . $barcode;
+	//get the record we want to update
+    $islandora_object = islandora_object_load($pid);
+    if (is_object($islandora_object)) {
+      //define $mods_temp_filename location, but how?
+      // taken from code that makes the DC originally on ingest  
+      // try to use the MODS to make the DC
+        $markup .= "is object";
+
+	if($mods = $islandora_object['MODS']){
+            $markup .= "<br>";
+            $mods_temp_filename=tempnam(file_directory_temp(), "mods");            
+            $getContentResult=$mods->getContent($mods_temp_filename);                        
+	}
+        else{$markup .= "failed to import mods";}
+	$dc_temp_filename = upitt_workflow_MODStoDC($pid, $mods_temp_filename);
+        //if that doesn't work
+        if (!$dc_temp_filename) {
+            $markup .= '<div class="bad">Could not derive DC from the MODS xml file "' . $mods_temp_filename . '"</div>';
+		    error_log('Start converting MODS to DC for ' . $pid);
+            $missing_barcodes[] = $barcode;
+        }
+        //otherwise, assume we were successful
+        else {    
+          $markup .= '<div>DC created for ' . $pid . "</div>";
+          if ($islandora_object['DC']){
+              $datastream = $islandora_object['DC'];
+          } else {
+              $datastream = $islandora_object->constructDatastream('DC');
+              $datastream->label = 'DC Record';
+              $datastream->mimetype = 'application/xml';
+          }
+          $datastream->setContentFromFile($dc_temp_filename, TRUE);
+          if (!$islandora_object['DC']) {
+              $islandora_object->ingestDatastream($datastream);
+          }
+          if (file_exists($dc_temp_filename)) {
+            @unlink($dc_temp_filename); 
+          }
+        }
+        if (file_exists($mods_temp_filename)) {
+          @unlink($mods_temp_filename);
+        }
+        
+      }
+      
+      else {
+      $markup .= '<b>not an object </b>';
+      $missing_barcodes[] = $barcode;
+    }
+    //display a summary message if objects failed to yield a dc
+    if (count($missing_barcodes) > 0) {
+    drupal_set_message('Some barcodes or their OBJ datastream could not be found  ' . implode(", ", $missing_barcodes), 'warning');
+	}
+    $markup .= "<b>Done " . date('Y-m-d H:i:s') . "</b><br>";
+    $markup .= "<b>" . count($barcodes_arr) . " object processed</b><br>";
+    $markup .= '</div>';
+    return $markup;
+    }
+    //ingestDatastream doesn't actually ingest the datastream, it just adds it to the queue to be ingested whenever this object is ingested.
+    $repository->ingestObject($islandora_object);
+	  
+    }
 
 function upitt_workflow_compare_object_to_common_batch_values_markup($islandora_object, $batch_record) {
   $model_class = 'bad';
