@@ -1435,7 +1435,7 @@ function upitt_workflow_make_dc_for_barcodes($barcodes) {
       // try to use the MODS to make the DC
         $markup .= "is object";
 
-	if($mods = $islandora_object['MODS']){
+	if($mods = $islandora_object['MODS']){ 
             $markup .= "<br>";
             $mods_temp_filename=tempnam(file_directory_temp(), "mods");            
             $getContentResult=$mods->getContent($mods_temp_filename);                        
