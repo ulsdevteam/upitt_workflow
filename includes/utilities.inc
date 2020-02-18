@@ -752,7 +752,7 @@ function upitt_workflow_MODStoDC($pid, $modsxml_filename) {
   // Get the DC by transforming from MODS.
   $new_DC = ($mods_file) ? upitt_workflow_runXslTransform(
             array(
-              'xsl' => drupal_get_path('module', 'islandora_batch') . '/transforms/mods_to_dc.xsl', 
+              'xsl' => drupal_get_path('module', 'xml_forms') . '/builder/transforms/mods_to_dc.xsl', 
               'input' => $mods_file,
             )
           ) : '';
