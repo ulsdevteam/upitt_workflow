@@ -1433,9 +1433,7 @@ function upitt_workflow_make_dc_for_barcodes($barcodes) {
       //define $mods_temp_filename location, but how?
       // taken from code that makes the DC originally on ingest  
       // try to use the MODS to make the DC
-        $markup .= "is object";
-
-	if($mods = $islandora_object['MODS']){ 
+        if($mods = $islandora_object['MODS']){ 
             $markup .= "<br>";
             $mods_temp_filename=tempnam(file_directory_temp(), "mods");            
             $getContentResult=$mods->getContent($mods_temp_filename);                        
@@ -1480,11 +1478,14 @@ function upitt_workflow_make_dc_for_barcodes($barcodes) {
     if (count($missing_barcodes) > 0) {
     drupal_set_message('Some barcodes or their OBJ datastream could not be found  ' . implode(", ", $missing_barcodes), 'warning');
 	}
+        
     $markup .= "<b>Done " . date('Y-m-d H:i:s') . "</b><br>";
     $markup .= "<b>" . count($barcodes_arr) . " object processed</b><br>";
+    
+    
+    }
     $markup .= '</div>';
     return $markup;
-    }
     //ingestDatastream doesn't actually ingest the datastream, it just adds it to the queue to be ingested whenever this object is ingested.
     $repository->ingestObject($islandora_object);
 	  
