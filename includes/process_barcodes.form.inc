@@ -13,7 +13,7 @@ set_time_limit(0);
 //  2) create or update batch records
 
 function upitt_workflow_process_barcodes_form($form, &$form_state) {
-  $admin = user_access('administer users');
+  $admin = user_access(ISLANDORA_WORKFLOW_PROCESS_BARCODES_ADMIN);
   if (array_key_exists('build_info', $form_state) &&
       array_key_exists('args', $form_state['build_info']) &&
       array_key_exists(0, $form_state['build_info']['args']) &&
@@ -85,7 +85,7 @@ function upitt_workflow_process_barcodes_form($form, &$form_state) {
   if (!$admin) {
     $admin_only_process_barcode_modes = explode("\n", variable_get('upitt_workflow_admin_only_process_barcode_modes', 'purge_objects'));
     foreach ($admin_only_process_barcode_modes as $mode) {
-      unset($process_options[$mode]);
+      unset($process_options[trim($mode)]);
     }
   }
 

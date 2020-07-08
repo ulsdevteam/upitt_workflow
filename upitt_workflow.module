@@ -9,6 +9,7 @@ define('UPITT_WORKFLOW_SOLR_LIMIT', 10000);
 define('ISLANDORA_WORKFLOW_MANAGE', 'manage upitt workflow');
 define('ISLANDORA_WORKFLOW_MANAGE_LOOKUPTABLES', 'manage upitt workflow lookup tables');
 define('ISLANDORA_WORKFLOW_PROCESS_BARCODES', 'process workflow barcodes');
+define('ISLANDORA_WORKFLOW_PROCESS_BARCODES_ADMIN', 'process workflow barcodes admin');
 
 // Constants for various workflow actions (transactions)
 define('UPITT_WORKFLOW_ACTION_INGESTED_COMPLETELY', 3); // ingest completed
@@ -303,6 +304,11 @@ function upitt_workflow_permission() {
       'title' => t('Process workflow barcodes'),
       'description' => t('Process workflow barcodes - ingest prepare, move ingest files, ' .
           'test for islandora objects, publish ojects to site, etc.')
+    ),
+    ISLANDORA_WORKFLOW_PROCESS_BARCODES_ADMIN => array(
+      'title' => t('Process workflow barcodes admin'),
+      'description' => t('Process workflow barcodes admin - access to special functions, like batch delete, ' .
+          'manipulate batches, etc.')
     ),
   );
 }
