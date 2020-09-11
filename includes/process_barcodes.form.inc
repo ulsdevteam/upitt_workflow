@@ -808,7 +808,7 @@ function upitt_workflow_fix_page_sizes_for_barcodes($barcodes) {
 
       if (is_object($pageObject)) {
         if (!$changed_radius_calc = upitt_workflow_fix_page_size($pageObject)) {
-          $missing_barcodes[] = $barcode;
+          $missing_barcodes[] = $page;
         }
         else {
           if ($changed_radius_calc > 1) {
