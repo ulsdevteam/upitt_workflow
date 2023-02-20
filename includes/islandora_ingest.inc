@@ -328,7 +328,7 @@ function upitt_workflow_drush_islandora_batch_folder_pids($batch_external_id, $f
                        // assuming that only if the parent is set, than the parent_relationship_pred is needed
                        (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
-                       ' --target=' . $folder_target;
+                       ' --scan_target=' . $folder_target;
       $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
       $retval .= $markup;
 
