@@ -418,7 +418,7 @@ function upitt_workflow_drush_newspaper_issue($batch_external_id, $filepath, $fe
                  *
                        (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                  */
-                       ' --target=' . $filepath;
+                       ' --scan_target=' . $filepath;
 
       $output = $return_var = array();
       exec($drush_command, $output, $return_var);
@@ -483,7 +483,7 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
                        // assuming that only if the parent is set, than the parent_relationship_pred is needed
                        (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
-                       ' --target=' . $csv_file_source['path'];
+                       ' --scan_target=' . $csv_file_source['path'];
       $markup = '<h4>Called islandora_batch_scan_preprocess</h4><code>' . $drush_command . '</code>';
       $retval .= $markup;
 
@@ -512,7 +512,7 @@ function upitt_workflow_drush_image_possible_csv2mods($batch_external_id, $filep
                *
                      (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
-                     ' --target=' . $filepath;
+                     ' --scan_target=' . $filepath;
 
     $output = $return_var = array();
     exec($drush_command, $output, $return_var);
@@ -556,7 +556,7 @@ function upitt_workflow_drush_book($filepath, $parent, $site, $pid) {
                *
                    (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
-                   ' --target=' . $filepath;
+                   ' --scan_target=' . $filepath;
   $markup = '<h4>Called islandora_book_batch_preprocess</h4><code>' . $drush_command . '</code>';
   $retval .= $markup;
 
@@ -586,7 +586,7 @@ function upitt_workflow_drush_compound($filepath, $parent, $site, $pid) {
   $drush_command = 'drush -v -u ' . $user->uid . ' --namespace=' . $ingest_namespace_nocolon . ' --uri=' . $this_domain . ' islandora_compound_batch_preprocess ' .
                    upitt_workflow_drush_switches_ingest_drush_debugmode() .
                    // assuming that only if the parent is set, than the parent_relationship_pred is needed
-                   '--target=' . $filepath . ' ' .
+                   '--scan_target=' . $filepath . ' ' .
                    '--assign_pid=' . $pid . ' ' .
                    (($parent) ? '--parent=' . $parent . ' --parent_relationship_pred=isMemberOfCollection ' : '');
   $markup = '<h4>Called islandora_compound_batch_preprocess</h4><code>' . $drush_command . '</code>';
@@ -631,7 +631,7 @@ function upitt_workflow_drush_manuscript($filepath, $parent, $site, $pid) {
                *
                    (($site) ? '--relationship=' . $site . ' --relationship_pred=isMemberOfSite --relationship_namespace=http://digital.library.pitt.edu/ontology/relations# ': '') .
                */
-                   ' --target=' . $filepath;
+                   ' --scan_target=' . $filepath;
   $markup = '<h4>Called islandora_manuscript_batch_preprocess</h4><code>' . $drush_command . '</code>';
   $retval .= $markup;
 
