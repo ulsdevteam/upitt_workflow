@@ -16,7 +16,7 @@ This modules requires several modules in order to run, but it also requires that
 
 
 
-There is no install (database schema) for this module because the backend data comes from the legacy DRL site.  The data should be synced by running the migrate script again: /usr/local/src/islandora_tools/workflow_django_migrate/migrate.php
+There is no install (database schema) for this module because the backend data comes from the legacy DRL site.  The data should be synced by running the migrate script again: `/usr/local/src/islandora_tools/workflow_django_migrate/migrate.php`
 
 
 ## Author / License
