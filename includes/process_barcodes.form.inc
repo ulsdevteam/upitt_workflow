@@ -841,11 +841,11 @@ function upitt_workflow_fix_page_size($pageObject) {
   # the OBJ datastream doesn't work.
   $jp2_datastream = $pageObject['JP2'];
   $rels = $jp2_datastream->relationships;
-  $width_rels_in = $rels->get(ISLANDORA_RELS_INT_URI, 'width');
-  $height_rels_in = $rels->get(ISLANDORA_RELS_INT_URI, 'height');
-  if (array_key_exists(0, $width_rels_in) && array_key_exists(0, $height_rels_in)) {
-    $width_rels = $width_rels_in[0]['object']['value'];
-    $height_rels = $height_rels_in[0]['object']['value'];
+  if ($rels) {
+    $width_rels_in = $rels->get(ISLANDORA_RELS_INT_URI, 'width');
+    $height_rels_in = $rels->get(ISLANDORA_RELS_INT_URI, 'height');
+    $width_rels = isset($width_rels_in[0]['object']['value']) ? $width_rels_in[0]['object']['value'] : 0 ;
+    $height_rels = isset($height_rels_in[0]['object']['value']) ? $height_rels_in[0]['object']['value'] : 0 ;
 
     # Get the actual image dimensions.
     $DSID = "OBJ";
